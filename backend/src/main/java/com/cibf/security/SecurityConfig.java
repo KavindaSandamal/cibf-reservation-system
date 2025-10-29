@@ -23,21 +23,19 @@ public class SecurityConfig {
 
     private final JwtAuthenticationEntryPoint authenticationEntryPoint;
 
-    // NOTE: Removed the direct injection of JwtAuthenticationFilter from the
-    // constructor
-    // to use the @Bean method below, which is the standard practice.
+    // Constructor for dependency injection of EntryPoint
     public SecurityConfig(JwtAuthenticationEntryPoint authenticationEntryPoint) {
         this.authenticationEntryPoint = authenticationEntryPoint;
     }
 
     // --- CRITICAL FIX 1: Define the Filter as a Bean ---
-    // This allows Spring to instantiate it correctly and inject its dependencies.
+    // This allows Spring to instantiate it correctly and inject its dependencies
+    // (tokenProvider, userDetailsService).
     @Bean
     public JwtAuthenticationFilter jwtAuthenticationFilter(
             JwtTokenProvider tokenProvider,
             CustomUserDetailsService userDetailsService) {
-        // Since JwtAuthenticationFilter had @Component, we can use constructor
-        // injection here.
+        // Spring handles the injection of tokenProvider and userDetailsService here.
         return new JwtAuthenticationFilter(tokenProvider, userDetailsService);
     }
 
@@ -52,7 +50,10 @@ public class SecurityConfig {
     }
 
     @Bean
-    public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
+    // --- CRITICAL FIX 2: Inject the JwtAuthenticationFilter into this method ---
+    // Spring will automatically provide the bean we defined in CRITICAL FIX 1.
+    public SecurityFilterChain securityFilterChain(HttpSecurity http, JwtAuthenticationFilter authenticationFilter)
+            throws Exception {
         http.csrf(csrf -> csrf.disable())
                 // Disable default authentication mechanisms
                 .httpBasic(basic -> basic.disable())
@@ -71,9 +72,9 @@ public class SecurityConfig {
                         // All other requests must be authenticated
                         .anyRequest().authenticated());
 
-        // --- CRITICAL FIX 2: Use the Bean created above ---
-        // Ensure the filter is added to the chain correctly.
-        http.addFilterBefore(jwtAuthenticationFilter(null, null), UsernamePasswordAuthenticationFilter.class);
+        // --- CRITICAL FIX 3: Use the injected bean instance directly ---
+        // This ensures Spring correctly manages the filter and places it in the chain.
+        http.addFilterBefore(authenticationFilter, UsernamePasswordAuthenticationFilter.class);
 
         return http.build();
     }
