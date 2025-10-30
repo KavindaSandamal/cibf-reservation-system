@@ -8,8 +8,6 @@ plugins {
     // Spring Dependency Management plugin (needed for version alignment)
     id 'io.spring.dependency-management' version '1.1.6'
     
-    // Lombok for boilerplate reduction (getters, setters, constructors)
-    id 'io.freefair.lombok' version '8.6'
 }
 
 group = 'com.cibf.reservation'
@@ -50,9 +48,10 @@ dependencies {
     runtimeOnly 'io.jsonwebtoken:jjwt-jackson:0.11.5'
     
     // --- Utilities ---
-    // Lombok (already included by plugin, but good for clarity)
     compileOnly 'org.projectlombok:lombok'
     annotationProcessor 'org.projectlombok:lombok'
+    testCompileOnly 'org.projectlombok:lombok'
+    testAnnotationProcessor 'org.projectlombok:lombok'
 
     // --- Testing ---
     testImplementation 'org.springframework.boot:spring-boot-starter-test'
