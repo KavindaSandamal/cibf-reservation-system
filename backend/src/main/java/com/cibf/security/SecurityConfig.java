@@ -20,11 +20,10 @@ import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 import java.util.Arrays;
 import java.util.List;
 
-/**
- * Main configuration for Spring Security (Secured Endpoints).
- * This chain runs after the PublicSecurityConfig (Order 1) and handles all
- * authenticated routes.
- */
+
+ //Main configuration for Spring Security (Secured Endpoints).
+ //This chain runs after the PublicSecurityConfig (Order 1) and handles all authenticated routes.
+
 @Configuration
 @EnableWebSecurity
 @EnableMethodSecurity
@@ -53,9 +52,9 @@ public class SecurityConfig {
         return configuration.getAuthenticationManager();
     }
 
-    /**
-     * CORS configuration for cross-origin requests
-     */
+   
+    //CORS configuration for cross-origin requests
+
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
