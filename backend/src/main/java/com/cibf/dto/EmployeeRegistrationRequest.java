@@ -13,7 +13,7 @@ public class EmployeeRegistrationRequest {
 
     @NotBlank
     @Email
-    private String username; // used as login username/email
+    private String username; 
 
     @NotBlank
     @Size(min = 6, message = "Password must be at least 6 characters")
@@ -29,7 +29,6 @@ public class EmployeeRegistrationRequest {
     @NotBlank
     private String employeeId;
 
-    // Optional organizational role label (e.g., ADMIN, STAFF). Defaults applied in service.
     private String role;
 }
 
