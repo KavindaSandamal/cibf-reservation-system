@@ -18,7 +18,7 @@ import java.io.IOException;
 /**
  * JWT Authentication Filter
  * Intercepts every request and validates JWT token if present.
- * CRITICAL: This filter should NOT block requests to public endpoints like
+ * This filter should NOT block requests to public endpoints like
  * /api/auth/**
  */
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
@@ -83,15 +83,13 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             }
 
         } catch (Exception ex) {
-            // Log error but DO NOT stop the filter chain
-            // This allows the request to continue and be handled by Spring Security's
-            // authorization
+            // Log error 
             logger.error("Cannot set user authentication in security context for URI: {}", requestURI, ex);
             // Clear any partial authentication
             SecurityContextHolder.clearContext();
         }
 
-        // CRITICAL: Always continue the filter chain
+        // Always continue the filter chain
         // This allows public endpoints (/api/auth/**) to work without authentication
         filterChain.doFilter(request, response);
     }

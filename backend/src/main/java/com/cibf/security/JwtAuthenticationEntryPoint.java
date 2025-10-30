@@ -10,10 +10,8 @@ import org.springframework.stereotype.Component;
 import java.io.IOException;
 
 /**
- * Custom entry point to handle authentication exceptions (e.g., trying to
- * access a protected
- * resource without a token, or with an invalid token). It sends a 401
- * Unauthorized response.
+ * Custom entry point to handle authentication exceptions (e.g., trying to access a protected resource without a token, or with an invalid token). 
+ * It sends a 401 Unauthorized response.
  */
 @Component
 public class JwtAuthenticationEntryPoint implements AuthenticationEntryPoint {
