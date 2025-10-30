@@ -2,7 +2,6 @@ package com.cibf.entity;
 
 /**
  * Enumeration of user roles in the CIBF Reservation System.
- * Follows the Type Safety principle - prevents magic strings and typos.
  * 
  * Roles:
  * - VENDOR: Book publishers/vendors who can reserve stalls
