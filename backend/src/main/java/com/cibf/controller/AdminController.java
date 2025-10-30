@@ -12,18 +12,13 @@ import org.springframework.web.bind.annotation.RestController;
  * Follows:
  * - Single Responsibility Principle (SRP): Handles admin operations only
  * - Role-based access control using @PreAuthorize annotations
- * 
- * This is a placeholder controller to demonstrate authorization.
- * Full implementation will be added when building stall management.
  */
 @RestController
 @RequestMapping("/api/admin")
 public class AdminController {
 
     /**
-     * Example endpoint accessible only to employees (EMPLOYEE or ADMIN roles).
-     * Demonstrates method-level security using Spring Security annotations.
-     * 
+     * Endpoint accessible only to employees (EMPLOYEE or ADMIN roles).
      * @PreAuthorize uses SpEL (Spring Expression Language) to check authorities.
      * The expression checks if the authenticated user has ROLE_EMPLOYEE or ROLE_ADMIN.
      */
@@ -35,7 +30,7 @@ public class AdminController {
     }
 
     /**
-     * Example endpoint accessible only to ADMIN role.
+     * Endpoint accessible only to ADMIN role.
      * Demonstrates strict role-based access control.
      */
     @GetMapping("/settings")
@@ -46,8 +41,7 @@ public class AdminController {
     }
 
     /**
-     * Example endpoint for vendors - demonstrates how to restrict to specific roles.
-     * This would typically be in a separate VendorController.
+     * Endpoint for vendors - demonstrates how to restrict to specific roles.
      */
     @GetMapping("/vendor/profile")
     @PreAuthorize("hasRole('VENDOR')")
