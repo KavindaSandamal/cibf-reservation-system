@@ -14,19 +14,19 @@ import org.springframework.security.web.SecurityFilterChain;
  * /api/auth/**.
  */
 @Configuration
-@Order(1) // CRITICAL: Ensures this chain is loaded and executed first
+@Order(1) //Ensures this chain is loaded and executed first
 public class PublicSecurityConfig {
 
-    /**
-     * Defines a permissive filter chain for public endpoints.
-     */
+  
+    //Defines a permissive filter chain for public endpoints.
+
     @Bean
     public SecurityFilterChain publicSecurityFilterChain(HttpSecurity http) throws Exception {
         http
                 // Explicitly disable CSRF using the static method
                 .csrf(AbstractHttpConfigurer::disable)
 
-                // CRITICAL: Only match the public paths that need to be excluded from main
+                // Only match the public paths that need to be excluded from main
                 // security
                 .securityMatcher("/api/auth/**", "/api/public/**", "/swagger-ui/**", "/v3/api-docs/**")
 
