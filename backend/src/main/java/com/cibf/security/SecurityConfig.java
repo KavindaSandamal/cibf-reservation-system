@@ -7,14 +7,23 @@ import org.springframework.security.config.annotation.authentication.configurati
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
+import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
+import org.springframework.web.cors.CorsConfiguration;
+import org.springframework.web.cors.CorsConfigurationSource;
+import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
+
+import java.util.Arrays;
+import java.util.List;
 
 /**
- * Main configuration for Spring Security.
+ * Main configuration for Spring Security (Secured Endpoints).
+ * This chain runs after the PublicSecurityConfig (Order 1) and handles all
+ * authenticated routes.
  */
 @Configuration
 @EnableWebSecurity
@@ -23,21 +32,14 @@ public class SecurityConfig {
 
     private final JwtAuthenticationEntryPoint authenticationEntryPoint;
 
-    // NOTE: Removed the direct injection of JwtAuthenticationFilter from the
-    // constructor
-    // to use the @Bean method below, which is the standard practice.
     public SecurityConfig(JwtAuthenticationEntryPoint authenticationEntryPoint) {
         this.authenticationEntryPoint = authenticationEntryPoint;
     }
 
-    // --- CRITICAL FIX 1: Define the Filter as a Bean ---
-    // This allows Spring to instantiate it correctly and inject its dependencies.
     @Bean
     public JwtAuthenticationFilter jwtAuthenticationFilter(
             JwtTokenProvider tokenProvider,
             CustomUserDetailsService userDetailsService) {
-        // Since JwtAuthenticationFilter had @Component, we can use constructor
-        // injection here.
         return new JwtAuthenticationFilter(tokenProvider, userDetailsService);
     }
 
@@ -51,29 +53,53 @@ public class SecurityConfig {
         return configuration.getAuthenticationManager();
     }
 
+    /**
+     * CORS configuration for cross-origin requests
+     */
     @Bean
-    public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
-        http.csrf(csrf -> csrf.disable())
-                // Disable default authentication mechanisms
-                .httpBasic(basic -> basic.disable())
-                .formLogin(form -> form.disable())
+    public CorsConfigurationSource corsConfigurationSource() {
+        CorsConfiguration configuration = new CorsConfiguration();
+        configuration.setAllowedOriginPatterns(List.of("*"));
+        configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"));
+        configuration.setAllowedHeaders(List.of("*"));
+        configuration.setExposedHeaders(Arrays.asList("Authorization", "Content-Type"));
+        configuration.setAllowCredentials(true);
+        configuration.setMaxAge(3600L);
 
-                // Set exception handling for unauthenticated requests
+        UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
+        source.registerCorsConfiguration("/**", configuration);
+        return source;
+    }
+
+    @Bean
+    public SecurityFilterChain applicationSecurityFilterChain( // Renamed the bean for clarity
+            HttpSecurity http,
+            JwtAuthenticationFilter authenticationFilter) throws Exception {
+
+        http
+                // 1. Apply CORS configuration
+                .cors(cors -> cors.configurationSource(corsConfigurationSource()))
+
+                // 2. CRITICAL: CSRF MUST also be disabled here for consistency
+                .csrf(AbstractHttpConfigurer::disable)
+
+                // 3. Disable basic auth and form login
+                .httpBasic(AbstractHttpConfigurer::disable)
+                .formLogin(AbstractHttpConfigurer::disable)
+
+                // 4. Handle authentication exceptions
                 .exceptionHandling(exception -> exception.authenticationEntryPoint(authenticationEntryPoint))
 
-                // Set session management to stateless, mandatory for JWT
+                // 5. Enforce stateless session policy (KEY for JWT)
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
 
-                // Configure authorization rules
+                // 6. Authorization rules - ONLY secured paths are left here
                 .authorizeHttpRequests(authorize -> authorize
-                        // Permit all access to auth endpoints
-                        .requestMatchers("/api/auth/**").permitAll()
-                        // All other requests must be authenticated
+                        // All remaining paths require authentication
                         .anyRequest().authenticated());
 
-        // --- CRITICAL FIX 2: Use the Bean created above ---
-        // Ensure the filter is added to the chain correctly.
-        http.addFilterBefore(jwtAuthenticationFilter(null, null), UsernamePasswordAuthenticationFilter.class);
+        // 7. Add JWT filter BEFORE Spring Security's authentication filter
+        http.addFilterBefore(authenticationFilter, UsernamePasswordAuthenticationFilter.class);
 
         return http.build();
     }
