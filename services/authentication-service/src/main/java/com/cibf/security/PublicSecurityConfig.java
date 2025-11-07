@@ -27,7 +27,7 @@ public class PublicSecurityConfig {
                 .csrf(AbstractHttpConfigurer::disable)
 
                 // Only match the public paths that need to be excluded from main
-                // security
+                // security - using securityMatcher for Spring Security 6.x
                 .securityMatcher("/api/auth/**", "/api/public/**", "/swagger-ui/**", "/v3/api-docs/**")
 
                 // Allow all requests matching the securityMatcher

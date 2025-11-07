@@ -92,9 +92,14 @@ public class SecurityConfig {
                 // 5. Enforce stateless session policy (KEY for JWT)
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
 
-                // 6. Authorization rules - ONLY secured paths are left here
+                // 6. CRITICAL: Only apply this security chain to non-public paths
+                // Public paths (/api/auth/**) are handled by PublicSecurityConfig (Order 1)
+                // This ensures this chain doesn't interfere with public endpoints
+                .securityMatcher("/api/**")
                 .authorizeHttpRequests(authorize -> authorize
-                        // All remaining paths require authentication
+                        // Explicitly exclude public paths - these are handled by PublicSecurityConfig
+                        .requestMatchers("/api/auth/**", "/api/public/**").permitAll()
+                        // All other /api/** paths require authentication
                         .anyRequest().authenticated());
 
         // 7. Add JWT filter BEFORE Spring Security's authentication filter
