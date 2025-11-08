@@ -12,6 +12,7 @@ import com.cibf.repository.EmployeeRepository;
 import com.cibf.security.JwtTokenProvider;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
@@ -20,6 +21,9 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
+
+import java.util.HashMap;
+import java.util.Map;
 
 /**
  * Service implementation for authentication operations.
@@ -190,5 +194,72 @@ public class AuthService implements IAuthService {
         employee.setEmployeeId(request.getEmployeeId());
         employee.setRole(role.getName());
         return employee;
+    }
+
+    /**
+     * Admin creates a new employee (without auto-login).
+     * Used when admin creates employee accounts.
+     * Does not perform authentication or return JWT token.
+     */
+    @Override
+    public ResponseEntity<?> createEmployeeByAdmin(EmployeeRegistrationRequest registrationRequest) {
+        validateUsernameAvailability(registrationRequest.getUsername());
+
+        // Determine role - default to EMPLOYEE if not specified
+        Role effectiveRole = determineEmployeeRole(registrationRequest.getRole());
+
+        // Create User record in users table
+        User user = new User(
+                registrationRequest.getUsername(),
+                passwordEncoder.encode(registrationRequest.getPassword()),
+                null,  // business_name is null for employees
+                effectiveRole);
+
+        userRepository.save(user);
+
+        // Create Employee record in employees table
+        Employee employee = createEmployee(registrationRequest, user, effectiveRole);
+        employeeRepository.save(employee);
+
+        // Return created employee info (without JWT token)
+        Map<String, Object> response = new HashMap<>();
+        response.put("id", user.getId());
+        response.put("username", user.getUsername());
+        response.put("role", effectiveRole.getName());
+        response.put("employeeId", employee.getEmployeeId());
+        response.put("name", employee.getName());
+        response.put("email", employee.getEmail());
+        response.put("message", "Employee created successfully by admin");
+
+        return new ResponseEntity<>(response, HttpStatus.CREATED);
+    }
+
+    /**
+     * Admin creates a new user/vendor (without auto-login).
+     * Used when admin creates user accounts.
+     * Does not perform authentication or return JWT token.
+     */
+    @Override
+    public ResponseEntity<?> createUserByAdmin(UserRegistrationRequest registrationRequest) {
+        validateUsernameAvailability(registrationRequest.getUsername());
+
+        // Create User record in users table
+        User user = new User(
+                registrationRequest.getUsername(),
+                passwordEncoder.encode(registrationRequest.getPassword()),
+                registrationRequest.getBusinessName(),
+                Role.VENDOR);
+
+        userRepository.save(user);
+
+        // Return created user info (without JWT token)
+        Map<String, Object> response = new HashMap<>();
+        response.put("id", user.getId());
+        response.put("username", user.getUsername());
+        response.put("role", user.getRole());
+        response.put("businessName", user.getBusinessName());
+        response.put("message", "User created successfully by admin");
+
+        return new ResponseEntity<>(response, HttpStatus.CREATED);
     }
 }
