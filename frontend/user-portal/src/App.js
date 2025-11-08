@@ -11,6 +11,7 @@ import Register from './components/auth/Register';
 import Dashboard from './components/dashboard/Dashboard';
 import GenreSelection from './components/dashboard/GenreSelection';
 import ProtectedRoute from './components/auth/ProtectedRoute';
+import Footer from './components/layout/Footer';
 
 function App() {
   return (
@@ -45,7 +46,9 @@ function App() {
             <ToastContainer position="top-right" autoClose={3000} />
           </div>
         </div>
+        <Footer />
       </Router>
+     
     </AuthProvider>
   );
 }
