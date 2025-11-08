@@ -1,11 +1,14 @@
 package com.cibf.controller;
 
+import com.cibf.dto.EmployeeRegistrationRequest;
+import com.cibf.dto.UserRegistrationRequest;
+import com.cibf.service.IAuthService;
+import jakarta.validation.Valid;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 /**
  * Admin/Employee-only controller for demonstration of role-based authorization.
@@ -16,6 +19,13 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 @RequestMapping("/api/admin")
 public class AdminController {
+
+    private final IAuthService authService;
+
+    @Autowired
+    public AdminController(IAuthService authService) {
+        this.authService = authService;
+    }
 
     /**
      * Endpoint accessible only to employees (EMPLOYEE or ADMIN roles).
@@ -38,6 +48,34 @@ public class AdminController {
     public ResponseEntity<String> getSettings() {
         // TODO: Implement admin settings
         return new ResponseEntity<>("Admin Settings - Access Granted", HttpStatus.OK);
+    }
+
+    /**
+     * Admin endpoint to create a new employee.
+     * Only ADMIN role can access this endpoint.
+     * 
+     * @param registrationRequest Employee registration details
+     * @return Created employee information (without JWT token)
+     */
+    @PostMapping("/employees")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<?> createEmployee(@Valid @RequestBody EmployeeRegistrationRequest registrationRequest) {
+        // Admin creates employee - no auto-login, just create the account
+        return authService.createEmployeeByAdmin(registrationRequest);
+    }
+
+    /**
+     * Admin endpoint to create a new vendor/user.
+     * Only ADMIN role can access this endpoint.
+     * 
+     * @param registrationRequest User registration details
+     * @return Created user information (without JWT token)
+     */
+    @PostMapping("/users")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<?> createUser(@Valid @RequestBody UserRegistrationRequest registrationRequest) {
+        // Admin creates user - no auto-login, just create the account
+        return authService.createUserByAdmin(registrationRequest);
     }
 
     /**
