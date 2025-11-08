@@ -4,6 +4,7 @@ import com.cibf.dto.AuthRequest;
 import com.cibf.dto.AuthResponse;
 import com.cibf.dto.UserRegistrationRequest;
 import com.cibf.dto.EmployeeRegistrationRequest;
+import org.springframework.http.ResponseEntity;
 
 /**
  * Interface for authentication service operations.
@@ -45,4 +46,22 @@ public interface IAuthService {
      * @return AuthResponse containing JWT token and employee info
      */
     AuthResponse registerEmployee(EmployeeRegistrationRequest registrationRequest);
+
+    /**
+     * Admin creates a new employee (without auto-login).
+     * Used when admin creates employee accounts.
+     * 
+     * @param registrationRequest Employee registration details
+     * @return ResponseEntity with created employee information
+     */
+    ResponseEntity<?> createEmployeeByAdmin(EmployeeRegistrationRequest registrationRequest);
+
+    /**
+     * Admin creates a new user/vendor (without auto-login).
+     * Used when admin creates user accounts.
+     * 
+     * @param registrationRequest User registration details
+     * @return ResponseEntity with created user information
+     */
+    ResponseEntity<?> createUserByAdmin(UserRegistrationRequest registrationRequest);
 }
