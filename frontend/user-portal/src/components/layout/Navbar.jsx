@@ -27,7 +27,7 @@ function Navbar() {
     <BSNavbar bg="primary" variant="dark" expand="lg" className="shadow-sm">
       <Container>
         <BSNavbar.Brand as={Link} to="/">
-          <strong>📚 Colombo Bookfair stall Reservation System</strong>
+          <strong>📚 Colombo Bookfair</strong>
         </BSNavbar.Brand>
         <BSNavbar.Toggle aria-controls="basic-navbar-nav" />
         <BSNavbar.Collapse id="basic-navbar-nav">
