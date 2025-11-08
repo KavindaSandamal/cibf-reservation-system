@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { FcAbout } from "react-icons/fc";
 import { 
   Container, 
   Row, 
@@ -23,6 +24,11 @@ function GenreSelection() {
   const [hasChanges, setHasChanges] = useState(false);
   const [error, setError] = useState('');
 
+  // New states for adding a genre
+  const [newGenreName, setNewGenreName] = useState('');
+  const [newGenreDescription, setNewGenreDescription] = useState('');
+  const [addingNewGenre, setAddingNewGenre] = useState(false);
+
   useEffect(() => {
     fetchGenresData();
   }, []);
@@ -30,20 +36,16 @@ function GenreSelection() {
   const fetchGenresData = async () => {
     setLoading(true);
     setError('');
-    
+
     try {
-      // ✅ FIX: Added leading slash
       const allGenresResponse = await userApi.get('/api/genres');
       setAllGenres(allGenresResponse.data);
-      
-      // Fetch user's selected genres
+
       try {
-        // ✅ FIX: Added leading slash
         const userGenresResponse = await userApi.get('/api/genres/user');
         const userGenreIds = userGenresResponse.data.map(genre => genre.id);
         setSelectedGenres(userGenreIds);
       } catch (err) {
-        // If user hasn't selected any genres yet, start with empty array
         console.log('No genres selected yet or error:', err.response?.data);
         setSelectedGenres([]);
       }
@@ -89,19 +91,15 @@ function GenreSelection() {
     setError('');
 
     try {
-      // ✅ FIX: Added leading slash and simplified request body
       await userApi.post('/api/genres/user', { 
         genreIds: selectedGenres 
       });
       
-      toast.success('✅ Genres saved successfully!');
+      toast.success('Genres saved successfully!');
       setHasChanges(false);
-      
-      // Refresh the data to confirm
       await fetchGenresData();
     } catch (error) {
       console.error('Error saving genres:', error);
-      console.error('Error response:', error.response?.data);
       const errorMessage = error.response?.data?.message || 'Failed to save genres';
       setError(errorMessage);
       toast.error(errorMessage);
@@ -116,9 +114,35 @@ function GenreSelection() {
     toast.info('Changes reset');
   };
 
-  const isGenreSelected = (genreId) => {
-    return selectedGenres.includes(genreId);
+  const handleAddNewGenre = async () => {
+    if (!newGenreName.trim()) return;
+
+    setAddingNewGenre(true);
+    try {
+      const response = await userApi.post('/api/genres/user/new', {
+        genreName: newGenreName,
+        description: newGenreDescription
+      });
+
+      const newGenre = response.data;
+
+      // Add new genre to allGenres and select it
+      setAllGenres(prev => [...prev, newGenre]);
+      setSelectedGenres(prev => [...prev, newGenre.id]);
+      setHasChanges(true);
+
+      toast.success(` Genre "${newGenre.genreName}" added and selected!`);
+      setNewGenreName('');
+      setNewGenreDescription('');
+    } catch (error) {
+      console.error('Error adding new genre:', error.response?.data || error);
+      toast.error('Failed to add new genre. Please try again.');
+    } finally {
+      setAddingNewGenre(false);
+    }
   };
+
+  const isGenreSelected = (genreId) => selectedGenres.includes(genreId);
 
   if (loading) {
     return (
@@ -154,8 +178,8 @@ function GenreSelection() {
         <Col md={12}>
           <div className="d-flex justify-content-between align-items-center">
             <div>
-              <h2 className="mb-1">📚 Select Your Literary Genres</h2>
-              <p className="text-muted mb-0">
+              <h2 className="mb-1"> Select Your Literary Genres</h2>
+              <p className=" mb-0"style={{ color: 'black' , fontWeight: '400' }}>
                 Choose genres that interest you, {user?.businessName || user?.username}
               </p>
             </div>
@@ -172,7 +196,7 @@ function GenreSelection() {
       <Row className="mb-4">
         <Col md={12}>
           <Alert variant="info" className="d-flex align-items-center">
-            <span className="me-2">ℹ️</span>
+            <span className="me-2"><FcAbout /></span>
             <div>
               <strong>Why select genres?</strong> This helps us personalize your bookfair 
               experience and recommend relevant stalls and books.
@@ -185,7 +209,7 @@ function GenreSelection() {
       <Row className="mb-3">
         <Col md={12} className="d-flex justify-content-between align-items-center">
           <Button 
-            variant="outline-secondary" 
+            variant="secondary" 
             size="sm"
             onClick={handleSelectAll}
           >
@@ -200,24 +224,45 @@ function GenreSelection() {
         </Col>
       </Row>
 
+      {/* Add New Genre Form */}
+      <Row className="mb-4">
+        <Col md={12}>
+          <Card className="p-3">
+            <h5>Add a New Genre</h5>
+            <Form className="d-flex gap-2 flex-wrap">
+              <Form.Control
+                type="text"
+                placeholder="Genre name"
+                value={newGenreName}
+                onChange={(e) => setNewGenreName(e.target.value)}
+              />
+              <Form.Control
+                type="text"
+                placeholder="Description (optional)"
+                value={newGenreDescription}
+                onChange={(e) => setNewGenreDescription(e.target.value)}
+              />
+              <Button
+                variant="success"
+                onClick={handleAddNewGenre}
+                disabled={!newGenreName.trim() || addingNewGenre}
+              >
+                {addingNewGenre ? 'Adding...' : '➕ Add Genre'}
+              </Button>
+            </Form>
+          </Card>
+        </Col>
+      </Row>
+
       {/* Genre Cards Grid */}
       <Row className="g-3 mb-4">
         {allGenres.map((genre) => {
           const selected = isGenreSelected(genre.id);
-          
           return (
             <Col md={4} sm={6} key={genre.id}>
               <Card 
-                className={`h-100 cursor-pointer transition-all ${
-                  selected 
-                    ? 'border-primary border-3 shadow-sm' 
-                    : 'border-secondary'
-                }`}
-                style={{ 
-                  cursor: 'pointer',
-                  transition: 'all 0.2s ease',
-                  backgroundColor: selected ? '#e7f3ff' : 'white'
-                }}
+                className={`h-100 cursor-pointer transition-all ${selected ? 'border-primary border-3 shadow-sm' : 'border-secondary'}`}
+                style={{ cursor: 'pointer', transition: 'all 0.2s ease', backgroundColor: selected ? '#e7f3ff' : 'white' }}
                 onClick={() => handleGenreToggle(genre.id)}
               >
                 <Card.Body>
@@ -234,15 +279,11 @@ function GenreSelection() {
                       <div className="d-flex align-items-center justify-content-between mb-2">
                         <strong className="text-dark">{genre.genreName}</strong>
                         {selected && (
-                          <Badge bg="success" className="ms-2">
-                            ✓ Selected
-                          </Badge>
+                          <Badge bg="success" className="ms-2">✓ Selected</Badge>
                         )}
                       </div>
                       {genre.description && (
-                        <small className="text-muted d-block">
-                          {genre.description}
-                        </small>
+                        <small className="text-muted d-block">{genre.description}</small>
                       )}
                     </div>
                   </div>
@@ -252,18 +293,6 @@ function GenreSelection() {
           );
         })}
       </Row>
-
-      {/* No Genres Available */}
-      {allGenres.length === 0 && (
-        <Row>
-          <Col md={12}>
-            <Alert variant="warning" className="text-center">
-              <h5>No genres available yet</h5>
-              <p className="mb-0">Please check back later or contact support.</p>
-            </Alert>
-          </Col>
-        </Row>
-      )}
 
       {/* Save Section */}
       <Row>
@@ -310,9 +339,7 @@ function GenreSelection() {
                         Saving...
                       </>
                     ) : (
-                      <>
-                        💾 Save Preferences
-                      </>
+                      <>💾 Save Preferences</>
                     )}
                   </Button>
                 </Col>
