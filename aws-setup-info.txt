@@ -1,0 +1,13 @@
+﻿# CIBF AWS Configuration
+# Region: us-west-2
+
+INSTANCE_ID=i-03f8342de6a3a4e7c
+EC2_PUBLIC_IP=44.254.126.38
+MY_IP=212.104.229.167
+REGION=us-west-2
+
+# SSH Command
+ssh -i "C:\Users\Kavinda\.ssh\cibf-key.pem" ec2-user@44.254.126.38
+
+# Note: If your IP changes, run:
+# aws ec2 authorize-security-group-ingress --group-id sg-034b4a1b44c2d682b --protocol tcp --port 22 --cidr YOUR_NEW_IP/32 --region us-west-2
