@@ -1,13 +1,12 @@
-
 services:
   # PostgreSQL Database (Local Development)
   postgres:
     image: postgres:15-alpine
     container_name: postgres-db
     environment:
-      - POSTGRES_USER=postgres
-      - POSTGRES_PASSWORD=postgres
-      - POSTGRES_DB=cibf_db
+      - POSTGRES_USER=${DB_USERNAME}
+      - POSTGRES_PASSWORD=${DB_PASSWORD}
+      - POSTGRES_DB=${DB_NAME}
     ports:
       - "5432:5432"
     volumes:
@@ -16,7 +15,7 @@ services:
     networks:
       - cibf-network
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USERNAME}"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -30,9 +29,10 @@ services:
     environment:
       - DB_HOST=postgres
       - DB_PORT=5432
-      - DB_NAME=cibf_db
-      - DB_USERNAME=postgres
-      - DB_PASSWORD=postgres
+      - DB_NAME=${DB_NAME}
+      - DB_USERNAME=${DB_USERNAME}
+      - DB_PASSWORD=${DB_PASSWORD}
+      - AUTH_DB_URL=${AUTH_DB_URL}
       - JWT_SECRET=${JWT_SECRET}
     restart: unless-stopped
     networks:
