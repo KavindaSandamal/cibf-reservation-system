@@ -5,4 +5,5 @@ rootProject.name = 'cibf-reservation-system' // Or any logical name for the whol
 // Include all service sub-projects
 include 'services:authentication-service'
 include 'services:user-service'
+include 'services:stall-service'
 // Add any other services or modules here
