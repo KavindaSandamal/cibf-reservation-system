@@ -1,4 +1,4 @@
-package com.cibf.user_service;
+package com.cibf;
 
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
