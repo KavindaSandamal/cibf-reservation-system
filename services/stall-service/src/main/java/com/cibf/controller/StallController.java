@@ -6,6 +6,7 @@ import com.cibf.dto.StallResponseDTO;
 import com.cibf.entity.Stall.StallSize;
 import com.cibf.entity.Stall.StallStatus;
 import com.cibf.service.StallService;
+
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
