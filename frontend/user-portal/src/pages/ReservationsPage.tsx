@@ -433,30 +433,28 @@ const ReservationsPage: React.FC = () => {
                       >
                         View Details
                       </motion.button>
-                      {reservation.qrCodeUrl && (
-                        <motion.button
-                          whileHover={{ scale: 1.05 }}
-                          whileTap={{ scale: 0.95 }}
-                          onClick={() => navigate(`/qr/${reservation.id}`)}
-                          className="inline-flex items-center gap-1.5 rounded-xl border-2 border-emerald-500/60 bg-emerald-600/80 px-3.5 py-2.5 text-xs font-bold text-white shadow-lg transition hover:bg-emerald-600 hover:shadow-emerald-500/30"
-                          title="View QR Code"
+                      <motion.button
+                        whileHover={{ scale: 1.05 }}
+                        whileTap={{ scale: 0.95 }}
+                        onClick={() => navigate(`/qr/${reservation.id}`)}
+                        className="inline-flex items-center gap-1.5 rounded-xl border-2 border-emerald-500/60 bg-emerald-600/80 px-3.5 py-2.5 text-xs font-bold text-white shadow-lg transition hover:bg-emerald-600 hover:shadow-emerald-500/30"
+                        title="View QR Code"
+                      >
+                        <svg
+                          className="h-4 w-4"
+                          fill="none"
+                          stroke="currentColor"
+                          viewBox="0 0 24 24"
                         >
-                          <svg
-                            className="h-4 w-4"
-                            fill="none"
-                            stroke="currentColor"
-                            viewBox="0 0 24 24"
-                          >
-                            <path
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                              strokeWidth={2}
-                              d="M3 5h4v4H3V5zm0 10h4v4H3v-4zm14-10h4v4h-4V5zm0 10h4v4h-4v-4z"
-                            />
-                          </svg>
-                          QR
-                        </motion.button>
-                      )}
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a1 1 0 001-1V5a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1zm12 0h2a1 1 0 001-1V5a1 1 0 00-1-1h-2a1 1 0 00-1 1v2a1 1 0 001 1zM5 20h2a1 1 0 001-1v-2a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1z"
+                          />
+                        </svg>
+                        QR
+                      </motion.button>
                       {reservation.status !== ReservationStatus.CANCELLED && (
                         <motion.button
                           whileHover={{ scale: 1.05 }}

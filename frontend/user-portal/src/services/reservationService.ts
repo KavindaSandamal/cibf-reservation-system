@@ -35,7 +35,19 @@ export const reservationService = {
       const response = await apiClient.get<ReservationResponse>(`/api/reservations/${id}`);
       return response.data;
     } catch (error: any) {
-      if (error.code === 'ERR_NETWORK' || error.message?.includes('Network Error')) {
+      // If backend is unavailable, try to get from sessionStorage (for mock reservations)
+      if (error.code === 'ERR_NETWORK' || error.message?.includes('Network Error') || error.message?.includes('ERR_CONNECTION_REFUSED')) {
+        console.warn('Backend unavailable, checking sessionStorage for reservation');
+        const savedReservation = sessionStorage.getItem(`reservation_${id}`);
+        if (savedReservation) {
+          try {
+            const reservation = JSON.parse(savedReservation);
+            // Ensure QR code data is available (we'll generate it on frontend)
+            return reservation;
+          } catch (e) {
+            console.error('Error parsing saved reservation:', e);
+          }
+        }
         throw new Error('Backend service unavailable. Please start the reservation service.');
       }
       throw error;
