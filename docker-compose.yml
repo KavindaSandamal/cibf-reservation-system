@@ -1,4 +1,3 @@
-version: '3.8'
 
 services:
   # Remove the postgres service since we're using RDS
