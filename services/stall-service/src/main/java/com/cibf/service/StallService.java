@@ -233,8 +233,6 @@ public class StallService {
                 "availableBySize", Map.of(
                         "SMALL", smallAvailable,
                         "MEDIUM", mediumAvailable,
-                        "LARGE", largeAvailable
-                )
-        );
+                        "LARGE", largeAvailable));
     }
 }
