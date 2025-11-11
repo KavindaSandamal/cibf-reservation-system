@@ -1,4 +1,4 @@
-package com.cibf.config;
+package com.cibf.security;
 
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
