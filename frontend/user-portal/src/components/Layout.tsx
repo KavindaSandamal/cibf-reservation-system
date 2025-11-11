@@ -16,8 +16,13 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
     navigate('/login');
   };
 
-  // Check if we're on the dashboard or reservations page to apply dark theme
-  const isDarkPage = location.pathname === '/dashboard' || location.pathname === '/reservations';
+  // Check if we're on the dashboard, reservations, stalls, book, or QR code page to apply dark theme
+  const isDarkPage = location.pathname === '/dashboard' || 
+                     location.pathname === '/reservations' || 
+                     location.pathname === '/stalls' || 
+                     location.pathname === '/book' ||
+                     location.pathname.startsWith('/qr/') ||
+                     location.pathname.startsWith('/reservations/');
 
   return (
     <div className={isDarkPage ? 'min-h-screen bg-slate-950' : 'min-h-screen bg-gray-50'}>
