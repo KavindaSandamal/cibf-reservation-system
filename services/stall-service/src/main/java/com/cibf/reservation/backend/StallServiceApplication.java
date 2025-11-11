@@ -1,4 +1,4 @@
-package com.cibf;
+package com.cibf.reservation.backend;
 
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
