@@ -1,19 +1,12 @@
 plugins {
-    // Standard Java application plugin
     id 'application'
-    
-    // Spring Boot plugin: Automatically manages dependency versions and packaging
     id 'org.springframework.boot' version '3.4.0'
-    
-    // Spring Dependency Management plugin (needed for version alignment)
     id 'io.spring.dependency-management' version '1.1.6'
-    
 }
 
 group = 'com.cibf.reservation'
 version = '0.0.1-SNAPSHOT'
 
-// Ensure we use Java 17 for compilation
 java {
     sourceCompatibility = '17'
     targetCompatibility = '17'
@@ -25,24 +18,15 @@ repositories {
 
 dependencies {
     // --- Spring Boot Starters ---
-    // Spring Web: Provides REST capabilities (Tomcat, Spring MVC)
     implementation 'org.springframework.boot:spring-boot-starter-web'
-    
-    // Spring Data JPA: Object-Relational Mapping (Hibernate implementation)
     implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
-    
-    // Spring Security: Authentication and Authorization framework
     implementation 'org.springframework.boot:spring-boot-starter-security'
-    
-    // Validation: JSR-380 Bean Validation implementation
     implementation 'org.springframework.boot:spring-boot-starter-validation'
     
     // --- Database ---
-    // PostgreSQL Driver (runtime dependency)
     runtimeOnly 'org.postgresql:postgresql'
 
     // --- JWT ---
-    // Required for creating and validating JWTs (NOT a Spring dependency, manual version management)
     implementation 'io.jsonwebtoken:jjwt-api:0.11.5' 
     runtimeOnly 'io.jsonwebtoken:jjwt-impl:0.11.5'
     runtimeOnly 'io.jsonwebtoken:jjwt-jackson:0.11.5'
@@ -56,6 +40,10 @@ dependencies {
     // --- Testing ---
     testImplementation 'org.springframework.boot:spring-boot-starter-test'
     testImplementation 'org.springframework.security:spring-security-test'
+    
+    // ADD THESE: Explicit JUnit Platform dependencies
+    testImplementation 'org.junit.jupiter:junit-jupiter:5.10.1'
+    testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
 }
 
 tasks.named('test') {
