@@ -1,0 +1,8 @@
+// D:\CIBF\cibf-reservation-system\settings.gradle
+
+rootProject.name = 'cibf-reservation-system' // Or any logical name for the whole repo
+
+// Include all service sub-projects
+include 'services:authentication-service'
+include 'services:user-service'
+// Add any other services or modules here
