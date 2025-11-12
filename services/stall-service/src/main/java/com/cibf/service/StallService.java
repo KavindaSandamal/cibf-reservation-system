@@ -11,6 +11,9 @@ import com.cibf.exception.DuplicateResourceException;
 import com.cibf.repository.StallRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.security.authentication.AnonymousAuthenticationToken;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -45,6 +48,7 @@ public class StallService {
         stall.setLocationY(requestDTO.getLocationY());
         stall.setPrice(requestDTO.getPrice());
         stall.setStatus(requestDTO.getStatus() != null ? requestDTO.getStatus() : StallStatus.AVAILABLE);
+        stall.setCreatedByEmployee(resolveCurrentEmployee());
 
         Stall savedStall = stallRepository.save(stall);
         log.info("Stall created successfully with ID: {}", savedStall.getId());
@@ -236,5 +240,15 @@ public class StallService {
                         "LARGE", largeAvailable
                 )
         );
+    }
+
+    private String resolveCurrentEmployee() {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        if (authentication == null
+                || !authentication.isAuthenticated()
+                || authentication instanceof AnonymousAuthenticationToken) {
+            return "UNKNOWN";
+        }
+        return authentication.getName();
     }
 }
