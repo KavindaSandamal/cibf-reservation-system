@@ -4,12 +4,17 @@ import jakarta.persistence.*;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import lombok.AllArgsConstructor;
+import org.hibernate.annotations.CreationTimestamp;
+import org.hibernate.annotations.UpdateTimestamp;
+
+import java.time.LocalDateTime;
 
 /**
- * Represents an Employee of the CIBF organizers.
+ * Employee entity for storing employee-specific information
+ * Linked to User entity (one-to-one relationship)
  */
 @Entity
-@Table(name = "employees")
+@Table(name = "employees", schema = "auth_schema")
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
@@ -19,8 +24,8 @@ public class Employee {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @OneToOne(fetch = FetchType.EAGER)
-    @JoinColumn(name = "user_id", referencedColumnName = "id")
+    @OneToOne
+    @JoinColumn(name = "user_id", nullable = false, unique = true)
     private User user;
 
     @Column(nullable = false)
@@ -29,9 +34,27 @@ public class Employee {
     @Column(nullable = false)
     private String email;
 
-    @Column(nullable = false)
+    @Column(name = "employee_id", nullable = false, unique = true, length = 50)
     private String employeeId;
 
+    @Column(nullable = false, length = 50)
+    private String role; // EMPLOYEE, ADMIN
+
+       @Column(name = "contact_number", length = 20)
+    private String contactNumber;
+
+    @Column(length = 100)
+    private String department; // e.g., "Operations", "Management"
+
+    
     @Column(nullable = false)
-    private String role;
+    private Boolean active = true; // Status flag for employee's account
+
+    @CreationTimestamp
+    @Column(name = "created_at", nullable = false, updatable = false)
+    private LocalDateTime createdAt;
+
+    @UpdateTimestamp
+    @Column(name = "updated_at", nullable = false)
+    private LocalDateTime updatedAt;
 }
