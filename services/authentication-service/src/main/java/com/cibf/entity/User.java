@@ -3,90 +3,94 @@ package com.cibf.entity;
 import jakarta.persistence.*;
 import lombok.Data;
 import lombok.NoArgsConstructor;
-import lombok.AllArgsConstructor;
+import org.hibernate.annotations.CreationTimestamp;
+import org.hibernate.annotations.UpdateTimestamp;
+
+import java.time.LocalDateTime;
 
 /**
- * Represents a registered Book Publisher or Vendor in the system.
- * Follows Single Responsibility Principle - represents user data only.
+ * User entity representing vendors/publishers and employees
+ * Follows:
+ * - Single Responsibility Principle: Represents user data only
+ * - Encapsulation: Private fields with getters/setters
  */
 @Entity
 @Table(name = "users")
 @Data
 @NoArgsConstructor
-@AllArgsConstructor
 public class User {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(unique = true, nullable = false)
+    @Column(nullable = false, unique = true)
     private String username;
 
     @Column(nullable = false)
     private String password;
 
-    /**
-     * Business name for vendors/publishers.
-     * Nullable for employees who don't have a business.
-     */
-    @Column(nullable = true)
+    @Column(name = "business_name")
     private String businessName;
 
-    /**
-     * User role stored as String in database for compatibility.
-     * Use getRoleEnum() to get type-safe Role enum.
-     */
+    @Column(name = "email")
+    private String email;  // 🆕 ADDED
+
+    @Column(name = "contact_number")
+    private String contactNumber;  // 🆕 ADDED
+
+    @Column(name = "address", columnDefinition = "TEXT")
+    private String address;  // 🆕 ADDED
+
     @Column(nullable = false)
-    private String role;
+    private String role;  // Store role as String in DB
 
-    @OneToOne(mappedBy = "user", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
-    private Employee employee;
+    @CreationTimestamp
+    @Column(name = "created_at", nullable = false, updatable = false)
+    private LocalDateTime createdAt;  // 🆕 ADDED
 
-    public User(String username, String password, String businessName, String role) {
-        this.username = username;
-        this.password = password;
-        this.businessName = businessName;
-        this.role = role;
-    }
+    @UpdateTimestamp
+    @Column(name = "updated_at")
+    private LocalDateTime updatedAt;  // 🆕 ADDED
 
-    /**
-     * Constructor using Role enum for type safety.
-     * Follows Open/Closed Principle - easy to extend without modifying existing code.
-     */
+    // Constructor for basic user creation
     public User(String username, String password, String businessName, Role role) {
         this.username = username;
         this.password = password;
         this.businessName = businessName;
-        this.role = role != null ? role.getName() : Role.VENDOR.getName();
+        this.email = username; // 🆕 Set email same as username initially
+        this.role = role.getName();
+    }
+
+    // Full constructor for admin creation with all fields
+    public User(String username, String password, String businessName, String email, 
+                String contactNumber, String address, Role role) {
+        this.username = username;
+        this.password = password;
+        this.businessName = businessName;
+        this.email = email;
+        this.contactNumber = contactNumber;
+        this.address = address;
+        this.role = role.getName();
     }
 
     /**
-     * Get role as enum for type-safe operations.
-     * Returns VENDOR as default if role is invalid or null.
+     * Get Role enum from string
+     * Provides type-safe role access
      */
     public Role getRoleEnum() {
-        Role roleEnum = Role.fromString(this.role);
-        return roleEnum != null ? roleEnum : Role.VENDOR;
+        return Role.fromString(this.role);
     }
 
     /**
-     * Set role using enum for type safety.
+     * Get Spring Security authority (ROLE_ prefix)
      */
-    public void setRole(Role roleEnum) {
-        this.role = roleEnum != null ? roleEnum.getName() : Role.VENDOR.getName();
+    public String getAuthority() {
+        return getRoleEnum().getAuthority();
     }
 
     /**
-     * Check if user has a specific role.
-     * Encapsulation - hides role comparison logic.
-     */
-    public boolean hasRole(Role roleToCheck) {
-        return getRoleEnum() == roleToCheck;
-    }
-
-    /**
-     * Check if user is an employee (EMPLOYEE or ADMIN).
+     * Check if user is an employee (EMPLOYEE or ADMIN role)
      */
     public boolean isEmployee() {
         Role userRole = getRoleEnum();
@@ -94,7 +98,7 @@ public class User {
     }
 
     /**
-     * Check if user is a vendor.
+     * Check if user is a vendor
      */
     public boolean isVendor() {
         return getRoleEnum() == Role.VENDOR;

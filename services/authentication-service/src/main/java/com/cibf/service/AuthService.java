@@ -58,11 +58,15 @@ public class AuthService implements IAuthService {
     public AuthResponse registerUser(UserRegistrationRequest registrationRequest) {
         validateUsernameAvailability(registrationRequest.getUsername());
 
+        // Create user with all fields
         User user = new User(
                 registrationRequest.getUsername(),
                 passwordEncoder.encode(registrationRequest.getPassword()),
                 registrationRequest.getBusinessName(),
-                Role.VENDOR); // Use enum for type safety
+                registrationRequest.getUsername(), // email same as username
+                registrationRequest.getContactNumber(),
+                registrationRequest.getAddress(),
+                Role.VENDOR);
 
         userRepository.save(user);
 
@@ -243,11 +247,14 @@ public class AuthService implements IAuthService {
     public ResponseEntity<?> createUserByAdmin(UserRegistrationRequest registrationRequest) {
         validateUsernameAvailability(registrationRequest.getUsername());
 
-        // Create User record in users table
+        // Create User with all fields
         User user = new User(
                 registrationRequest.getUsername(),
                 passwordEncoder.encode(registrationRequest.getPassword()),
                 registrationRequest.getBusinessName(),
+                registrationRequest.getUsername(), // email same as username
+                registrationRequest.getContactNumber(),
+                registrationRequest.getAddress(),
                 Role.VENDOR);
 
         userRepository.save(user);
@@ -258,6 +265,7 @@ public class AuthService implements IAuthService {
         response.put("username", user.getUsername());
         response.put("role", user.getRole());
         response.put("businessName", user.getBusinessName());
+        response.put("email", user.getEmail());
         response.put("message", "User created successfully by admin");
 
         return new ResponseEntity<>(response, HttpStatus.CREATED);
