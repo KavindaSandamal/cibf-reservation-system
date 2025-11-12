@@ -20,6 +20,7 @@ public class StallResponseDTO {
     private Double locationY;
     private BigDecimal price;
     private Stall.StallStatus status;
+    private String CreatedByEmployee;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 
@@ -33,6 +34,7 @@ public class StallResponseDTO {
         this.locationY = stall.getLocationY();
         this.price = stall.getPrice();
         this.status = stall.getStatus();
+        this.CreatedByEmployee = stall.getCreatedByEmployee();
         this.createdAt = stall.getCreatedAt();
         this.updatedAt = stall.getUpdatedAt();
     }
