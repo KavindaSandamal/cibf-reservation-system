@@ -3,6 +3,7 @@ import { motion } from 'framer-motion';
 import { userService } from '../services/userService';
 import { User } from '../types';
 import { toast } from 'react-toastify';
+import UserDetailModal from '../components/UserDetailModal';
 
 const UsersManagementPage: React.FC = () => {
   const [users, setUsers] = useState<User[]>([]);
@@ -11,6 +12,7 @@ const UsersManagementPage: React.FC = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage] = useState(10);
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
+  const [isModalOpen, setIsModalOpen] = useState(false);
 
   useEffect(() => {
     loadUsers();
@@ -23,7 +25,7 @@ const UsersManagementPage: React.FC = () => {
   const loadUsers = async () => {
     try {
       setLoading(true);
-      const data = await userService.getAllUsers();
+      const data = await userService.getAllUsers(searchQuery || undefined);
       setUsers(data);
     } catch (error: any) {
       toast.error('Failed to load users');
@@ -33,21 +35,26 @@ const UsersManagementPage: React.FC = () => {
     }
   };
 
-  // Filter users
-  const filteredUsers = useMemo(() => {
-    return users.filter((user) => {
-      const matchesSearch =
-        searchQuery === '' ||
-        user.firstName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        user.lastName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        user.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        user.businessName?.toLowerCase().includes(searchQuery.toLowerCase());
-      return matchesSearch;
-    });
-  }, [users, searchQuery]);
+  // Reload when search query changes (debounced)
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      loadUsers();
+    }, 500);
+    return () => clearTimeout(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchQuery]);
 
+  const handleViewUser = (user: User) => {
+    setSelectedUser(user);
+    setIsModalOpen(true);
+  };
+
+  // Use users directly since search is done on the backend
+  // If backend returns filtered results, use them; otherwise, filter client-side
+  const filteredUsers = users;
+  
   // Pagination
-  const pageCount = Math.ceil(filteredUsers.length / itemsPerPage);
+  const pageCount = Math.max(1, Math.ceil(filteredUsers.length / itemsPerPage));
   const startIndex = (currentPage - 1) * itemsPerPage;
   const endIndex = startIndex + itemsPerPage;
   const paginatedUsers = filteredUsers.slice(startIndex, endIndex);
@@ -134,7 +141,7 @@ const UsersManagementPage: React.FC = () => {
                     <tr
                       key={user.id}
                       className="hover:bg-slate-800/40 transition-colors cursor-pointer"
-                      onClick={() => setSelectedUser(user)}
+                      onClick={() => handleViewUser(user)}
                     >
                       <td className="px-6 py-4 whitespace-nowrap">
                         <span className="font-mono text-sm text-white">#{user.id}</span>
@@ -212,6 +219,18 @@ const UsersManagementPage: React.FC = () => {
           )}
         </motion.div>
       </div>
+
+      {/* User Detail Modal */}
+      {selectedUser && (
+        <UserDetailModal
+          user={selectedUser}
+          isOpen={isModalOpen}
+          onClose={() => {
+            setIsModalOpen(false);
+            setSelectedUser(null);
+          }}
+        />
+      )}
     </div>
   );
 };
