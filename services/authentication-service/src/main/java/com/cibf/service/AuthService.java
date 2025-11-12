@@ -43,10 +43,10 @@ public class AuthService implements IAuthService {
 
     @Autowired
     public AuthService(AuthenticationManager authenticationManager,
-            UserRepository userRepository,
-            PasswordEncoder passwordEncoder,
-            JwtTokenProvider tokenProvider,
-            EmployeeRepository employeeRepository) {
+             UserRepository userRepository,
+             PasswordEncoder passwordEncoder,
+             JwtTokenProvider tokenProvider,
+             EmployeeRepository employeeRepository) {
         this.authenticationManager = authenticationManager;
         this.userRepository = userRepository;
         this.passwordEncoder = passwordEncoder;
@@ -112,14 +112,19 @@ public class AuthService implements IAuthService {
     public AuthResponse registerEmployee(EmployeeRegistrationRequest registrationRequest) {
         validateUsernameAvailability(registrationRequest.getUsername());
 
-        // Determine role - default to EMPLOYEE if not specified
-        Role effectiveRole = determineEmployeeRole(registrationRequest.getRole());
+        // Role is fixed to EMPLOYEE for self-registration for security reasons.
+        Role effectiveRole = Role.EMPLOYEE; 
 
+        // Create User record in users table, using null for vendor-specific fields (businessName, address)
+        // and using the DTO's contact number.
         User user = new User(
-                registrationRequest.getUsername(),
-                passwordEncoder.encode(registrationRequest.getPassword()),
-                null,
-                effectiveRole); // Use enum for type safety
+            registrationRequest.getUsername(),
+            passwordEncoder.encode(registrationRequest.getPassword()),
+            "CIBF Employee", // businessName placeholder for employees
+            registrationRequest.getEmail(), // email for User entity
+            registrationRequest.getContactNumber(), // contactNumber for User entity
+            null,            // address for User entity (null)
+            effectiveRole); // Role
 
         userRepository.save(user);
 
@@ -127,8 +132,8 @@ public class AuthService implements IAuthService {
         employeeRepository.save(employee);
 
         Authentication authentication = performAuthentication(
-                registrationRequest.getUsername(),
-                registrationRequest.getPassword());
+            registrationRequest.getUsername(),
+            registrationRequest.getPassword());
         
         String token = tokenProvider.generateToken(authentication);
 
@@ -172,8 +177,7 @@ public class AuthService implements IAuthService {
 
     /**
      * Determine employee role from request.
-     * Defaults to EMPLOYEE if not specified or invalid.
-     * Open/Closed Principle - easy to add new roles.
+     * Defaults to EMPLOYEE if roleString is null/blank. Allows ADMIN only if explicitly passed.
      */
     private Role determineEmployeeRole(String roleString) {
         if (roleString == null || roleString.isBlank()) {
@@ -197,6 +201,8 @@ public class AuthService implements IAuthService {
         employee.setEmail(request.getEmail());
         employee.setEmployeeId(request.getEmployeeId());
         employee.setRole(role.getName());
+        employee.setContactNumber(request.getContactNumber()); 
+        employee.setDepartment(request.getDepartment());
         return employee;
     }
 
@@ -209,15 +215,18 @@ public class AuthService implements IAuthService {
     public ResponseEntity<?> createEmployeeByAdmin(EmployeeRegistrationRequest registrationRequest) {
         validateUsernameAvailability(registrationRequest.getUsername());
 
-        // Determine role - default to EMPLOYEE if not specified
-        Role effectiveRole = determineEmployeeRole(registrationRequest.getRole());
+        // Since the DTO doesn't contain 'role', we fix the effective role to EMPLOYEE for simplicity.
+        Role effectiveRole = Role.EMPLOYEE; 
 
         // Create User record in users table
         User user = new User(
-                registrationRequest.getUsername(),
-                passwordEncoder.encode(registrationRequest.getPassword()),
-                null,  // business_name is null for employees
-                effectiveRole);
+            registrationRequest.getUsername(),
+            passwordEncoder.encode(registrationRequest.getPassword()),
+            "CIBF Admin", // business_name placeholder for employees
+            registrationRequest.getEmail(), // email for User entity
+            registrationRequest.getContactNumber(), // contactNumber for User entity
+            null, // address is null
+            effectiveRole);
 
         userRepository.save(user);
 
