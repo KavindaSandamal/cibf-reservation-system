@@ -1,9 +1,9 @@
-package com.cibf.reservation.backend;
+package com.cibf;
 
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 
-@SpringBootApplication
+@SpringBootApplication(scanBasePackages = "com.cibf") // ensures all repos are scanned
 public class StallServiceApplication {
     public static void main(String[] args) {
         SpringApplication.run(StallServiceApplication.class, args);

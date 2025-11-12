@@ -20,9 +20,10 @@ import java.util.Map;
 
 @RestController
 @RequestMapping("/api/stalls")
+@CrossOrigin(origins = "http://localhost:3000")
 @RequiredArgsConstructor
 @Slf4j
-@CrossOrigin(origins = "*") // Configure properly in production
+ // Configure properly in production
 public class StallController {
 
     private final StallService stallService;
