@@ -15,14 +15,35 @@ const getMockReservations = (): Reservation[] => {
 };
 
 export const reservationService = {
-  // Get all reservations
-  getAllReservations: async (): Promise<Reservation[]> => {
+  // Get all reservations with filters
+  getAllReservations: async (filters?: {
+    status?: ReservationStatus | string;
+    search?: string;
+    startDate?: string;
+    endDate?: string;
+    page?: number;
+    size?: number;
+  }): Promise<Reservation[]> => {
     try {
-      const response = await apiClient.get<ReservationResponse[]>('/api/reservations');
+      const params: any = {};
+      if (filters?.status && filters.status !== 'ALL') params.status = filters.status;
+      if (filters?.search) params.search = filters.search;
+      if (filters?.startDate) params.startDate = filters.startDate;
+      if (filters?.endDate) params.endDate = filters.endDate;
+      if (filters?.page) params.page = filters.page;
+      if (filters?.size) params.size = filters.size;
+      
+      const response = await apiClient.get<ReservationResponse[]>('/api/admin/reservations', { params });
+      // Handle paginated response
+      if (response.data && Array.isArray(response.data)) {
+        return response.data;
+      } else if (response.data?.content && Array.isArray(response.data.content)) {
+        return response.data.content;
+      }
       return response.data;
     } catch (error: any) {
       if (error.code === 'ERR_NETWORK' || error.message?.includes('Network Error') || error.message?.includes('ERR_CONNECTION_REFUSED')) {
-        console.warn('Backend unavailable, returning empty reservations list');
+        console.warn('Backend unavailable, returning mock reservations list');
         return getMockReservations();
       }
       throw error;
@@ -32,7 +53,7 @@ export const reservationService = {
   // Get reservation by ID
   getReservationById: async (id: number): Promise<Reservation> => {
     try {
-      const response = await apiClient.get<ReservationResponse>(`/api/reservations/${id}`);
+      const response = await apiClient.get<ReservationResponse>(`/api/admin/reservations/${id}`);
       return response.data;
     } catch (error: any) {
       if (error.code === 'ERR_NETWORK' || error.message?.includes('Network Error')) {
@@ -45,7 +66,7 @@ export const reservationService = {
   // Confirm a reservation
   confirmReservation: async (id: number): Promise<Reservation> => {
     try {
-      const response = await apiClient.put<ReservationResponse>(`/api/reservations/${id}/confirm`);
+      const response = await apiClient.put<ReservationResponse>(`/api/admin/reservations/${id}/confirm`);
       return response.data;
     } catch (error: any) {
       if (error.code === 'ERR_NETWORK' || error.message?.includes('Network Error')) {
@@ -58,7 +79,32 @@ export const reservationService = {
   // Cancel a reservation
   cancelReservation: async (id: number): Promise<void> => {
     try {
-      await apiClient.delete(`/api/reservations/${id}`);
+      await apiClient.delete(`/api/admin/reservations/${id}`);
+    } catch (error: any) {
+      if (error.code === 'ERR_NETWORK' || error.message?.includes('Network Error')) {
+        throw new Error('Backend service unavailable. Please start the reservation service.');
+      }
+      throw error;
+    }
+  },
+
+  // Resend confirmation email
+  resendConfirmationEmail: async (id: number): Promise<void> => {
+    try {
+      await apiClient.post(`/api/admin/reservations/${id}/resend-email`);
+    } catch (error: any) {
+      if (error.code === 'ERR_NETWORK' || error.message?.includes('Network Error')) {
+        throw new Error('Backend service unavailable. Please start the reservation service.');
+      }
+      throw error;
+    }
+  },
+
+  // Get reservations by user ID
+  getReservationsByUserId: async (userId: number): Promise<Reservation[]> => {
+    try {
+      const response = await apiClient.get<ReservationResponse[]>(`/api/admin/reservations/user/${userId}`);
+      return response.data;
     } catch (error: any) {
       if (error.code === 'ERR_NETWORK' || error.message?.includes('Network Error')) {
         throw new Error('Backend service unavailable. Please start the reservation service.');
@@ -70,11 +116,13 @@ export const reservationService = {
   // Get reservations by status
   getReservationsByStatus: async (status: ReservationStatus): Promise<Reservation[]> => {
     try {
-      const response = await apiClient.get<ReservationResponse[]>(`/api/reservations/status/${status}`);
+      const response = await apiClient.get<ReservationResponse[]>(`/api/admin/reservations`, {
+        params: { status }
+      });
       return response.data;
     } catch (error: any) {
       if (error.code === 'ERR_NETWORK' || error.message?.includes('Network Error') || error.message?.includes('ERR_CONNECTION_REFUSED')) {
-        console.warn('Backend unavailable, returning empty reservations list');
+        console.warn('Backend unavailable, returning mock reservations list');
         return getMockReservations();
       }
       throw error;

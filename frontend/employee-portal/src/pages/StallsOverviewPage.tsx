@@ -3,6 +3,7 @@ import { motion } from 'framer-motion';
 import { stallService } from '../services/stallService';
 import { Stall, StallSize } from '../types';
 import { toast } from 'react-toastify';
+import StallDetailModal from '../components/StallDetailModal';
 
 const StallsOverviewPage: React.FC = () => {
   const [stalls, setStalls] = useState<Stall[]>([]);
@@ -10,6 +11,8 @@ const StallsOverviewPage: React.FC = () => {
   const [availabilityFilter, setAvailabilityFilter] = useState<'ALL' | 'AVAILABLE' | 'UNAVAILABLE'>('ALL');
   const [sizeFilter, setSizeFilter] = useState<StallSize | 'ALL'>('ALL');
   const [searchQuery, setSearchQuery] = useState('');
+  const [selectedStall, setSelectedStall] = useState<Stall | null>(null);
+  const [isModalOpen, setIsModalOpen] = useState(false);
 
   useEffect(() => {
     loadStalls();
@@ -18,7 +21,14 @@ const StallsOverviewPage: React.FC = () => {
   const loadStalls = async () => {
     try {
       setLoading(true);
-      const data = await stallService.getAllStalls();
+      const filters: any = {};
+      if (availabilityFilter !== 'ALL') {
+        filters.status = availabilityFilter === 'AVAILABLE' ? 'AVAILABLE' : 'RESERVED';
+      }
+      if (sizeFilter !== 'ALL') {
+        filters.size = sizeFilter;
+      }
+      const data = await stallService.getAllStalls(filters);
       setStalls(data);
     } catch (error: any) {
       toast.error('Failed to load stalls');
@@ -28,22 +38,28 @@ const StallsOverviewPage: React.FC = () => {
     }
   };
 
-  // Filter stalls
+  // Reload when filters change
+  useEffect(() => {
+    loadStalls();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [availabilityFilter, sizeFilter]);
+
+  const handleViewStall = (stall: Stall) => {
+    setSelectedStall(stall);
+    setIsModalOpen(true);
+  };
+
+  // Filter stalls by search query (client-side for now, since backend filtering is by status/size)
   const filteredStalls = useMemo(() => {
     return stalls.filter((stall) => {
-      const matchesAvailability =
-        availabilityFilter === 'ALL' ||
-        (availabilityFilter === 'AVAILABLE' && stall.isAvailable) ||
-        (availabilityFilter === 'UNAVAILABLE' && !stall.isAvailable);
-      const matchesSize = sizeFilter === 'ALL' || stall.size === sizeFilter;
       const matchesSearch =
         searchQuery === '' ||
         stall.stallNumber.toLowerCase().includes(searchQuery.toLowerCase()) ||
         stall.stallName.toLowerCase().includes(searchQuery.toLowerCase()) ||
         stall.location.toLowerCase().includes(searchQuery.toLowerCase());
-      return matchesAvailability && matchesSize && matchesSearch;
+      return matchesSearch;
     });
-  }, [stalls, availabilityFilter, sizeFilter, searchQuery]);
+  }, [stalls, searchQuery]);
 
   const sizeColors = {
     [StallSize.SMALL]: 'bg-blue-500/20 text-blue-300 border-blue-500/30',
@@ -188,7 +204,8 @@ const StallsOverviewPage: React.FC = () => {
                 key={stall.id}
                 initial={{ opacity: 0, scale: 0.95 }}
                 animate={{ opacity: 1, scale: 1 }}
-                className="rounded-2xl border-2 border-slate-700/70 bg-slate-900/80 p-6 shadow-2xl backdrop-blur-xl hover:border-indigo-500/50 transition-colors"
+                onClick={() => handleViewStall(stall)}
+                className="rounded-2xl border-2 border-slate-700/70 bg-slate-900/80 p-6 shadow-2xl backdrop-blur-xl hover:border-indigo-500/50 transition-colors cursor-pointer"
               >
                 <div className="flex items-center justify-between mb-4">
                   <div>
@@ -231,6 +248,18 @@ const StallsOverviewPage: React.FC = () => {
           )}
         </motion.div>
       </div>
+
+      {/* Stall Detail Modal */}
+      {selectedStall && (
+        <StallDetailModal
+          stall={selectedStall}
+          isOpen={isModalOpen}
+          onClose={() => {
+            setIsModalOpen(false);
+            setSelectedStall(null);
+          }}
+        />
+      )}
     </div>
   );
 };
