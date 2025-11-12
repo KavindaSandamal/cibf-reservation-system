@@ -12,26 +12,60 @@ const ReservationsManagementPage: React.FC = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [statusFilter, setStatusFilter] = useState<ReservationStatus | 'ALL'>('ALL');
   const [searchQuery, setSearchQuery] = useState('');
+  const [startDate, setStartDate] = useState('');
+  const [endDate, setEndDate] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage] = useState(10);
 
+
+  // Load reservations on mount and when filters change
   useEffect(() => {
-    loadReservations();
-  }, []);
+    const loadData = async () => {
+      try {
+        setLoading(true);
+        const data = await reservationService.getAllReservations({
+          status: statusFilter,
+          search: searchQuery || undefined,
+          startDate: startDate || undefined,
+          endDate: endDate || undefined,
+          page: currentPage,
+          size: itemsPerPage,
+        });
+        setReservations(data);
+      } catch (error: any) {
+        toast.error('Failed to load reservations');
+        console.error('Error loading reservations:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    
+    loadData();
+  }, [currentPage, statusFilter, searchQuery, startDate, endDate, itemsPerPage]);
 
   // Reset to first page when filters change
   useEffect(() => {
-    setCurrentPage(1);
-  }, [statusFilter, searchQuery]);
+    // Only reset if we're not already on page 1 to avoid unnecessary state updates
+    if (currentPage !== 1) {
+      setCurrentPage(1);
+    }
+  }, [statusFilter, searchQuery, startDate, endDate]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const loadReservations = async () => {
+  const reloadReservations = async () => {
     try {
       setLoading(true);
-      const data = await reservationService.getAllReservations();
+      const data = await reservationService.getAllReservations({
+        status: statusFilter,
+        search: searchQuery || undefined,
+        startDate: startDate || undefined,
+        endDate: endDate || undefined,
+        page: currentPage,
+        size: itemsPerPage,
+      });
       setReservations(data);
     } catch (error: any) {
-      toast.error('Failed to load reservations');
-      console.error('Error loading reservations:', error);
+      toast.error('Failed to reload reservations');
+      console.error('Error reloading reservations:', error);
     } finally {
       setLoading(false);
     }
@@ -41,10 +75,10 @@ const ReservationsManagementPage: React.FC = () => {
     try {
       await reservationService.confirmReservation(id);
       toast.success('Reservation confirmed successfully');
-      loadReservations();
       if (selectedReservation?.id === id) {
         setSelectedReservation({ ...selectedReservation, status: ReservationStatus.CONFIRMED });
       }
+      await reloadReservations();
     } catch (error: any) {
       toast.error(error.message || 'Failed to confirm reservation');
     }
@@ -57,13 +91,29 @@ const ReservationsManagementPage: React.FC = () => {
     try {
       await reservationService.cancelReservation(id);
       toast.success('Reservation cancelled successfully');
-      loadReservations();
       if (selectedReservation?.id === id) {
         setSelectedReservation({ ...selectedReservation, status: ReservationStatus.CANCELLED });
       }
+      await reloadReservations();
     } catch (error: any) {
       toast.error(error.message || 'Failed to cancel reservation');
     }
+  };
+
+  const handleResendEmail = async (id: number) => {
+    try {
+      await reservationService.resendConfirmationEmail(id);
+      toast.success('Confirmation email sent successfully');
+    } catch (error: any) {
+      toast.error(error.message || 'Failed to resend email');
+    }
+  };
+
+  const handleClearFilters = () => {
+    setStatusFilter('ALL');
+    setSearchQuery('');
+    setStartDate('');
+    setEndDate('');
   };
 
   const handleViewDetails = (reservation: Reservation) => {
@@ -71,26 +121,12 @@ const ReservationsManagementPage: React.FC = () => {
     setIsModalOpen(true);
   };
 
-  // Filter reservations
-  const filteredReservations = useMemo(() => {
-    return reservations.filter((reservation) => {
-      const matchesStatus = statusFilter === 'ALL' || reservation.status === statusFilter;
-      const matchesSearch =
-        searchQuery === '' ||
-        reservation.id.toString().includes(searchQuery) ||
-        reservation.user?.firstName?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        reservation.user?.lastName?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        reservation.user?.email?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        reservation.stalls.some((stall) => stall.stallNumber.toLowerCase().includes(searchQuery.toLowerCase()));
-      return matchesStatus && matchesSearch;
-    });
-  }, [reservations, statusFilter, searchQuery]);
-
-  // Pagination
-  const pageCount = Math.ceil(filteredReservations.length / itemsPerPage);
+  // Use reservations directly since filtering is done on the backend
+  // If backend returns paginated response, use it; otherwise, paginate client-side
+  const paginatedReservations = reservations;
+  const pageCount = Math.max(1, Math.ceil(reservations.length / itemsPerPage));
   const startIndex = (currentPage - 1) * itemsPerPage;
   const endIndex = startIndex + itemsPerPage;
-  const paginatedReservations = filteredReservations.slice(startIndex, endIndex);
 
   const statusColors = {
     [ReservationStatus.PENDING]: 'bg-amber-500/20 text-amber-300 border-amber-500/30',
@@ -139,7 +175,7 @@ const ReservationsManagementPage: React.FC = () => {
           transition={{ delay: 0.1 }}
           className="mb-6 rounded-2xl border-2 border-slate-700/70 bg-slate-900/80 p-6 shadow-2xl backdrop-blur-xl"
         >
-          <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
             {/* Search */}
             <div>
               <label className="block text-sm font-medium text-slate-300 mb-2">Search</label>
@@ -147,7 +183,7 @@ const ReservationsManagementPage: React.FC = () => {
                 type="text"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Search by ID, user name, email, or stall number..."
+                placeholder="Search by ID, user name, email..."
                 className="w-full rounded-xl border border-slate-600 bg-slate-800/60 px-4 py-2.5 text-white placeholder:text-slate-400 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 outline-none"
               />
             </div>
@@ -166,7 +202,41 @@ const ReservationsManagementPage: React.FC = () => {
                 <option value={ReservationStatus.CANCELLED}>Cancelled</option>
               </select>
             </div>
+
+            {/* Start Date */}
+            <div>
+              <label className="block text-sm font-medium text-slate-300 mb-2">Start Date</label>
+              <input
+                type="date"
+                value={startDate}
+                onChange={(e) => setStartDate(e.target.value)}
+                className="w-full rounded-xl border border-slate-600 bg-slate-800/60 px-4 py-2.5 text-white focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 outline-none"
+              />
+            </div>
+
+            {/* End Date */}
+            <div>
+              <label className="block text-sm font-medium text-slate-300 mb-2">End Date</label>
+              <input
+                type="date"
+                value={endDate}
+                onChange={(e) => setEndDate(e.target.value)}
+                className="w-full rounded-xl border border-slate-600 bg-slate-800/60 px-4 py-2.5 text-white focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 outline-none"
+              />
+            </div>
           </div>
+          
+          {/* Clear Filters Button */}
+          {(statusFilter !== 'ALL' || searchQuery || startDate || endDate) && (
+            <div className="mt-4 flex justify-end">
+              <button
+                onClick={handleClearFilters}
+                className="px-4 py-2 rounded-lg bg-slate-700/60 hover:bg-slate-700 text-white text-sm font-medium transition"
+              >
+                Clear Filters
+              </button>
+            </div>
+          )}
         </motion.div>
 
         {/* Table */}
@@ -197,7 +267,7 @@ const ReservationsManagementPage: React.FC = () => {
                     </td>
                   </tr>
                 ) : (
-                  paginatedReservations.map((reservation) => (
+                  paginatedReservations.slice(startIndex, endIndex).map((reservation) => (
                     <tr key={reservation.id} className="hover:bg-slate-800/40 transition-colors">
                       <td className="px-6 py-4 whitespace-nowrap">
                         <span className="font-mono text-sm text-white">#{reservation.id}</span>
@@ -261,6 +331,15 @@ const ReservationsManagementPage: React.FC = () => {
                               </button>
                             </>
                           )}
+                          {reservation.status === ReservationStatus.CONFIRMED && (
+                            <button
+                              onClick={() => handleResendEmail(reservation.id)}
+                              className="px-3 py-1.5 bg-indigo-600/80 hover:bg-indigo-600 text-white text-xs font-semibold rounded-lg transition"
+                              title="Resend confirmation email"
+                            >
+                              Resend Email
+                            </button>
+                          )}
                         </div>
                       </td>
                     </tr>
@@ -274,7 +353,7 @@ const ReservationsManagementPage: React.FC = () => {
           {pageCount > 1 && (
             <div className="px-6 py-4 border-t border-slate-700 flex items-center justify-between">
               <div className="text-sm text-slate-400">
-                Showing {startIndex + 1} to {Math.min(endIndex, filteredReservations.length)} of {filteredReservations.length} reservations
+                Showing {startIndex + 1} to {Math.min(endIndex, reservations.length)} of {reservations.length} reservations
               </div>
               <div className="flex items-center gap-2">
                 <button
@@ -322,6 +401,7 @@ const ReservationsManagementPage: React.FC = () => {
           onClose={() => setIsModalOpen(false)}
           onConfirm={handleConfirmReservation}
           onCancel={handleCancelReservation}
+          onResendEmail={handleResendEmail}
         />
       )}
     </div>

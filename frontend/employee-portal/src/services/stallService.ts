@@ -13,14 +13,21 @@ const getMockStalls = (): Stall[] => {
 };
 
 export const stallService = {
-  // Get all stalls
-  getAllStalls: async (): Promise<Stall[]> => {
+  // Get all stalls with filters
+  getAllStalls: async (filters?: {
+    status?: string;
+    size?: string;
+  }): Promise<Stall[]> => {
     try {
-      const response = await apiClient.get<StallResponse[]>('/api/stalls');
+      const params: any = {};
+      if (filters?.status) params.status = filters.status;
+      if (filters?.size) params.size = filters.size;
+      
+      const response = await apiClient.get<StallResponse[]>('/api/admin/stalls', { params });
       return response.data;
     } catch (error: any) {
       if (error.code === 'ERR_NETWORK' || error.message?.includes('Network Error') || error.message?.includes('ERR_CONNECTION_REFUSED')) {
-        console.warn('Backend unavailable, returning empty stalls list');
+        console.warn('Backend unavailable, returning mock stalls list');
         return getMockStalls();
       }
       throw error;
@@ -30,11 +37,13 @@ export const stallService = {
   // Get available stalls
   getAvailableStalls: async (): Promise<Stall[]> => {
     try {
-      const response = await apiClient.get<StallResponse[]>('/api/stalls/available');
+      const response = await apiClient.get<StallResponse[]>('/api/admin/stalls', {
+        params: { status: 'AVAILABLE' }
+      });
       return response.data;
     } catch (error: any) {
       if (error.code === 'ERR_NETWORK' || error.message?.includes('Network Error') || error.message?.includes('ERR_CONNECTION_REFUSED')) {
-        console.warn('Backend unavailable, returning empty stalls list');
+        console.warn('Backend unavailable, returning mock stalls list');
         return getMockStalls();
       }
       throw error;
@@ -44,7 +53,37 @@ export const stallService = {
   // Get stall by ID
   getStallById: async (id: number): Promise<Stall> => {
     try {
-      const response = await apiClient.get<StallResponse>(`/api/stalls/${id}`);
+      const response = await apiClient.get<StallResponse>(`/api/admin/stalls/${id}`);
+      return response.data;
+    } catch (error: any) {
+      if (error.code === 'ERR_NETWORK' || error.message?.includes('Network Error')) {
+        throw new Error('Backend service unavailable. Please start the stall service.');
+      }
+      throw error;
+    }
+  },
+
+  // Get reservation info for a stall
+  getStallReservation: async (id: number): Promise<any> => {
+    try {
+      const response = await apiClient.get(`/api/admin/stalls/${id}/reservation`);
+      return response.data;
+    } catch (error: any) {
+      if (error.code === 'ERR_NETWORK' || error.message?.includes('Network Error')) {
+        throw new Error('Backend service unavailable. Please start the stall service.');
+      }
+      // If stall is available, it might return 404, which is fine
+      if (error.response?.status === 404) {
+        return null;
+      }
+      throw error;
+    }
+  },
+
+  // Get stall statistics
+  getStallStatistics: async (): Promise<any> => {
+    try {
+      const response = await apiClient.get('/api/admin/statistics/stalls');
       return response.data;
     } catch (error: any) {
       if (error.code === 'ERR_NETWORK' || error.message?.includes('Network Error')) {
@@ -57,7 +96,7 @@ export const stallService = {
   // Update stall
   updateStall: async (id: number, data: Partial<Stall>): Promise<Stall> => {
     try {
-      const response = await apiClient.put<StallResponse>(`/api/stalls/${id}`, data);
+      const response = await apiClient.put<StallResponse>(`/api/admin/stalls/${id}`, data);
       return response.data;
     } catch (error: any) {
       if (error.code === 'ERR_NETWORK' || error.message?.includes('Network Error')) {

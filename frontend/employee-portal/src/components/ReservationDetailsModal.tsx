@@ -8,6 +8,7 @@ interface ReservationDetailsModalProps {
   onClose: () => void;
   onConfirm: (id: number) => void;
   onCancel: (id: number) => void;
+  onResendEmail?: (id: number) => void;
 }
 
 const ReservationDetailsModal: React.FC<ReservationDetailsModalProps> = ({
@@ -16,6 +17,7 @@ const ReservationDetailsModal: React.FC<ReservationDetailsModalProps> = ({
   onClose,
   onConfirm,
   onCancel,
+  onResendEmail,
 }) => {
   if (!isOpen) return null;
 
@@ -172,6 +174,14 @@ const ReservationDetailsModal: React.FC<ReservationDetailsModalProps> = ({
                       Cancel Reservation
                     </button>
                   </>
+                )}
+                {reservation.status === ReservationStatus.CONFIRMED && onResendEmail && (
+                  <button
+                    onClick={() => onResendEmail(reservation.id)}
+                    className="px-4 py-2 rounded-lg bg-indigo-600/80 hover:bg-indigo-600 text-white font-semibold transition"
+                  >
+                    Resend Confirmation Email
+                  </button>
                 )}
               </div>
             </div>
