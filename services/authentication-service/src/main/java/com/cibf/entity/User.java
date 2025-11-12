@@ -34,31 +34,31 @@ public class User {
     private String businessName;
 
     @Column(name = "email")
-    private String email;  // 🆕 ADDED
+    private String email; 
 
     @Column(name = "contact_number")
-    private String contactNumber;  // 🆕 ADDED
+    private String contactNumber; 
 
     @Column(name = "address", columnDefinition = "TEXT")
-    private String address;  // 🆕 ADDED
+    private String address;  
 
     @Column(nullable = false)
     private String role;  // Store role as String in DB
 
     @CreationTimestamp
     @Column(name = "created_at", nullable = false, updatable = false)
-    private LocalDateTime createdAt;  // 🆕 ADDED
+    private LocalDateTime createdAt;  
 
     @UpdateTimestamp
     @Column(name = "updated_at")
-    private LocalDateTime updatedAt;  // 🆕 ADDED
+    private LocalDateTime updatedAt;  
 
     // Constructor for basic user creation
     public User(String username, String password, String businessName, Role role) {
         this.username = username;
         this.password = password;
         this.businessName = businessName;
-        this.email = username; // 🆕 Set email same as username initially
+        this.email = username; 
         this.role = role.getName();
     }
 
