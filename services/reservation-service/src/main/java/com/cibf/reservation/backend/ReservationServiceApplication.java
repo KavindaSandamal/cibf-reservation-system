@@ -1,10 +1,10 @@
-package com.cibf.reservation.backend;
+package com.cibf;
 
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.cloud.openfeign.EnableFeignClients;
 
-@EnableFeignClients(basePackages = "com.cibf.reservation.client")
+@EnableFeignClients(basePackages = "com.cibf.client")
 @SpringBootApplication
 public class ReservationServiceApplication {
     public static void main(String[] args) {

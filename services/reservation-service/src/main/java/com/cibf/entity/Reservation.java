@@ -1,4 +1,4 @@
-package com.cibf.reservation.entity;
+package com.cibf.entity;
 
 import lombok.*;
 import jakarta.persistence.*;

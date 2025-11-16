@@ -1,7 +1,7 @@
-package com.cibf.reservation.repository;
+package com.cibf.repository;
 
-import com.cibf.reservation.entity.Reservation;
-import com.cibf.reservation.entity.ReservationStatus;
+import com.cibf.entity.Reservation;
+import com.cibf.entity.ReservationStatus;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;

@@ -1,4 +1,4 @@
-package com.cibf.reservation.service;
+package com.cibf.service;
 
 import org.springframework.stereotype.Service;
 import java.util.concurrent.ConcurrentHashMap;
