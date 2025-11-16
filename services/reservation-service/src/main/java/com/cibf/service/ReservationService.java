@@ -1,12 +1,12 @@
-package com.cibf.reservation.service;
+package com.cibf.service;
 
-import com.cibf.reservation.dto.*;
-import com.cibf.reservation.entity.Reservation;
-import com.cibf.reservation.entity.ReservationStatus;
-import com.cibf.reservation.repository.ReservationRepository;
-import com.cibf.reservation.client.UserServiceClient;
-import com.cibf.reservation.client.StallServiceClient;
-import com.cibf.reservation.exception.*;
+import com.cibf.dto.*;
+import com.cibf.entity.Reservation;
+import com.cibf.entity.ReservationStatus;
+import com.cibf.repository.ReservationRepository;
+import com.cibf.client.UserServiceClient;
+import com.cibf.client.StallServiceClient;
+import com.cibf.exception.*;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
