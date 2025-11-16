@@ -89,12 +89,18 @@ public class StallController {
     /**
      * Check if stall is available
      */
+    // @GetMapping("/{id}/available")
+    // public ResponseEntity<Map<String, Boolean>> checkStallAvailability(@PathVariable Long id) {
+    //     log.info("REST request to check stall availability: {}", id);
+    //     boolean isAvailable = stallService.isStallAvailable(id);
+    //     return ResponseEntity.ok(Map.of("available", isAvailable));
+    // }
     @GetMapping("/{id}/available")
-    public ResponseEntity<Map<String, Boolean>> checkStallAvailability(@PathVariable Long id) {
-        log.info("REST request to check stall availability: {}", id);
-        boolean isAvailable = stallService.isStallAvailable(id);
-        return ResponseEntity.ok(Map.of("available", isAvailable));
-    }
+public boolean checkStallAvailability(@PathVariable Long id) {
+    log.info("REST request to check stall availability: {}", id);
+    return stallService.isStallAvailable(id);
+}
+
 
     /**
      * Get stall statistics (for dashboard)
