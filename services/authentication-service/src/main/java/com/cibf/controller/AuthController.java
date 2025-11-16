@@ -14,6 +14,11 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+// ADD THESE ↓↓↓
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+
+
 /**
  * REST Controller for all Authentication-related operations.
  * Follows:
@@ -72,4 +77,12 @@ public class AuthController {
         AuthResponse response = authService.authenticateEmployee(authRequest);
         return new ResponseEntity<>(response, HttpStatus.OK);
     }
+    @GetMapping("/{userId}/exists")
+    public ResponseEntity<Boolean> userExists(@PathVariable Long userId) {
+    boolean exists = authService.userExists(userId);
+    return ResponseEntity.ok(exists);
+}
+
+
+   
 }
