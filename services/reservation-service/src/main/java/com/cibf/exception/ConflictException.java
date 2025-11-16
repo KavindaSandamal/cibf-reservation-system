@@ -1,4 +1,4 @@
-package com.cibf.reservation.exception;
+package com.cibf.exception;
 
 public class ConflictException extends RuntimeException {
     public ConflictException(String message) {

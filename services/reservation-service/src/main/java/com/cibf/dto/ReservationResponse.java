@@ -1,4 +1,4 @@
-package com.cibf.reservation.dto;
+package com.cibf.dto;
 
 import lombok.Data;
 import lombok.Builder;
