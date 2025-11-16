@@ -9,6 +9,8 @@ import org.springframework.security.config.annotation.web.configurers.AbstractHt
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
+import org.springframework.security.core.context.SecurityContextHolder;
+
 
 @Configuration
 @EnableWebSecurity
@@ -33,5 +35,16 @@ public class SecurityConfig {
             .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
 
         return http.build();
+    }
+
+    @Bean
+    public feign.RequestInterceptor feignRequestInterceptor() {
+        return template -> {
+            var auth = SecurityContextHolder.getContext().getAuthentication();
+            if (auth != null && auth.getCredentials() != null) {
+                String token = auth.getCredentials().toString();
+                template.header("Authorization", "Bearer " + token);
+            }
+        };
     }
 }

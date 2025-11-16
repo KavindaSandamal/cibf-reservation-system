@@ -1,7 +1,7 @@
-package com.cibf.reservation.controller;
+package com.cibf.controller;
 
-import com.cibf.reservation.dto.*;
-import com.cibf.reservation.service.ReservationService;
+import com.cibf.dto.*;
+import com.cibf.service.ReservationService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
