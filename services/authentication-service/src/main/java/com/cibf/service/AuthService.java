@@ -279,4 +279,10 @@ public class AuthService implements IAuthService {
 
         return new ResponseEntity<>(response, HttpStatus.CREATED);
     }
+
+    @Override
+    public boolean userExists(Long userId) {
+        return userRepository.existsById(userId);
+    }
+
 }
