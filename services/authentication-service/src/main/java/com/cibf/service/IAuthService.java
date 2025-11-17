@@ -64,4 +64,8 @@ public interface IAuthService {
      * @return ResponseEntity with created user information
      */
     ResponseEntity<?> createUserByAdmin(UserRegistrationRequest registrationRequest);
+
+        boolean userExists(Long userId);
+
+
 }
