@@ -3,21 +3,25 @@ package com.cibf.service;
 import com.cibf.dto.*;
 import com.cibf.entity.Reservation;
 import com.cibf.entity.ReservationStatus;
+import com.cibf.exception.BadRequestException;
+import com.cibf.exception.ConflictException;
+import com.cibf.exception.ResourceNotFoundException;
 import com.cibf.repository.ReservationRepository;
-import com.cibf.client.UserServiceClient;
 import com.cibf.client.StallServiceClient;
-import com.cibf.exception.*;
+import com.cibf.client.UserServiceClient;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
-import java.util.ArrayList;
 import java.util.List;
+import java.util.UUID;
 import java.util.stream.Collectors;
 
 @Service
+@Transactional
 @RequiredArgsConstructor
 @Slf4j
 public class ReservationService {
@@ -30,182 +34,216 @@ public class ReservationService {
     private final EventPublisherService eventPublisher;
     private final UserServiceClient userServiceClient;
     private final StallServiceClient stallServiceClient;
+    private final QRCodeService qrCodeService;
+    private final EmailService emailService;
 
     /**
-     * Hold stalls temporarily (5 minutes)
+     * Hold stalls temporarily
      */
-    @Transactional
     public HoldStallResponse holdStalls(HoldStallRequest request) {
         Long userId = request.getUserId();
         List<Long> stallIds = request.getStallIds();
 
-        log.info("Processing hold request for user: {} and stalls: {}", userId, stallIds);
+        log.info("Processing hold request for user {}: {}", userId, stallIds);
 
-        // Validate number of stalls
         if (stallIds.isEmpty() || stallIds.size() > MAX_STALLS_PER_USER) {
-            throw new BadRequestException(
-                    String.format("You can hold between 1 and %d stalls", MAX_STALLS_PER_USER)
-            );
+            throw new BadRequestException("You can hold between 1 and " + MAX_STALLS_PER_USER + " stalls");
         }
 
-        // Check if user exists
         if (!userServiceClient.userExists(userId)) {
             throw new ResourceNotFoundException("User not found with ID: " + userId);
         }
 
-        // Check user's current reservation count
         long currentCount = reservationRepository.countActiveReservationsByUserId(userId);
         if (currentCount + stallIds.size() > MAX_STALLS_PER_USER) {
-            throw new BadRequestException(
-                    String.format("You can only reserve up to %d stalls. You currently have %d active reservations.",
-                            MAX_STALLS_PER_USER, currentCount)
-            );
+            throw new BadRequestException(String.format(
+                    "You can only reserve up to %d stalls. You currently have %d active reservations.",
+                    MAX_STALLS_PER_USER, currentCount));
         }
 
-        // Acquire locks for all stalls
-        List<Long> locksAcquired = new ArrayList<>();
-        try {
-            for (Long stallId : stallIds) {
-                // Check if stall is available
-                if (!stallServiceClient.isStallAvailable(stallId)) {
-                    throw new ConflictException("Stall " + stallId + " is not available");
-                }
-
-                // Try to acquire lock
-                boolean lockAcquired = lockService.acquireLock(
+        List<Long> acquiredLocks = stallIds.stream()
+                .filter(stallId -> lockService.acquireLock(
                         stallId.toString(),
                         userId.toString(),
-                        HOLD_DURATION_MINUTES
-                );
+                        HOLD_DURATION_MINUTES))
+                .toList();
 
-                if (!lockAcquired) {
-                    throw new ConflictException(
-                            "Stall " + stallId + " is currently being reserved by another user"
-                    );
-                }
-
-                locksAcquired.add(stallId);
-            }
-
-            // Generate hold token and expiry time
-            String holdToken = java.util.UUID.randomUUID().toString();
-            LocalDateTime expiresAt = LocalDateTime.now().plusMinutes(HOLD_DURATION_MINUTES);
-
-            // Create pending reservations
-            for (Long stallId : stallIds) {
-                Reservation reservation = Reservation.builder()
-                        .userId(userId)
-                        .stallId(stallId)
-                        .status(ReservationStatus.PENDING)
-                        .holdToken(holdToken)
-                        .holdExpiresAt(expiresAt)
-                        .build();
-
-                reservationRepository.save(reservation);
-            }
-
-            log.info("Stalls held successfully for user {}: {}", userId, stallIds);
-
-            // Publish event
-            eventPublisher.publishReservationHeld(userId, stallIds, holdToken, expiresAt);
-
-            return new HoldStallResponse(holdToken, expiresAt);
-
-        } catch (Exception e) {
-            // Release any acquired locks on error
-            for (Long stallId : locksAcquired) {
-                lockService.releaseLock(stallId.toString());
-            }
-            throw e;
+        if (acquiredLocks.size() != stallIds.size()) {
+            acquiredLocks.forEach(id -> lockService.releaseLock(id.toString()));
+            throw new ConflictException("One or more stalls are currently being reserved by another user");
         }
+
+        String holdToken = UUID.randomUUID().toString();
+        LocalDateTime expiresAt = LocalDateTime.now().plusMinutes(HOLD_DURATION_MINUTES);
+
+        stallIds.forEach(stallId -> {
+            Reservation reservation = Reservation.builder()
+                    .userId(userId)
+                    .stallId(stallId)
+                    .status(ReservationStatus.PENDING)
+                    .holdToken(holdToken)
+                    .holdExpiresAt(expiresAt)
+                    .businessName(request.getBusinessName())
+                    .build();
+            reservationRepository.save(reservation);
+        });
+
+        eventPublisher.publishReservationHeld(userId, stallIds, holdToken, expiresAt);
+        log.info("✅ Stalls held successfully for user {}: {}", userId, stallIds);
+
+        return new HoldStallResponse(holdToken, expiresAt);
     }
 
     /**
-     * Confirm reservation with hold token
+     * Confirm reservation - Generate QR code and send email
      */
-    @Transactional
-    public List<ReservationResponse> confirmReservation(ConfirmReservationRequest request) {
-        String holdToken = request.getHoldToken();
-        Long userId = request.getUserId();
+    public ReservationResponse confirmReservation(ConfirmReservationRequest request) {
+        log.info("Confirming reservation for user: {}, holdToken: {}", request.getUserId(), request.getHoldToken());
 
-        log.info("Confirming reservation for user {} with hold token: {}", userId, holdToken);
-
-        // Find reservations with hold token
+        // ✅ FIXED: Changed to List<Reservation>
         List<Reservation> reservations = reservationRepository
-                .findByUserIdAndStatus(userId, ReservationStatus.PENDING)
-                .stream()
-                .filter(r -> holdToken.equals(r.getHoldToken()))
-                .collect(Collectors.toList());
+                .findByUserIdAndHoldToken(request.getUserId(), request.getHoldToken());
 
         if (reservations.isEmpty()) {
-            throw new ResourceNotFoundException("Invalid or expired hold token");
+            throw new ResourceNotFoundException(
+                    "No reservation found for user: " + request.getUserId() + " with hold token: "
+                            + request.getHoldToken());
         }
 
-        // Check if hold has expired
-        Reservation firstReservation = reservations.get(0);
-        if (LocalDateTime.now().isAfter(firstReservation.getHoldExpiresAt())) {
-            throw new BadRequestException("Hold has expired. Please select stalls again.");
-        }
-
-        List<Reservation> confirmedReservations = new ArrayList<>();
-
-        try {
-            // Confirm all reservations
-            for (Reservation reservation : reservations) {
-                // Update stall status to reserved
-                stallServiceClient.updateStallStatus(reservation.getStallId(), "RESERVED");
-
-                // Update reservation status
-                reservation.setStatus(ReservationStatus.CONFIRMED);
-                reservation.setConfirmedAt(LocalDateTime.now());
-                reservation.setHoldToken(null);
-                reservation.setHoldExpiresAt(null);
-
-                Reservation confirmed = reservationRepository.save(reservation);
-                confirmedReservations.add(confirmed);
-
-                // Release lock
-                lockService.releaseLock(reservation.getStallId().toString());
+        for (Reservation reservation : reservations) {
+            if (reservation.getStatus() != ReservationStatus.PENDING) {
+                throw new BadRequestException(
+                        "Reservation cannot be confirmed. Current status: " + reservation.getStatus());
             }
 
-            log.info("Reservations confirmed for user {}: {} stalls", userId, confirmedReservations.size());
+            if (reservation.getHoldExpiresAt() != null &&
+                    reservation.getHoldExpiresAt().isBefore(LocalDateTime.now())) {
+                throw new BadRequestException("Hold token has expired. Please select stalls again.");
+            }
+        }
 
-            // Publish event for notification service
-            eventPublisher.publishReservationConfirmed(userId, confirmedReservations);
+        if (request.getBusinessName() != null) {
+            reservations.forEach(r -> r.setBusinessName(request.getBusinessName()));
+        }
+        if (request.getUserEmail() != null) {
+            reservations.forEach(r -> r.setUserEmail(request.getUserEmail()));
+        }
 
-            return confirmedReservations.stream()
-                    .map(this::mapToResponse)
-                    .collect(Collectors.toList());
+        LocalDateTime confirmedAt = LocalDateTime.now();
+        reservations.forEach(reservation -> {
+            reservation.setStatus(ReservationStatus.CONFIRMED);
+            reservation.setConfirmedAt(confirmedAt);
+            reservationRepository.save(reservation);
+        });
+
+        Reservation mainReservation = reservations.get(0);
+
+        List<Long> stallIds = reservations.stream()
+                .map(Reservation::getStallId)
+                .collect(Collectors.toList());
+
+        List<ReservationConfirmationDto.StallInfo> stallInfos = getStallsInfoByIds(stallIds);
+
+        BigDecimal totalAmount = stallInfos.stream()
+                .map(ReservationConfirmationDto.StallInfo::getPrice)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+
+        reservations.forEach(r -> r.setTotalAmount(totalAmount));
+
+        String qrCodeUrl = null;
+        try {
+            log.info("Generating QR code for reservation: {}", mainReservation.getId());
+
+            qrCodeUrl = qrCodeService.generateAndUploadQRCode(
+                    mainReservation.getId(),
+                    request.getBusinessName() != null ? request.getBusinessName() : mainReservation.getBusinessName(),
+                    request.getUserEmail() != null ? request.getUserEmail() : mainReservation.getUserEmail());
+
+            final String finalQrCodeUrl = qrCodeUrl;
+            reservations.forEach(r -> {
+                r.setQrCodeUrl(finalQrCodeUrl);
+                reservationRepository.save(r);
+            });
+
+            log.info("✅ QR code generated and saved: {}", qrCodeUrl);
 
         } catch (Exception e) {
-            log.error("Failed to confirm reservations: {}", e.getMessage());
-            throw new BadRequestException("Failed to confirm reservation. Please try again.");
+            log.error("❌ Failed to generate QR code for reservation: {}", mainReservation.getId(), e);
         }
+
+        try {
+            log.info("Sending confirmation email to: {}", request.getUserEmail());
+
+            ReservationConfirmationDto emailDto = ReservationConfirmationDto.builder()
+                    .reservationId(mainReservation.getId())
+                    .userEmail(request.getUserEmail() != null ? request.getUserEmail() : mainReservation.getUserEmail())
+                    .businessName(request.getBusinessName() != null ? request.getBusinessName()
+                            : mainReservation.getBusinessName())
+                    .totalAmount(totalAmount)
+                    .stalls(stallInfos)
+                    .qrCodeUrl(qrCodeUrl)
+                    .build();
+
+            emailService.sendReservationConfirmation(emailDto);
+
+            log.info("✅ Email notification sent successfully");
+
+        } catch (Exception e) {
+            log.error("❌ Failed to send email notification", e);
+        }
+
+        // ✅ FIXED: Removed third parameter (reservationId)
+        eventPublisher.publishReservationConfirmed(mainReservation.getUserId(), stallIds);
+
+        ReservationResponse response = mapToResponse(mainReservation);
+        response.setQrCodeUrl(qrCodeUrl);
+        response.setStalls(stallInfos.stream()
+                .map(s -> ReservationResponse.StallSummary.builder()
+                        .id(s.getId())
+                        .stallName(s.getStallName())
+                        .size(s.getSize())
+                        .dimensions(s.getDimensions())
+                        .price(s.getPrice())
+                        .build())
+                .collect(Collectors.toList()));
+        response.setTotalAmount(totalAmount);
+
+        log.info("✅ Reservation confirmed successfully: ID={}, QR={}", mainReservation.getId(), qrCodeUrl);
+
+        return response;
     }
 
-    /**
-     * Get reservation by ID
-     */
     public ReservationResponse getReservationById(Long id) {
         Reservation reservation = reservationRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Reservation not found with ID: " + id));
-        return mapToResponse(reservation);
+
+        ReservationResponse response = mapToResponse(reservation);
+
+        if (reservation.getStatus() == ReservationStatus.CONFIRMED) {
+            List<ReservationConfirmationDto.StallInfo> stallInfo = getStallsInfoByIds(
+                    List.of(reservation.getStallId()));
+
+            response.setStalls(stallInfo.stream()
+                    .map(s -> ReservationResponse.StallSummary.builder()
+                            .id(s.getId())
+                            .stallName(s.getStallName())
+                            .size(s.getSize())
+                            .dimensions(s.getDimensions())
+                            .price(s.getPrice())
+                            .build())
+                    .collect(Collectors.toList()));
+        }
+
+        return response;
     }
 
-    /**
-     * Get all reservations for a user
-     */
     public List<ReservationResponse> getReservationsByUserId(Long userId) {
-        List<Reservation> reservations = reservationRepository.findByUserIdOrderByCreatedAtDesc(userId);
-        return reservations.stream()
+        return reservationRepository.findByUserIdOrderByCreatedAtDesc(userId)
+                .stream()
                 .map(this::mapToResponse)
                 .collect(Collectors.toList());
     }
 
-    /**
-     * Update reservation
-     */
-    @Transactional
     public ReservationResponse updateReservation(Long id, UpdateReservationRequest request) {
         Reservation reservation = reservationRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Reservation not found with ID: " + id));
@@ -218,14 +256,9 @@ public class ReservationService {
             reservation.setStatus(ReservationStatus.valueOf(request.getStatus().toUpperCase()));
         }
 
-        Reservation updated = reservationRepository.save(reservation);
-        return mapToResponse(updated);
+        return mapToResponse(reservationRepository.save(reservation));
     }
 
-    /**
-     * Cancel reservation
-     */
-    @Transactional
     public void cancelReservation(Long id, Long userId) {
         Reservation reservation = reservationRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Reservation not found with ID: " + id));
@@ -234,53 +267,75 @@ public class ReservationService {
             throw new BadRequestException("Reservation is already cancelled");
         }
 
-        // Update stall status back to available
-        stallServiceClient.updateStallStatus(reservation.getStallId(), "AVAILABLE");
+        try {
+            stallServiceClient.updateStallStatus(reservation.getStallId(), "AVAILABLE");
+        } catch (Exception e) {
+            log.error("Failed to update stall status for stall: {}", reservation.getStallId(), e);
+        }
 
-        // Cancel reservation
         reservation.setStatus(ReservationStatus.CANCELLED);
         reservation.setCancelledAt(LocalDateTime.now());
         reservation.setCancelledBy(userId);
+        reservation.setQrCodeUrl(null);
 
         reservationRepository.save(reservation);
-
-        // Publish event
+        lockService.releaseLock(reservation.getStallId().toString());
         eventPublisher.publishReservationCancelled(id, reservation.getUserId(), reservation.getStallId());
 
-        log.info("Reservation {} cancelled by user {}", id, userId);
+        log.info("✅ Reservation {} cancelled by user {}", id, userId);
     }
 
-    /**
-     * Clean up expired holds (scheduled job)
-     */
-    @Transactional
     public void cleanupExpiredHolds() {
-        List<Reservation> expiredReservations = reservationRepository
-                .findExpiredHolds(LocalDateTime.now());
+        List<Reservation> expiredReservations = reservationRepository.findExpiredHolds(LocalDateTime.now());
+        log.info("Cleaning up {} expired holds", expiredReservations.size());
 
-        for (Reservation reservation : expiredReservations) {
+        expiredReservations.forEach(reservation -> {
             reservation.setStatus(ReservationStatus.EXPIRED);
+            reservation.setQrCodeUrl(null);
             reservationRepository.save(reservation);
-
             lockService.releaseLock(reservation.getStallId().toString());
-
-            log.info("Expired hold cleaned up: {}", reservation.getId());
-        }
+            log.info("Expired hold cleaned up: reservationId={}, stallId={}",
+                    reservation.getId(), reservation.getStallId());
+        });
     }
 
-    /**
-     * Map entity to response DTO
-     */
     private ReservationResponse mapToResponse(Reservation reservation) {
         return ReservationResponse.builder()
                 .id(reservation.getId())
                 .userId(reservation.getUserId())
+                .userEmail(reservation.getUserEmail())
+                .businessName(reservation.getBusinessName())
                 .stallId(reservation.getStallId())
                 .status(reservation.getStatus().name())
+                .totalAmount(reservation.getTotalAmount())
                 .notes(reservation.getNotes())
                 .createdAt(reservation.getCreatedAt())
                 .confirmedAt(reservation.getConfirmedAt())
                 .qrCodeUrl(reservation.getQrCodeUrl())
                 .build();
+    }
+
+    // ✅ FIXED: Explicit type for StallResponse
+    private List<ReservationConfirmationDto.StallInfo> getStallsInfoByIds(List<Long> stallIds) {
+        try {
+            List<StallResponse> stallResponses = stallServiceClient.getStallsByIds(stallIds);
+
+            return stallResponses.stream()
+                    .map(stall -> ReservationConfirmationDto.StallInfo.builder()
+                            .id(stall.getId())
+                            .stallName(stall.getStallName())
+                            .size(stall.getSize())
+                            .dimensions(stall.getDimensions())
+                            .price(stall.getPrice())
+                            .build())
+                    .collect(Collectors.toList());
+        } catch (Exception e) {
+            log.error("Failed to get stall information for IDs: {}", stallIds, e);
+            return List.of();
+        }
+    }
+
+    private String generateConfirmationCode(Long reservationId) {
+        return String.format("CIBF-%04d", reservationId);
     }
 }

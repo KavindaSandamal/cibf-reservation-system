@@ -6,33 +6,29 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 import java.math.BigDecimal;
-import java.time.LocalDateTime;
 import java.util.List;
 
+/**
+ * DTO for sending reservation confirmation email
+ */
 @Data
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class ReservationResponse {
+public class ReservationConfirmationDto {
 
-    private Long id;
-    private Long userId;
-    private Long stallId;
+    private Long reservationId;
     private String userEmail;
     private String businessName;
-    private String status;
+    private List<StallInfo> stalls;
     private BigDecimal totalAmount;
-    private String notes;
-    private LocalDateTime createdAt;
-    private LocalDateTime confirmedAt;
     private String qrCodeUrl;
-    private List<StallSummary> stalls;
 
     @Data
     @Builder
     @NoArgsConstructor
     @AllArgsConstructor
-    public static class StallSummary {
+    public static class StallInfo {
         private Long id;
         private String stallName;
         private String size;
