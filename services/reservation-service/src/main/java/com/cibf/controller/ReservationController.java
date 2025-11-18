@@ -2,6 +2,7 @@ package com.cibf.controller;
 
 import com.cibf.dto.*;
 import com.cibf.service.ReservationService;
+
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
@@ -32,9 +33,9 @@ public class ReservationController {
     @PreAuthorize("hasRole('VENDOR')")
     @Operation(summary = "Hold stalls temporarily", description = "Hold 1-3 stalls for 5 minutes")
     @ApiResponses(value = {
-        @ApiResponse(responseCode = "200", description = "Stalls held successfully"),
-        @ApiResponse(responseCode = "400", description = "Invalid request or stall limit exceeded"),
-        @ApiResponse(responseCode = "409", description = "Stall not available")
+            @ApiResponse(responseCode = "200", description = "Stalls held successfully"),
+            @ApiResponse(responseCode = "400", description = "Invalid request or stall limit exceeded"),
+            @ApiResponse(responseCode = "409", description = "Stall not available")
     })
     public ResponseEntity<HoldStallResponse> holdStalls(
             @Valid @RequestBody HoldStallRequest request) {
@@ -47,23 +48,23 @@ public class ReservationController {
     @PreAuthorize("hasRole('VENDOR')")
     @Operation(summary = "Confirm reservation", description = "Confirm reservation with hold token")
     @ApiResponses(value = {
-        @ApiResponse(responseCode = "201", description = "Reservation confirmed successfully"),
-        @ApiResponse(responseCode = "400", description = "Invalid or expired hold token"),
-        @ApiResponse(responseCode = "404", description = "Hold token not found")
+            @ApiResponse(responseCode = "201", description = "Reservation confirmed successfully"),
+            @ApiResponse(responseCode = "400", description = "Invalid or expired hold token"),
+            @ApiResponse(responseCode = "404", description = "Hold token not found")
     })
-    public ResponseEntity<List<ReservationResponse>> confirmReservation(
+    public ResponseEntity<ReservationResponse> confirmReservation(
             @Valid @RequestBody ConfirmReservationRequest request) {
         log.info("Confirm reservation request for user: {}", request.getUserId());
-        List<ReservationResponse> responses = reservationService.confirmReservation(request);
-        return ResponseEntity.status(HttpStatus.CREATED).body(responses);
+        ReservationResponse response = reservationService.confirmReservation(request);
+        return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
 
     @GetMapping("/{id}")
     @PreAuthorize("hasAnyRole('VENDOR', 'EMPLOYEE')")
     @Operation(summary = "Get reservation by ID", description = "Retrieve reservation details")
     @ApiResponses(value = {
-        @ApiResponse(responseCode = "200", description = "Reservation found"),
-        @ApiResponse(responseCode = "404", description = "Reservation not found")
+            @ApiResponse(responseCode = "200", description = "Reservation found"),
+            @ApiResponse(responseCode = "404", description = "Reservation not found")
     })
     public ResponseEntity<ReservationResponse> getReservationById(
             @Parameter(description = "Reservation ID") @PathVariable Long id) {
@@ -87,8 +88,8 @@ public class ReservationController {
     @PreAuthorize("hasRole('VENDOR')")
     @Operation(summary = "Update reservation", description = "Update reservation details")
     @ApiResponses(value = {
-        @ApiResponse(responseCode = "200", description = "Reservation updated"),
-        @ApiResponse(responseCode = "404", description = "Reservation not found")
+            @ApiResponse(responseCode = "200", description = "Reservation updated"),
+            @ApiResponse(responseCode = "404", description = "Reservation not found")
     })
     public ResponseEntity<ReservationResponse> updateReservation(
             @Parameter(description = "Reservation ID") @PathVariable Long id,
@@ -102,8 +103,8 @@ public class ReservationController {
     @PreAuthorize("hasRole('VENDOR')")
     @Operation(summary = "Cancel reservation", description = "Cancel an existing reservation")
     @ApiResponses(value = {
-        @ApiResponse(responseCode = "204", description = "Reservation cancelled"),
-        @ApiResponse(responseCode = "404", description = "Reservation not found")
+            @ApiResponse(responseCode = "204", description = "Reservation cancelled"),
+            @ApiResponse(responseCode = "404", description = "Reservation not found")
     })
     public ResponseEntity<Void> cancelReservation(
             @Parameter(description = "Reservation ID") @PathVariable Long id,
