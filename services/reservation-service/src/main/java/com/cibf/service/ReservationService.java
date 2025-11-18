@@ -202,7 +202,7 @@ public class ReservationService {
                         .id(s.getId())
                         .stallName(s.getStallName())
                         .size(s.getSize())
-                        .dimensions(s.getDimensions())
+                        .dimension(s.getDimension())
                         .price(s.getPrice())
                         .build())
                 .collect(Collectors.toList()));
@@ -228,7 +228,7 @@ public class ReservationService {
                             .id(s.getId())
                             .stallName(s.getStallName())
                             .size(s.getSize())
-                            .dimensions(s.getDimensions())
+                            .dimension(s.getDimension())
                             .price(s.getPrice())
                             .build())
                     .collect(Collectors.toList()));
@@ -325,7 +325,7 @@ public class ReservationService {
                             .id(stall.getId())
                             .stallName(stall.getStallName())
                             .size(stall.getSize())
-                            .dimensions(stall.getDimensions())
+                            .dimension(stall.getDimension())
                             .price(stall.getPrice())
                             .build())
                     .collect(Collectors.toList());
