@@ -13,6 +13,7 @@ public class StallMapDTO {
     private Long id;
     private String stallName;
     private Stall.StallSize size;
+    private String dimension;
     private Double locationX;
     private Double locationY;
     private Stall.StallStatus status;
@@ -21,6 +22,7 @@ public class StallMapDTO {
         this.id = stall.getId();
         this.stallName = stall.getStallName();
         this.size = stall.getSize();
+        this.dimension = stall.getDimension();
         this.locationX = stall.getLocationX();
         this.locationY = stall.getLocationY();
         this.status = stall.getStatus();
