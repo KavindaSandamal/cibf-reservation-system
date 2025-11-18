@@ -15,8 +15,10 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/api/stalls")
@@ -34,6 +36,22 @@ public class StallController {
     public ResponseEntity<List<StallResponseDTO>> getAllStalls() {
         log.info("REST request to get all stalls");
         List<StallResponseDTO> stalls = stallService.getAllStalls();
+        return ResponseEntity.ok(stalls);
+    }
+
+    /**
+     * Get stalls by multiple IDs - MUST BE BEFORE /{id} to avoid routing conflicts
+     */
+    @GetMapping("/by-ids")
+    public ResponseEntity<List<StallResponseDTO>> getStallsByIds(@RequestParam String ids) {
+        log.info("REST request to get stalls by IDs: {}", ids);
+
+        List<Long> stallIds = Arrays.stream(ids.split(","))
+                .map(String::trim)
+                .map(Long::parseLong)
+                .collect(Collectors.toList());
+
+        List<StallResponseDTO> stalls = stallService.getStallsByIds(stallIds);
         return ResponseEntity.ok(stalls);
     }
 
@@ -90,18 +108,12 @@ public class StallController {
     /**
      * Check if stall is available
      */
-    // @GetMapping("/{id}/available")
-    // public ResponseEntity<Map<String, Boolean>> checkStallAvailability(@PathVariable Long id) {
-    //     log.info("REST request to check stall availability: {}", id);
-    //     boolean isAvailable = stallService.isStallAvailable(id);
-    //     return ResponseEntity.ok(Map.of("available", isAvailable));
-    // }
     @GetMapping("/{id}/available")
-public boolean checkStallAvailability(@PathVariable Long id) {
-    log.info("REST request to check stall availability: {}", id);
-    return stallService.isStallAvailable(id);
-}
-
+    public ResponseEntity<Map<String, Boolean>> checkStallAvailability(@PathVariable Long id) {
+        log.info("REST request to check stall availability: {}", id);
+        boolean isAvailable = stallService.isStallAvailable(id);
+        return ResponseEntity.ok(Map.of("available", isAvailable));
+    }
 
     /**
      * Get stall statistics (for dashboard)
