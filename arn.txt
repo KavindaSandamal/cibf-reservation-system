@@ -6,10 +6,10 @@ sendgrid code - FUL9997KMT42549EL4E6N355
 app pss -mpcg gwvl illv tsmt
 
 $registerBody = @{
-    username = "imksandamal99@gmail.com"
-    password = "sandamal123"
-    businessName = "KS Books"
-    contactNumber = "+94715691912"
+    username = "groupbuild928@gmail.com"
+    password = "group123"
+    businessName = "Group Books"
+    contactNumber = "+94715691913"
     address = "Colombo"
 } | ConvertTo-Json
 
@@ -130,12 +130,12 @@ $baseUrl = "http://localhost:8082/api/stalls"
 
 # Stall data
 $stallBody = @{
-    stallName  = "C10"
-    size       = "SMALL"
-    dimension  = "10x10"
-    locationX  = 700
+    stallName  = "C11"
+    size       = "LARGE"
+    dimension  = "20x20"
+    locationX  = 800
     locationY  = 200
-    price      = 15000
+    price      = 25000
     status     = "AVAILABLE"
 } | ConvertTo-Json
 
