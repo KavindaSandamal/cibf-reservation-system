@@ -37,7 +37,7 @@ Write-Host ""
 
 $holdBody = @{
     userId = $userId
-    stallIds = @(5)  # Select 1 stall
+    stallIds = @(6)  # Select 1 stall
     businessName = "KS Books"
 } | ConvertTo-Json
 
