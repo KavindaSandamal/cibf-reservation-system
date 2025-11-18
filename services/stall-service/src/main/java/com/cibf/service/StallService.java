@@ -69,6 +69,24 @@ public class StallService {
     }
 
     /**
+     * Get stalls by multiple IDs
+     */
+    @Transactional(readOnly = true)
+    public List<StallResponseDTO> getStallsByIds(List<Long> stallIds) {
+        log.info("Fetching stalls by IDs: {}", stallIds);
+
+        List<Stall> stalls = stallRepository.findAllById(stallIds);
+
+        if (stalls.size() != stallIds.size()) {
+            log.warn("Some stalls not found. Requested: {}, Found: {}", stallIds.size(), stalls.size());
+        }
+
+        return stalls.stream()
+                .map(StallResponseDTO::new)
+                .collect(Collectors.toList());
+    }
+
+    /**
      * Get stall by ID
      */
     @Transactional(readOnly = true)
