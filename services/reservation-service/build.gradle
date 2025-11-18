@@ -28,6 +28,17 @@ dependencyManagement {
     }
 }
 
+sourceSets {
+    main {
+        java {
+            srcDirs = ['src/main/java']
+        }
+        resources {
+            srcDirs = ['src/main/resources']
+        }
+    }
+}
+
 dependencies {
     // --- Spring Boot Starters ---
     // Spring Web: Provides REST capabilities (Tomcat, Spring MVC)
@@ -55,6 +66,18 @@ dependencies {
     implementation 'io.jsonwebtoken:jjwt-api:0.11.5' 
     runtimeOnly 'io.jsonwebtoken:jjwt-impl:0.11.5'
     runtimeOnly 'io.jsonwebtoken:jjwt-jackson:0.11.5'
+
+    // Spring Boot Mail Starter
+    implementation 'org.springframework.boot:spring-boot-starter-mail'
+    
+    
+    // QR Code generation (optional - for embedded QR codes)
+    implementation 'com.google.zxing:core:3.5.1'
+    implementation 'com.google.zxing:javase:3.5.1'
+
+    // AWS S3 SDK
+    implementation platform('software.amazon.awssdk:bom:2.20.0')
+    implementation 'software.amazon.awssdk:s3'
     
     // --- Utilities ---
     compileOnly 'org.projectlombok:lombok'
