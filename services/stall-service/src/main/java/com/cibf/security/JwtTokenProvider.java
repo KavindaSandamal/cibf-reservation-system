@@ -43,11 +43,22 @@ public class JwtTokenProvider {
     }
 
     public boolean validateToken(String token) {
-        Jwts.parserBuilder()
-                .setSigningKey(getSigningKey())
-                .build()
-                .parseClaimsJws(token);
-        return true;
+        try {
+            Jwts.parserBuilder()
+                    .setSigningKey(getSigningKey())
+                    .build()
+                    .parseClaimsJws(token);
+            return true;
+        } catch (io.jsonwebtoken.security.SecurityException | io.jsonwebtoken.MalformedJwtException e) {
+            System.err.println("Invalid JWT signature or malformed token: " + e.getMessage());
+        } catch (io.jsonwebtoken.ExpiredJwtException e) {
+            System.err.println("Expired JWT token: " + e.getMessage());
+        } catch (io.jsonwebtoken.UnsupportedJwtException e) {
+            System.err.println("Unsupported JWT token: " + e.getMessage());
+        } catch (IllegalArgumentException e) {
+            System.err.println("JWT claims string is empty: " + e.getMessage());
+        }
+        return false;
     }
 
     private Key getSigningKey() {

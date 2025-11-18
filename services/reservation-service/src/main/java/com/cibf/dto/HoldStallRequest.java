@@ -1,14 +1,16 @@
 package com.cibf.dto;
 
+import lombok.AllArgsConstructor;
+import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
-import lombok.AllArgsConstructor;
+
 import jakarta.validation.constraints.NotNull;
-import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.Size;
 import java.util.List;
 
 @Data
+@Builder
 @NoArgsConstructor
 @AllArgsConstructor
 public class HoldStallRequest {
@@ -16,7 +18,10 @@ public class HoldStallRequest {
     @NotNull(message = "User ID is required")
     private Long userId;
 
-    @NotEmpty(message = "Stall IDs cannot be empty")
-    @Size(min = 1, max = 3, message = "You can hold between 1 and 3 stalls")
+    @NotNull(message = "Stall IDs are required")
+    @Size(min = 1, max = 3, message = "Must select 1-3 stalls")
     private List<Long> stallIds;
+
+    @NotNull(message = "Business name is required")
+    private String businessName;
 }
