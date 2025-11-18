@@ -12,6 +12,6 @@ public class StallInfoDTO {
     private Long id;
     private String stallName;
     private String size;
-    private String dimensions;
+    private String dimension;
     private BigDecimal price;
 }

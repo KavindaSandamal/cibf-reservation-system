@@ -17,11 +17,11 @@ Write-Host "--- STEP 1: Authentication ---" -ForegroundColor Yellow
 Write-Host ""
 
 # Option A: Use existing token
-$existingToken = "eyJhbGciOiJIUzUxMiJ9.eyJzdWIiOiJpbWtzYW5kYW1hbDk5QGdtYWlsLmNvbSIsImlhdCI6MTc2MzQ1NTk2OCwiZXhwIjoxNzYzNTQyMzY4fQ.p8ObmiqeY4DFhDFixgV_MQuLYhim7bOWR0gsbPu25HN6hYRanMutjcFyMyCBPd2EU1YyCPujJn2DYiYoF9hlcQ"
+$existingToken = "eyJhbGciOiJIUzUxMiJ9.eyJzdWIiOiJncm91cGJ1aWxkOTI4QGdtYWlsLmNvbSIsImlhdCI6MTc2MzQ4NzE4OSwiZXhwIjoxNzYzNTczNTg5fQ.6fr6FJYY5rDfLqg_aFCY88qfFlzyQGQKSBsU7R1SzICDA8RFX_hBHsGNAU6stMO5373IQ9dSZfl0oeQUFYcuLA"
 
 # Using existing token
 $token = $existingToken
-$userId = 19  # Replace with your actual user ID
+$userId = 20 # Replace with your actual user ID
 
 Write-Host "[SUCCESS] Using existing token" -ForegroundColor Green
 Write-Host "   User ID: $userId" -ForegroundColor Gray
@@ -37,7 +37,7 @@ Write-Host ""
 
 $holdBody = @{
     userId = $userId
-    stallIds = @(6)  # Select 1 stall
+    stallIds = @(7)  # Select 1 stall
     businessName = "KS Books"
 } | ConvertTo-Json
 
@@ -96,8 +96,8 @@ Write-Host ""
 $confirmBody = @{
     userId = $userId
     holdToken = $holdToken
-    businessName = "KS Books"
-    userEmail = "imksandamal99@gmail.com"  
+    businessName = "Group Books"
+    userEmail = "groupbuild928@gmail.com"  
 } | ConvertTo-Json
 
 try {
@@ -168,7 +168,7 @@ try {
     Write-Host "                  CHECK YOUR EMAIL!" -ForegroundColor Green
     Write-Host "================================================================" -ForegroundColor Green
     Write-Host ""
-    Write-Host "   To: info.kavindasandamal@gmail.com" -ForegroundColor White
+    Write-Host "   To: groupbuild928@gmail.com" -ForegroundColor White
     Write-Host "   Subject: Colombo International Bookfair - Reservation Confirmed #$($confirmResponse.id)" -ForegroundColor White
     Write-Host ""
     Write-Host "   The email includes:" -ForegroundColor Gray
