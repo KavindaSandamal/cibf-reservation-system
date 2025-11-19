@@ -6,8 +6,11 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
+import com.cibf.entity.ReservationStatus;
 
 import jakarta.persistence.*;
+
+import java.beans.Transient;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
@@ -123,7 +126,7 @@ public class Reservation {
      * User who cancelled the reservation
      */
     @Column(name = "cancelled_by")
-    private Long cancelledBy;
+    private String cancelledBy;
 
     /**
      * Reason for cancellation
