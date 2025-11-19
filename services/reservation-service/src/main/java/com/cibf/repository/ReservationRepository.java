@@ -1,13 +1,9 @@
-// ============================================
-// ReservationRepository.java - UPDATED
-// ============================================
-// FILE: services/reservation-service/src/main/java/com/cibf/repository/ReservationRepository.java
-
 package com.cibf.repository;
 
 import com.cibf.entity.Reservation;
 import com.cibf.entity.ReservationStatus;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
@@ -17,11 +13,10 @@ import java.util.List;
 import java.util.Optional;
 
 @Repository
-public interface ReservationRepository extends JpaRepository<Reservation, Long> {
+public interface ReservationRepository extends JpaRepository<Reservation, Long>, JpaSpecificationExecutor<Reservation> {
 
        /**
-        * ✅ CHANGED: Returns List<Reservation> instead of Optional<Reservation>
-        * This is because one hold token can have multiple reservations (one per stall)
+        * Find all reservations by user ID and hold token
         */
        List<Reservation> findByUserIdAndHoldToken(Long userId, String holdToken);
 
@@ -31,13 +26,18 @@ public interface ReservationRepository extends JpaRepository<Reservation, Long> 
        List<Reservation> findByUserIdOrderByCreatedAtDesc(Long userId);
 
        /**
+        * Find all reservations by user ID
+        */
+       List<Reservation> findByUserId(Long userId);
+
+       /**
         * Count active reservations by user ID
         */
        @Query("SELECT COUNT(r) FROM Reservation r WHERE r.userId = :userId AND r.status IN ('PENDING', 'CONFIRMED')")
        long countActiveReservationsByUserId(@Param("userId") Long userId);
 
        /**
-        * Find expired holds (PENDING status with expired holdExpiresAt)
+        * Find expired holds
         */
        @Query("SELECT r FROM Reservation r WHERE r.status = 'PENDING' AND r.holdExpiresAt < :now")
        List<Reservation> findExpiredHolds(@Param("now") LocalDateTime now);
@@ -53,7 +53,7 @@ public interface ReservationRepository extends JpaRepository<Reservation, Long> 
        List<Reservation> findByUserIdAndStatus(Long userId, ReservationStatus status);
 
        /**
-        * Find reservation by stall ID
+        * Find reservation by stall ID and status
         */
        Optional<Reservation> findByStallIdAndStatus(Long stallId, ReservationStatus status);
 
@@ -90,8 +90,41 @@ public interface ReservationRepository extends JpaRepository<Reservation, Long> 
        long countByStatus(ReservationStatus status);
 
        /**
-        * Find recent reservations (last N days)
+        * Find recent reservations
         */
        @Query("SELECT r FROM Reservation r WHERE r.createdAt >= :since ORDER BY r.createdAt DESC")
        List<Reservation> findRecentReservations(@Param("since") LocalDateTime since);
+
+       /**
+        * Find top 10 recent reservations
+        */
+       List<Reservation> findTop10ByOrderByCreatedAtDesc();
+
+       /**
+        * Find reservations by status and date range
+        */
+       List<Reservation> findByStatusAndCreatedAtBetween(
+                     ReservationStatus status,
+                     LocalDateTime startDate,
+                     LocalDateTime endDate);
+
+       /**
+        * Find reservations by date range
+        */
+       List<Reservation> findByCreatedAtBetween(LocalDateTime startDate, LocalDateTime endDate);
+
+       /**
+        * Count reservations by date range
+        */
+       long countByCreatedAtBetween(LocalDateTime startDate, LocalDateTime endDate);
+
+       /**
+        * Find reservations by user email
+        */
+       List<Reservation> findByUserEmailContainingIgnoreCase(String email);
+
+       /**
+        * Find reservations by business name
+        */
+       List<Reservation> findByBusinessNameContainingIgnoreCase(String businessName);
 }
