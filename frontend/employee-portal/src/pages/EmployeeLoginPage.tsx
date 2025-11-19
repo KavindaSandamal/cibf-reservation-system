@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { useEmployeeAuth } from '../contexts/EmployeeAuthContext';
 
@@ -148,6 +148,16 @@ const EmployeeLoginPage: React.FC = () => {
                 <p className="mt-1 text-sm text-slate-300">Access your employee dashboard</p>
               </div>
 
+              {/* Back to Welcome Link */}
+              <div className="mb-6 text-center">
+                <Link
+                  to="/employee"
+                  className="text-sm text-indigo-400 hover:text-indigo-300 hover:underline"
+                >
+                  ← Back to Welcome
+                </Link>
+              </div>
+
               {/* Form */}
               <form onSubmit={handleSubmit} className="space-y-5">
                 {/* Email */}
@@ -263,6 +273,14 @@ const EmployeeLoginPage: React.FC = () => {
                   </div>
                 )}
               </form>
+
+              {/* Register Link */}
+              <p className="mt-6 text-center text-sm text-slate-400">
+                Don't have an account?{' '}
+                <Link to="/employee/register" className="font-semibold text-indigo-400 hover:text-indigo-300 hover:underline">
+                  Create account
+                </Link>
+              </p>
             </div>
 
             <p className="mt-6 text-center text-xs text-slate-400">
