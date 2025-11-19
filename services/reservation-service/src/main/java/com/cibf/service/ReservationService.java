@@ -37,9 +37,6 @@ public class ReservationService {
     private final QRCodeService qrCodeService;
     private final EmailService emailService;
 
-    /**
-     * Hold stalls temporarily
-     */
     public HoldStallResponse holdStalls(HoldStallRequest request) {
         Long userId = request.getUserId();
         List<Long> stallIds = request.getStallIds();
@@ -94,13 +91,9 @@ public class ReservationService {
         return new HoldStallResponse(holdToken, expiresAt);
     }
 
-    /**
-     * Confirm reservation - Generate QR code and send email
-     */
     public ReservationResponse confirmReservation(ConfirmReservationRequest request) {
         log.info("Confirming reservation for user: {}, holdToken: {}", request.getUserId(), request.getHoldToken());
 
-        // ✅ FIXED: Changed to List<Reservation>
         List<Reservation> reservations = reservationRepository
                 .findByUserIdAndHoldToken(request.getUserId(), request.getHoldToken());
 
@@ -192,7 +185,6 @@ public class ReservationService {
             log.error("❌ Failed to send email notification", e);
         }
 
-        // ✅ FIXED: Removed third parameter (reservationId)
         eventPublisher.publishReservationConfirmed(mainReservation.getUserId(), stallIds);
 
         ReservationResponse response = mapToResponse(mainReservation);
@@ -240,7 +232,7 @@ public class ReservationService {
     public List<ReservationResponse> getReservationsByUserId(Long userId) {
         return reservationRepository.findByUserIdOrderByCreatedAtDesc(userId)
                 .stream()
-                .map(this::mapToResponse)
+                .map(reservation -> mapToResponse(reservation))
                 .collect(Collectors.toList());
     }
 
@@ -275,7 +267,7 @@ public class ReservationService {
 
         reservation.setStatus(ReservationStatus.CANCELLED);
         reservation.setCancelledAt(LocalDateTime.now());
-        reservation.setCancelledBy(userId);
+        reservation.setCancelledBy(userId.toString()); // Convert Long to String
         reservation.setQrCodeUrl(null);
 
         reservationRepository.save(reservation);
@@ -315,7 +307,6 @@ public class ReservationService {
                 .build();
     }
 
-    // ✅ FIXED: Explicit type for StallResponse
     private List<ReservationConfirmationDto.StallInfo> getStallsInfoByIds(List<Long> stallIds) {
         try {
             List<StallResponse> stallResponses = stallServiceClient.getStallsByIds(stallIds);
@@ -333,9 +324,5 @@ public class ReservationService {
             log.error("Failed to get stall information for IDs: {}", stallIds, e);
             return List.of();
         }
-    }
-
-    private String generateConfirmationCode(Long reservationId) {
-        return String.format("CIBF-%04d", reservationId);
     }
 }

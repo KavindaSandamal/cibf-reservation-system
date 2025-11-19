@@ -17,7 +17,7 @@ Write-Host "--- STEP 1: Authentication ---" -ForegroundColor Yellow
 Write-Host ""
 
 # Option A: Use existing token
-$existingToken = "eyJhbGciOiJIUzUxMiJ9.eyJzdWIiOiJncm91cGJ1aWxkOTI4QGdtYWlsLmNvbSIsImlhdCI6MTc2MzQ4NzE4OSwiZXhwIjoxNzYzNTczNTg5fQ.6fr6FJYY5rDfLqg_aFCY88qfFlzyQGQKSBsU7R1SzICDA8RFX_hBHsGNAU6stMO5373IQ9dSZfl0oeQUFYcuLA"
+$existingToken = "eyJhbGciOiJIUzUxMiJ9.eyJzdWIiOiJncm91cGJ1aWxkOTI4QGdtYWlsLmNvbSIsImlhdCI6MTc2MzU3MzI4MSwiZXhwIjoxNzYzNjU5NjgxfQ.G_Q3DokzKwxEFlfFQ28nhre1N_ZToOqs8ve85TKI51R7EpXOQoTiW-yAER7uvJsg5s3TzImpJZWrCUE0dvytQA"
 
 # Using existing token
 $token = $existingToken
@@ -37,8 +37,8 @@ Write-Host ""
 
 $holdBody = @{
     userId = $userId
-    stallIds = @(7)  # Select 1 stall
-    businessName = "KS Books"
+    stallIds = @(8)  # Select 1 stall
+    businessName = "Group Books"
 } | ConvertTo-Json
 
 $headers = @{
