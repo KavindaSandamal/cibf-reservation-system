@@ -6,10 +6,10 @@ sendgrid code - FUL9997KMT42549EL4E6N355
 app pss -mpcg gwvl illv tsmt
 
 $registerBody = @{
-    username = "imksandamal99@gmail.com"
-    password = "sandamal123"
-    businessName = "KS Books"
-    contactNumber = "+94715691912"
+    username = "groupbuild928@gmail.com"
+    password = "group123"
+    businessName = "Group Books"
+    contactNumber = "+94715691913"
     address = "Colombo"
 } | ConvertTo-Json
 
@@ -123,19 +123,19 @@ try {
 # -----------------------------
 
 # Replace with your actual JWT token
-$token = "eyJhbGciOiJIUzUxMiJ9.eyJzdWIiOiJUZXN0ZW1wbG95ZWUzQGNpYmYuY29tIiwiaWF0IjoxNzYzNDUwOTMxLCJleHAiOjE3NjM1MzczMzF9.LPlApqyxGQiWA1btG1z1iPBEyNevfR5QThidiaxLqB0KZa_O1KjKPKmdwNrNGxGsWBfMXJ8u8gPoTPk0C8TsGg"
+$token = "eyJhbGciOiJIUzUxMiJ9.eyJzdWIiOiJUZXN0ZW1wbG95ZWUzQGNpYmYuY29tIiwiaWF0IjoxNzYzNTczMDUwLCJleHAiOjE3NjM2NTk0NTB9.iYgAr7XwYAifT-mn_S0PJiFr5PPpsJWFl0KAl5PcJGxErN2M1mM-tra-TAvkKbIRUfTUw7Oba5CWxxW-Aw2-lA"
 
 # API base URL
 $baseUrl = "http://localhost:8082/api/stalls"
 
 # Stall data
 $stallBody = @{
-    stallName  = "C10"
-    size       = "SMALL"
-    dimension  = "10x10"
-    locationX  = 700
+    stallName  = "C12"
+    size       = "LARGE"
+    dimension  = "20x20"
+    locationX  = 850
     locationY  = 200
-    price      = 15000
+    price      = 25000
     status     = "AVAILABLE"
 } | ConvertTo-Json
 
@@ -164,3 +164,29 @@ try {
     Write-Host $_.Exception.Message -ForegroundColor Red
 }
 
+...................
+package com.cibf.security;
+
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.web.servlet.config.annotation.CorsRegistry;
+import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
+
+@Configuration
+public class CorsConfig {
+
+    @Bean
+    public WebMvcConfigurer corsConfigurer() {
+        return new WebMvcConfigurer() {
+            @Override
+            public void addCorsMappings(CorsRegistry registry) {
+                registry.addMapping("/**")
+                        .allowedOrigins("http://localhost:3000")
+                        .allowedMethods("GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS")
+                        .allowedHeaders("*")
+                        .allowCredentials(true)
+                        .maxAge(3600);
+            }
+        };
+    }
+}
