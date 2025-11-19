@@ -1,6 +1,5 @@
 
 services:
-  # Remove the postgres service since we're using RDS
 
   # Authentication Service
   auth-service:

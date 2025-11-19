@@ -82,7 +82,7 @@ public class EmailService {
                     """,
                     stall.getStallName(),
                     stall.getSize(),
-                    stall.getDimensions(),
+                    stall.getDimension(),
                     stall.getPrice()));
         }
 
@@ -116,7 +116,7 @@ public class EmailService {
                             <tr style="background: #f2f2f2;">
                                 <th>Stall</th>
                                 <th>Size</th>
-                                <th>Dimensions</th>
+                                <th>Dimension</th>
                                 <th>Price</th>
                             </tr>
                             %s
