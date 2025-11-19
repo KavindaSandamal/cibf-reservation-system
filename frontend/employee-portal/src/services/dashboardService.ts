@@ -51,8 +51,14 @@ export const dashboardService = {
         reservationsByDate: summary.reservationsByDate || [],
       };
     } catch (error: any) {
-      if (error.code === 'ERR_NETWORK' || error.message?.includes('Network Error') || error.message?.includes('ERR_CONNECTION_REFUSED')) {
-        console.warn('Backend unavailable, returning mock dashboard stats');
+      // Handle network errors, connection refused, or server errors (500, 404, etc.)
+      if (
+        error.code === 'ERR_NETWORK' || 
+        error.message?.includes('Network Error') || 
+        error.message?.includes('ERR_CONNECTION_REFUSED') ||
+        error.response?.status >= 400
+      ) {
+        console.warn('Backend unavailable or endpoint not found, returning mock dashboard stats', error.response?.status || error.message);
         return getMockDashboardStats();
       }
       throw error;
