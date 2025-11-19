@@ -2,7 +2,9 @@ import React from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import ProtectedRoute from './components/ProtectedRoute';
 import Layout from './components/Layout';
+import EmployeeWelcomePage from './pages/EmployeeWelcomePage';
 import EmployeeLoginPage from './pages/EmployeeLoginPage';
+import EmployeeRegisterPage from './pages/EmployeeRegisterPage';
 
 // Placeholder pages - will be implemented
 const EmployeeDashboardPage = React.lazy(() => import('./pages/EmployeeDashboardPage'));
@@ -14,7 +16,9 @@ const App: React.FC = () => {
   return (
     <Routes>
       {/* Public routes */}
+      <Route path="/employee" element={<EmployeeWelcomePage />} />
       <Route path="/employee/login" element={<EmployeeLoginPage />} />
+      <Route path="/employee/register" element={<EmployeeRegisterPage />} />
       
       {/* Protected routes */}
       <Route
@@ -67,8 +71,7 @@ const App: React.FC = () => {
       />
       
       {/* Default redirect */}
-      <Route path="/" element={<Navigate to="/employee/login" replace />} />
-      <Route path="/employee" element={<Navigate to="/employee/dashboard" replace />} />
+      <Route path="/" element={<Navigate to="/employee" replace />} />
     </Routes>
   );
 };

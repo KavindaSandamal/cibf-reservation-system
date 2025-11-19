@@ -6,6 +6,7 @@ import org.springframework.core.annotation.Order;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.web.cors.CorsConfigurationSource;
 
 /**
  * High-priority configuration to handle public, unauthenticated, and
@@ -21,19 +22,24 @@ public class PublicSecurityConfig {
     //Defines a permissive filter chain for public endpoints.
 
     @Bean
-    public SecurityFilterChain publicSecurityFilterChain(HttpSecurity http) throws Exception {
+    public SecurityFilterChain publicSecurityFilterChain(
+            HttpSecurity http,
+            CorsConfigurationSource corsConfigurationSource) throws Exception {
         http
-                // Explicitly disable CSRF using the static method
+                // 1. Apply CORS configuration (CRITICAL for public endpoints)
+                .cors(cors -> cors.configurationSource(corsConfigurationSource))
+
+                // 2. Explicitly disable CSRF using the static method
                 .csrf(AbstractHttpConfigurer::disable)
 
-                // Only match the public paths that need to be excluded from main
+                // 3. Only match the public paths that need to be excluded from main
                 // security - using securityMatcher for Spring Security 6.x
                 .securityMatcher("/api/auth/**", "/api/public/**", "/swagger-ui/**", "/v3/api-docs/**")
 
-                // Allow all requests matching the securityMatcher
+                // 4. Allow all requests matching the securityMatcher
                 .authorizeHttpRequests(authorize -> authorize.anyRequest().permitAll())
 
-                // Disable default form/basic login for these routes
+                // 5. Disable default form/basic login for these routes
                 .httpBasic(AbstractHttpConfigurer::disable)
                 .formLogin(AbstractHttpConfigurer::disable);
 
