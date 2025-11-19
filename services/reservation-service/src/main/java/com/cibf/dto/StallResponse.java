@@ -16,7 +16,7 @@ public class StallResponse {
     private Long id;
     private String stallName;
     private String size;
-    private String dimensions;
+    private String dimension;
     private BigDecimal price;
     private String status;
     private boolean available;
