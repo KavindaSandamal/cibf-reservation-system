@@ -40,6 +40,9 @@ public class Stall {
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 20)
     private StallStatus status;
+
+    @Column(name = "Created_by_employee", length = 100)
+    private String CreatedByEmployee;
     
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;

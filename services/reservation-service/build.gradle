@@ -1,0 +1,97 @@
+plugins {
+    // Standard Java application plugin
+    id 'application'
+    
+    // Spring Boot plugin: Automatically manages dependency versions and packaging
+    id 'org.springframework.boot' version '3.3.5'
+    
+    // Spring Dependency Management plugin (needed for version alignment)
+    id 'io.spring.dependency-management' version '1.1.6'
+    
+}
+
+group = 'com.cibf.reservation'
+version = '0.0.1-SNAPSHOT'
+
+// Ensure we use Java 17 for compilation
+java {
+    sourceCompatibility = '17'
+    targetCompatibility = '17'
+}
+
+repositories {
+    mavenCentral()
+}
+dependencyManagement {
+    imports {
+        mavenBom "org.springframework.cloud:spring-cloud-dependencies:2023.0.3"
+    }
+}
+
+sourceSets {
+    main {
+        java {
+            srcDirs = ['src/main/java']
+        }
+        resources {
+            srcDirs = ['src/main/resources']
+        }
+    }
+}
+
+dependencies {
+    // --- Spring Boot Starters ---
+    // Spring Web: Provides REST capabilities (Tomcat, Spring MVC)
+    implementation 'org.springframework.boot:spring-boot-starter-web'
+    
+    // Spring Data JPA: Object-Relational Mapping (Hibernate implementation)
+    implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
+    
+    // Spring Security: Authentication and Authorization framework
+    implementation 'org.springframework.boot:spring-boot-starter-security'
+    
+    // Validation: JSR-380 Bean Validation implementation
+    implementation 'org.springframework.boot:spring-boot-starter-validation'
+
+     // --- Swagger / OpenAPI (fixes @Operation, @ApiResponse, etc.) ---
+    implementation 'org.springdoc:springdoc-openapi-starter-webmvc-ui:2.5.0'
+    implementation 'org.springframework.cloud:spring-cloud-starter-openfeign:4.1.0'
+    
+    // --- Database ---
+    // PostgreSQL Driver (runtime dependency)
+    runtimeOnly 'org.postgresql:postgresql'
+
+    // --- JWT ---
+    // Required for creating and validating JWTs (NOT a Spring dependency, manual version management)
+    implementation 'io.jsonwebtoken:jjwt-api:0.11.5' 
+    runtimeOnly 'io.jsonwebtoken:jjwt-impl:0.11.5'
+    runtimeOnly 'io.jsonwebtoken:jjwt-jackson:0.11.5'
+
+    // Spring Boot Mail Starter
+    implementation 'org.springframework.boot:spring-boot-starter-mail'
+    
+    
+    // QR Code generation (optional - for embedded QR codes)
+    implementation 'com.google.zxing:core:3.5.1'
+    implementation 'com.google.zxing:javase:3.5.1'
+
+    // AWS S3 SDK
+    implementation platform('software.amazon.awssdk:bom:2.20.0')
+    implementation 'software.amazon.awssdk:s3'
+    
+    // --- Utilities ---
+    compileOnly 'org.projectlombok:lombok'
+    annotationProcessor 'org.projectlombok:lombok'
+    testCompileOnly 'org.projectlombok:lombok'
+    testAnnotationProcessor 'org.projectlombok:lombok'
+
+    // --- Testing ---
+    testImplementation 'org.springframework.boot:spring-boot-starter-test'
+    testImplementation 'org.springframework.security:spring-security-test'
+    testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+
+}
+
+tasks.named('test') {
+    useJUnitPlatform()
+}
