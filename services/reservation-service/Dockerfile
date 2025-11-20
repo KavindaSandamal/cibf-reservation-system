@@ -1,4 +1,4 @@
-# Multi-stage build for smaller image
+# Multi-stage build for Reservation Service
 FROM gradle:8.5-jdk17 AS build
 WORKDIR /app
 
@@ -19,7 +19,7 @@ WORKDIR /app
 # Copy built JAR
 COPY --from=build /app/build/libs/*.jar app.jar
 
-# Optimize JVM for container (t2.micro has 1GB RAM)
+# Optimize JVM for container
 ENV JAVA_OPTS="-Xmx256m -Xms128m"
 
 EXPOSE 8083
