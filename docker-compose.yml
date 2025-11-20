@@ -2,7 +2,7 @@ services:
 
   # Authentication Service
   auth-service:
-    image: kavindasandamal/authentication-service:latest
+    image: kavindasandamal/auth-service:latest
     container_name: auth-service
     ports:
       - "8081:8081"
