@@ -5,6 +5,7 @@ import com.cibf.dto.AuthResponse;
 import com.cibf.dto.UserRegistrationRequest;
 import com.cibf.dto.EmployeeRegistrationRequest;
 import com.cibf.service.IAuthService;
+import com.cibf.entity.User; // Added for /me endpoint
 import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
@@ -14,15 +15,16 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-// ADD THESE ↓↓↓
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
-
+import org.springframework.security.core.Authentication; // Added for /me endpoint
+import org.springframework.security.core.context.SecurityContextHolder; // Added for /me endpoint
 
 /**
  * REST Controller for all Authentication-related operations.
  * Follows:
- * - Single Responsibility Principle (SRP): Handles only authentication endpoints
+ * - Single Responsibility Principle (SRP): Handles only authentication
+ * endpoints
  * - Dependency Inversion Principle (DIP): Depends on IAuthService abstraction
  */
 @RestController
@@ -62,7 +64,8 @@ public class AuthController {
      * Endpoint: POST /api/auth/employee/register
      */
     @PostMapping("/employee/register")
-    public ResponseEntity<AuthResponse> registerEmployee(@Valid @RequestBody EmployeeRegistrationRequest registrationRequest) {
+    public ResponseEntity<AuthResponse> registerEmployee(
+            @Valid @RequestBody EmployeeRegistrationRequest registrationRequest) {
         AuthResponse response = authService.registerEmployee(registrationRequest);
         return new ResponseEntity<>(response, HttpStatus.CREATED);
     }
@@ -77,12 +80,27 @@ public class AuthController {
         AuthResponse response = authService.authenticateEmployee(authRequest);
         return new ResponseEntity<>(response, HttpStatus.OK);
     }
+
+    /**
+     * Get details of the currently authenticated user (from the JWT token).
+     * Endpoint: GET /api/auth/me
+     */
+    @GetMapping("/me")
+    public ResponseEntity<User> me(Authentication authentication) {
+        // The Authentication object is populated by Spring Security from the JWT token.
+        String username = authentication.getName();
+
+        // Use the service method we added to retrieve the full User entity
+        User user = authService.getUserByUsername(username);
+
+        // Returns the User entity, which includes the ID needed by the PowerShell
+        // script (Step 2).
+        return ResponseEntity.ok(user);
+    }
+
     @GetMapping("/{userId}/exists")
     public ResponseEntity<Boolean> userExists(@PathVariable Long userId) {
-    boolean exists = authService.userExists(userId);
-    return ResponseEntity.ok(exists);
-}
-
-
-   
+        boolean exists = authService.userExists(userId);
+        return ResponseEntity.ok(exists);
+    }
 }
