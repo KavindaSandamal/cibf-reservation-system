@@ -1,27 +1,26 @@
-# Multi-stage build for Reservation Service
+# Stage 1: Build
 FROM gradle:8.5-jdk17 AS build
 WORKDIR /app
 
-# Copy Gradle files
+# Copy Gradle files first for caching dependencies
 COPY build.gradle settings.gradle ./
 COPY gradle ./gradle
 
-# Copy source code
+# Pre-download dependencies (cache layer)
+RUN gradle build -x test --no-daemon || true
+
+# Copy application source code
 COPY src ./src
 
-# Build application (skip tests for faster build)
+# Build the app
 RUN gradle build -x test --no-daemon
 
-# Runtime stage
+# Stage 2: Runtime
 FROM eclipse-temurin:17-jre-alpine
 WORKDIR /app
 
-# Copy built JAR
-COPY --from=build /app/build/libs/*.jar app.jar
+# Copy the built JAR from build stage
+COPY --from=build /app/build/libs/*.jar ./app.jar
 
-# Optimize JVM for container
-ENV JAVA_OPTS="-Xmx256m -Xms128m"
-
-EXPOSE 8083
-
-ENTRYPOINT ["sh", "-c", "java $JAVA_OPTS -jar app.jar"]
+# Run the application
+ENTRYPOINT ["java", "-jar", "app.jar"]
