@@ -6,14 +6,14 @@ sendgrid code - FUL9997KMT42549EL4E6N355
 app pss -mpcg gwvl illv tsmt
 
 $registerBody = @{
-    username = "groupbuild928@gmail.com"
-    password = "group123"
-    businessName = "Group Books"
-    contactNumber = "+94715691913"
+    username = "imksandamal99@gmail.com"
+    password = "kavinda123"
+    businessName = "Kavinda Books"
+    contactNumber = "+94715691911"
     address = "Colombo"
 } | ConvertTo-Json
 
-$registerResponse = Invoke-RestMethod -Uri "http://localhost:8081/api/auth/register" `
+$registerResponse = Invoke-RestMethod -Uri "http://34.209.143.5/api/auth/register" `
     -Method Post `
     -ContentType "application/json" `
     -Body $registerBody
@@ -33,7 +33,7 @@ $headers = @{
     "Authorization" = "Bearer $token"
 }
 
-$reservationResponse = Invoke-RestMethod -Uri "http://localhost:8083/api/reservations" `
+$reservationResponse = Invoke-RestMethod -Uri "http://34.209.143.5/api/reservations" `
     -Method Post `
     -Headers $headers `
     -ContentType "application/json" `
@@ -55,7 +55,7 @@ $loginBody = @{
 } | ConvertTo-Json
 
 # Authentication URL
-$authUrl = "http://localhost:8081/api/auth/login"
+$authUrl = "http://34.209.143.5/api/auth/login"
 
 # Send login request
 try {
@@ -85,17 +85,17 @@ try {
 
 # Replace with employee details
 $employeeBody = @{
-    username       = "Testemployee3@cibf.com"
+    username       = "employee1@cibf.com"
     password       = "test123"   # Replace with actual password
-    name           = "Test Employee 3"
-    email          = "Testemployee3@cibf.com"
-    employeeId     = "CIBF-004"
+    name           = "Test Employee 1"
+    email          = "Testemployee1@cibf.com"
+    employeeId     = "CIBF-002"
     contactNumber  = "555-900-8002"
     department     = "Finance"
 } | ConvertTo-Json
 
 # Employee registration URL
-$registerUrl = "http://localhost:8081/api/auth/employee/register"
+$registerUrl = "http://34.209.143.5/api/auth/employee/register"
 
 # Send registration request
 try {
@@ -123,14 +123,14 @@ try {
 # -----------------------------
 
 # Replace with your actual JWT token
-$token = "eyJhbGciOiJIUzUxMiJ9.eyJzdWIiOiJUZXN0ZW1wbG95ZWUzQGNpYmYuY29tIiwiaWF0IjoxNzYzNTczMDUwLCJleHAiOjE3NjM2NTk0NTB9.iYgAr7XwYAifT-mn_S0PJiFr5PPpsJWFl0KAl5PcJGxErN2M1mM-tra-TAvkKbIRUfTUw7Oba5CWxxW-Aw2-lA"
+$token = "eyJhbGciOiJIUzUxMiJ9.eyJzdWIiOiJlbXBsb3llZTFAY2liZi5jb20iLCJpYXQiOjE3NjM2Njc1MzksImV4cCI6MTc2Mzc1MzkzOX0.LV1Y17MRuxDQ-6UBtkqOS2HaooU0IidNUpuTOTdpwiwDrjzLzkfbIjcsiItmLNKu-EIahzVKblxJuaf0gzd6sA"
 
 # API base URL
-$baseUrl = "http://localhost:8082/api/stalls"
+$baseUrl = "http://34.209.143.5/api/stalls"
 
 # Stall data
 $stallBody = @{
-    stallName  = "C12"
+    stallName  = "C1"
     size       = "LARGE"
     dimension  = "20x20"
     locationX  = 850
