@@ -1,10 +1,8 @@
-version: '3.9'
-
 services:
 
   # Authentication Service
   auth-service:
-    build: ./services/authentication-service
+    image: yourdockerhubusername/authentication-service:latest
     container_name: auth-service
     ports:
       - "8081:8081"
@@ -32,7 +30,7 @@ services:
 
   # Stall Service
   stall-service:
-    build: ./services/stall-service
+    image: yourdockerhubusername/stall-service:latest
     container_name: stall-service
     ports:
       - "8082:8082"
@@ -40,7 +38,7 @@ services:
       - SPRING_DATASOURCE_URL=jdbc:postgresql://cibf-database.cj4yusc4c0b4.us-west-2.rds.amazonaws.com:5432/cibf_db?currentSchema=stall_schema
       - SPRING_DATASOURCE_USERNAME=postgres
       - SPRING_DATASOURCE_PASSWORD=postgres
-      - JWT_SECRET=${JWT_SECRET}
+      - JWT_SECRET=${JWT_SECRET:-JE6WwDKZ8uMOOwt+XnkQTPvb2sj0BD58Kc1WwxTHfVaB7otOwANuKKhbGPvKjA6hDyo0y7qls24Irt6rHLINEA==}
       - SPRING_RABBITMQ_HOST=rabbitmq
       - SPRING_RABBITMQ_PORT=5672
       - SPRING_RABBITMQ_USERNAME=admin
@@ -59,7 +57,7 @@ services:
 
   # Reservation Service
   reservation-service:
-    build: ./services/reservation-service
+    image: yourdockerhubusername/reservation-service:latest
     container_name: reservation-service
     ports:
       - "8083:8083"
@@ -67,14 +65,14 @@ services:
       - SPRING_DATASOURCE_URL=jdbc:postgresql://cibf-database.cj4yusc4c0b4.us-west-2.rds.amazonaws.com:5432/cibf_db?currentSchema=reservation_schema
       - SPRING_DATASOURCE_USERNAME=postgres
       - SPRING_DATASOURCE_PASSWORD=postgres
-      - JWT_SECRET=${JWT_SECRET}
+      - JWT_SECRET=${JWT_SECRET:-JE6WwDKZ8uMOOwt+XnkQTPvb2sj0BD58Kc1WwxTHfVaB7otOwANuKKhbGPvKjA6hDyo0y7qls24Irt6rHLINEA==}
       - SPRING_RABBITMQ_HOST=rabbitmq
       - SPRING_RABBITMQ_PORT=5672
       - SPRING_RABBITMQ_USERNAME=admin
       - SPRING_RABBITMQ_PASSWORD=changeme123
       - STALL_SERVICE_URL=http://stall-service:8082
-      - GMAIL_USERNAME=${GMAIL_USERNAME}
-      - GMAIL_APP_PASSWORD=${GMAIL_APP_PASSWORD}
+      - GMAIL_USERNAME=${info.cibf@gmail.com}
+      - GMAIL_APP_PASSWORD=${mpcggwvlillvtsmt}
     restart: unless-stopped
     depends_on:
       - rabbitmq
@@ -90,7 +88,7 @@ services:
 
   # User Service
   user-service:
-    build: ./services/user-service
+    image: yourdockerhubusername/user-service:latest
     container_name: user-service
     ports:
       - "8086:8086"
@@ -98,7 +96,7 @@ services:
       - SPRING_DATASOURCE_URL=jdbc:postgresql://cibf-database.cj4yusc4c0b4.us-west-2.rds.amazonaws.com:5432/cibf_db?currentSchema=user_schema
       - SPRING_DATASOURCE_USERNAME=postgres
       - SPRING_DATASOURCE_PASSWORD=postgres
-      - JWT_SECRET=${JWT_SECRET}
+      - JWT_SECRET=${JWT_SECRET:-JE6WwDKZ8uMOOwt+XnkQTPvb2sj0BD58Kc1WwxTHfVaB7otOwANuKKhbGPvKjA6hDyo0y7qls24Irt6rHLINEA==}
       - SPRING_RABBITMQ_HOST=rabbitmq
       - SPRING_RABBITMQ_PORT=5672
       - SPRING_RABBITMQ_USERNAME=admin
@@ -115,13 +113,13 @@ services:
       retries: 3
       start_period: 40s
 
-  # RabbitMQ Message Broker
+  # RabbitMQ
   rabbitmq:
     image: rabbitmq:3.12-management-alpine
     container_name: rabbitmq
     ports:
-      - "5672:5672"   # AMQP protocol port
-      - "15672:15672" # Management UI port
+      - "5672:5672"
+      - "15672:15672"
     environment:
       RABBITMQ_DEFAULT_USER: admin
       RABBITMQ_DEFAULT_PASS: changeme123
