@@ -13,8 +13,6 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import feign.RequestInterceptor;
 import feign.RequestTemplate;
 
-
-
 @Configuration
 @EnableWebSecurity
 @EnableMethodSecurity
@@ -29,35 +27,36 @@ public class SecurityConfig {
     @Bean
     public SecurityFilterChain reservationSecurity(HttpSecurity http) throws Exception {
         http
-            .csrf(AbstractHttpConfigurer::disable)
-            .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
-            .authorizeHttpRequests(auth -> auth
-                .requestMatchers("/api/auth/**", "/api/public/**").permitAll()
-                .anyRequest().authenticated()
-            )
-            .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
+                .csrf(AbstractHttpConfigurer::disable)
+                .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+                .authorizeHttpRequests(auth -> auth
+                        .requestMatchers("/api/auth/**", "/api/public/**", "/actuator/health",
+                                "/actuator/info")
+                        .permitAll()
+                        .anyRequest().authenticated())
+                .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
 
         return http.build();
     }
 
-   @Bean
-public RequestInterceptor feignRequestInterceptor() {
-    return template -> {
-        var auth = SecurityContextHolder.getContext().getAuthentication();
+    @Bean
+    public RequestInterceptor feignRequestInterceptor() {
+        return template -> {
+            var auth = SecurityContextHolder.getContext().getAuthentication();
 
-        if (auth != null) {
-            System.out.println("🔍 AUTH in context: " + auth);
-            System.out.println("🔑 Credentials: " + auth.getCredentials());
-        }
+            if (auth != null) {
+                System.out.println("🔍 AUTH in context: " + auth);
+                System.out.println("🔑 Credentials: " + auth.getCredentials());
+            }
 
-        if (auth != null && auth.getCredentials() != null) {
-            String token = auth.getCredentials().toString();
-            System.out.println("🔥 Forwarding JWT to Feign: " + token);
-            template.header("Authorization", "Bearer " + token);
-        } else {
-            System.out.println("❌ No token found — Feign is sending NO Authorization header!");
-        }
-    };
-}
+            if (auth != null && auth.getCredentials() != null) {
+                String token = auth.getCredentials().toString();
+                System.out.println("🔥 Forwarding JWT to Feign: " + token);
+                template.header("Authorization", "Bearer " + token);
+            } else {
+                System.out.println("❌ No token found — Feign is sending NO Authorization header!");
+            }
+        };
+    }
 
 }
