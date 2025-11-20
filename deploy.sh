@@ -32,7 +32,6 @@ echo "📂 Project directory: $PROJECT_DIR"
 # Pull latest code
 # -----------------------------
 echo "📥 Pulling latest code from GitHub..."
-git reset --hard
 git pull origin main
 
 # -----------------------------
