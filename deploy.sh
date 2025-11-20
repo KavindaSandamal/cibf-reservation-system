@@ -21,7 +21,6 @@ SERVICES=(
   "reservation-service"
 )
 
-
 echo "🚀 Deploying CIBF Services..."
 echo "📂 Project directory: $PROJECT_DIR"
 
