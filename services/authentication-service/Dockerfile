@@ -1,27 +1,23 @@
-# Multi-stage build for smaller image
+# Stage 1: Build
 FROM gradle:8.5-jdk17 AS build
 WORKDIR /app
 
-# Copy Gradle files
+# Copy Gradle files first for caching
 COPY build.gradle settings.gradle ./
 COPY gradle ./gradle
+
+# Pre-download dependencies
+RUN gradle build -x test --no-daemon || true
 
 # Copy source code
 COPY src ./src
 
-# Build application (skip tests for faster build)
+# Build the app
 RUN gradle build -x test --no-daemon
 
-# Runtime stage
+# Stage 2: Runtime
 FROM eclipse-temurin:17-jre-alpine
 WORKDIR /app
+COPY --from=build /app/build/libs/*.jar ./app.jar
 
-# Copy built JAR
-COPY --from=build /app/build/libs/*.jar app.jar
-
-# Optimize JVM for container (t2.micro has 1GB RAM)
-ENV JAVA_OPTS="-Xmx256m -Xms128m"
-
-EXPOSE 8081
-
-ENTRYPOINT ["sh", "-c", "java $JAVA_OPTS -jar app.jar"]
+ENTRYPOINT ["java", "-jar", "app.jar"]
