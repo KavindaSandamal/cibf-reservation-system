@@ -143,52 +143,27 @@ public class ReservationService {
 
         reservations.forEach(r -> r.setTotalAmount(totalAmount));
 
-        String qrCodeUrl = null;
+        // 🎯 PUBLISH EVENT TO RABBITMQ (instead of direct processing)
         try {
-            log.info("Generating QR code for reservation: {}", mainReservation.getId());
+            log.info("📤 Publishing reservation confirmed event to RabbitMQ");
 
-            qrCodeUrl = qrCodeService.generateAndUploadQRCode(
+            eventPublisher.publishReservationConfirmed(
                     mainReservation.getId(),
-                    request.getBusinessName() != null ? request.getBusinessName() : mainReservation.getBusinessName(),
-                    request.getUserEmail() != null ? request.getUserEmail() : mainReservation.getUserEmail());
+                    mainReservation.getUserId(),
+                    request.getUserEmail() != null ? request.getUserEmail() : mainReservation.getUserEmail(),
+                    stallIds);
 
-            final String finalQrCodeUrl = qrCodeUrl;
-            reservations.forEach(r -> {
-                r.setQrCodeUrl(finalQrCodeUrl);
-                reservationRepository.save(r);
-            });
-
-            log.info("✅ QR code generated and saved: {}", qrCodeUrl);
+            log.info("✅ Reservation event published to RabbitMQ - async processing started");
 
         } catch (Exception e) {
-            log.error("❌ Failed to generate QR code for reservation: {}", mainReservation.getId(), e);
+            log.error("⚠️ Failed to publish event to RabbitMQ, falling back to direct processing", e);
+
+            // FALLBACK: Direct processing if RabbitMQ fails
+            processReservationDirectly(mainReservation, request, stallInfos, totalAmount);
         }
 
-        try {
-            log.info("Sending confirmation email to: {}", request.getUserEmail());
-
-            ReservationConfirmationDto emailDto = ReservationConfirmationDto.builder()
-                    .reservationId(mainReservation.getId())
-                    .userEmail(request.getUserEmail() != null ? request.getUserEmail() : mainReservation.getUserEmail())
-                    .businessName(request.getBusinessName() != null ? request.getBusinessName()
-                            : mainReservation.getBusinessName())
-                    .totalAmount(totalAmount)
-                    .stalls(stallInfos)
-                    .qrCodeUrl(qrCodeUrl)
-                    .build();
-
-            emailService.sendReservationConfirmation(emailDto);
-
-            log.info("✅ Email notification sent successfully");
-
-        } catch (Exception e) {
-            log.error("❌ Failed to send email notification", e);
-        }
-
-        eventPublisher.publishReservationConfirmed(mainReservation.getUserId(), stallIds);
-
+        // Return response immediately (email and QR will be processed async)
         ReservationResponse response = mapToResponse(mainReservation);
-        response.setQrCodeUrl(qrCodeUrl);
         response.setStalls(stallInfos.stream()
                 .map(s -> ReservationResponse.StallSummary.builder()
                         .id(s.getId())
@@ -199,10 +174,51 @@ public class ReservationService {
                         .build())
                 .collect(Collectors.toList()));
         response.setTotalAmount(totalAmount);
+        response.setQrCodeUrl("Processing..."); // Will be updated async
 
-        log.info("✅ Reservation confirmed successfully: ID={}, QR={}", mainReservation.getId(), qrCodeUrl);
+        log.info("✅ Reservation confirmed successfully: ID={}", mainReservation.getId());
+        log.info("📧 Email and QR code will be processed asynchronously");
 
         return response;
+    }
+
+    /**
+     * Fallback method for direct processing if RabbitMQ fails
+     */
+    private void processReservationDirectly(Reservation reservation,
+            ConfirmReservationRequest request,
+            List<ReservationConfirmationDto.StallInfo> stallInfos,
+            BigDecimal totalAmount) {
+        try {
+            log.info("Processing reservation directly (RabbitMQ unavailable)");
+
+            // Generate QR Code
+            String qrCodeUrl = qrCodeService.generateAndUploadQRCode(
+                    reservation.getId(),
+                    request.getBusinessName() != null ? request.getBusinessName() : reservation.getBusinessName(),
+                    request.getUserEmail() != null ? request.getUserEmail() : reservation.getUserEmail());
+
+            reservation.setQrCodeUrl(qrCodeUrl);
+            reservationRepository.save(reservation);
+
+            // Send Email
+            ReservationConfirmationDto emailDto = ReservationConfirmationDto.builder()
+                    .reservationId(reservation.getId())
+                    .userEmail(request.getUserEmail() != null ? request.getUserEmail() : reservation.getUserEmail())
+                    .businessName(request.getBusinessName() != null ? request.getBusinessName()
+                            : reservation.getBusinessName())
+                    .totalAmount(totalAmount)
+                    .stalls(stallInfos)
+                    .qrCodeUrl(qrCodeUrl)
+                    .build();
+
+            emailService.sendReservationConfirmation(emailDto);
+
+            log.info("✅ Direct processing completed");
+
+        } catch (Exception e) {
+            log.error("❌ Direct processing also failed", e);
+        }
     }
 
     public ReservationResponse getReservationById(Long id) {
