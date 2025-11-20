@@ -27,7 +27,7 @@ public class StallServiceClient {
 
     private final RestTemplate restTemplate;
 
-    @Value("${stall.service.url:http://localhost:8082}")
+    @Value("${stall.service.url:http://stall-service:8082}")
     private String stallServiceUrl;
 
     /**
