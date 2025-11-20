@@ -1,5 +1,9 @@
 # Stage 1: Build
 FROM gradle:8.5-jdk17 AS build
+
+# Set Gradle cache directory
+ARG GRADLE_USER_HOME=/gradle-cache
+ENV GRADLE_USER_HOME=$GRADLE_USER_HOME
 WORKDIR /app
 
 COPY build.gradle settings.gradle ./
