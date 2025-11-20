@@ -15,7 +15,7 @@ DOCKER_REPO=kavindasandamal
 
 # Service list
 SERVICES=(
-  "authentication-service"
+  "auth-service"
   "stall-service"
   "user-service"
   "reservation-service"
