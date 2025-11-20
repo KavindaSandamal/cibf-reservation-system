@@ -1,5 +1,33 @@
 services:
 
+  # RabbitMQ
+  rabbitmq:
+    image: rabbitmq:3.12-management-alpine
+    container_name: rabbitmq
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    environment:
+      RABBITMQ_DEFAULT_USER: admin
+      RABBITMQ_DEFAULT_PASS: changeme123
+      RABBITMQ_DEFAULT_VHOST: /
+    volumes:
+      - rabbitmq_data:/var/lib/rabbitmq
+      - rabbitmq_logs:/var/log/rabbitmq
+    networks:
+      - cibf-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 40s
+    deploy:
+      resources:
+        limits:
+          memory: ${MEM_LIMIT_MB}m
+
   # Authentication Service
   auth-service:
     image: kavindasandamal/auth-service:latest
@@ -27,6 +55,10 @@ services:
       timeout: 10s
       retries: 3
       start_period: 40s
+    deploy:
+      resources:
+        limits:
+          memory: ${MEM_LIMIT_MB}m
 
   # Stall Service
   stall-service:
@@ -45,7 +77,8 @@ services:
       - SPRING_RABBITMQ_PASSWORD=changeme123
     restart: unless-stopped
     depends_on:
-      - rabbitmq
+      rabbitmq:
+        condition: service_healthy
     networks:
       - cibf-network
     healthcheck:
@@ -54,6 +87,10 @@ services:
       timeout: 10s
       retries: 3
       start_period: 40s
+    deploy:
+      resources:
+        limits:
+          memory: ${MEM_LIMIT_MB}m
 
   # Reservation Service
   reservation-service:
@@ -75,8 +112,10 @@ services:
       - GMAIL_APP_PASSWORD=mpcggwvlillvtsmt
     restart: unless-stopped
     depends_on:
-      - rabbitmq
-      - stall-service
+      rabbitmq:
+        condition: service_healthy
+      stall-service:
+        condition: service_healthy
     networks:
       - cibf-network
     healthcheck:
@@ -85,6 +124,10 @@ services:
       timeout: 10s
       retries: 3
       start_period: 40s
+    deploy:
+      resources:
+        limits:
+          memory: ${MEM_LIMIT_MB}m
 
   # User Service
   user-service:
@@ -103,7 +146,8 @@ services:
       - SPRING_RABBITMQ_PASSWORD=changeme123
     restart: unless-stopped
     depends_on:
-      - rabbitmq
+      rabbitmq:
+        condition: service_healthy
     networks:
       - cibf-network
     healthcheck:
@@ -112,30 +156,10 @@ services:
       timeout: 10s
       retries: 3
       start_period: 40s
-
-  # RabbitMQ
-  rabbitmq:
-    image: rabbitmq:3.12-management-alpine
-    container_name: rabbitmq
-    ports:
-      - "5672:5672"
-      - "15672:15672"
-    environment:
-      RABBITMQ_DEFAULT_USER: admin
-      RABBITMQ_DEFAULT_PASS: changeme123
-      RABBITMQ_DEFAULT_VHOST: /
-    volumes:
-      - rabbitmq_data:/var/lib/rabbitmq
-      - rabbitmq_logs:/var/log/rabbitmq
-    networks:
-      - cibf-network
-    restart: unless-stopped
-    healthcheck:
-      test: ["CMD", "rabbitmq-diagnostics", "ping"]
-      interval: 30s
-      timeout: 10s
-      retries: 5
-      start_period: 40s
+    deploy:
+      resources:
+        limits:
+          memory: ${MEM_LIMIT_MB}m
 
   # Nginx Reverse Proxy
   nginx:
@@ -146,13 +170,21 @@ services:
     volumes:
       - ./infrastructure/nginx/nginx.conf:/etc/nginx/nginx.conf:ro
     depends_on:
-      - auth-service
-      - stall-service
-      - reservation-service
-      - user-service
+      auth-service:
+        condition: service_healthy
+      stall-service:
+        condition: service_healthy
+      reservation-service:
+        condition: service_healthy
+      user-service:
+        condition: service_healthy
     networks:
       - cibf-network
     restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: ${MEM_LIMIT_MB}m
 
 networks:
   cibf-network:
