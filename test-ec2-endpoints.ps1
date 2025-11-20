@@ -22,10 +22,10 @@ Write-Host ""
 Write-Host "Test 1: User Registration" -ForegroundColor Yellow
 try {
     $body = @{
-        username = "groupbuild928@gmail.com"
-        password = "group123"
-        businessName = "Group Books"
-        contactNumber = "+94715691913"
+        username = "test@gmail.com"
+        password = "test123"
+        businessName = "Testing Books"
+        contactNumber = "+94715691923"
         address = "Colombo"
     } | ConvertTo-Json
 
@@ -52,8 +52,8 @@ Write-Host ""
 Write-Host "Test 2: User Login" -ForegroundColor Yellow
 try {
     $body = @{
-        username = "testuseraws@cibf.com"
-        password = "password123"
+        username = "test@gmail.com"
+        password = "test123"
     } | ConvertTo-Json
 
     $response = Invoke-RestMethod -Uri "$BASE_URL/api/auth/login" `
@@ -81,12 +81,12 @@ Write-Host ""
 Write-Host "Test 3: Employee Registration" -ForegroundColor Yellow
 try {
     $body = @{
-        username       = "Testemployee3@cibf.com"
+        username       = "Testemployee10@cibf.com"
         password       = "test123"   # Replace with actual password
-        name           = "Test Employee 3"
-        email          = "Testemployee3@cibf.com"
-        employeeId     = "CIBF-004"
-        contactNumber  = "555-900-8002"
+        name           = "Test Employee 10"
+        email          = "Testemployee10@cibf.com"
+        employeeId     = "CIBF-0040"
+        contactNumber  = "555-900-8012"
         department     = "Finance"
     } | ConvertTo-Json
 
