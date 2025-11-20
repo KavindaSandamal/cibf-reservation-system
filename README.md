@@ -70,3 +70,5 @@ docker push kavindasandamal/auth-service:latest
 docker push kavindasandamal/stall-service:latest
 docker push kavindasandamal/user-service:latest
 docker push kavindasandamal/reservation-service:latest
+
+echo "dckr_pat_suoUDMpU2g5cOwUc8yy6hRtbmLk" | docker login -u kavindasandamal --password-stdin
