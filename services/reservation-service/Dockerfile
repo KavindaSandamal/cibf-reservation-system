@@ -1,30 +1,36 @@
-# Stage 1: Build
+# Stage 1: Build the application
 FROM gradle:8.5-jdk17 AS build
 
-# Set Gradle cache directory
+# Set Gradle cache directory for faster builds
 ARG GRADLE_USER_HOME=/gradle-cache
 ENV GRADLE_USER_HOME=$GRADLE_USER_HOME
 WORKDIR /app
 
-# Copy Gradle files first for caching dependencies
+# Copy Gradle files and pre-download dependencies
 COPY build.gradle settings.gradle ./
 COPY gradle ./gradle
-
-# Pre-download dependencies (cache layer)
 RUN gradle build -x test --no-daemon || true
 
-# Copy application source code
+# Copy source code and build the app
 COPY src ./src
-
-# Build the app
 RUN gradle build -x test --no-daemon
 
-# Stage 2: Runtime
+# Stage 2: Runtime image
 FROM eclipse-temurin:17-jre-alpine
 WORKDIR /app
 
-# Copy the built JAR from build stage
+# Install wget for healthcheck
+RUN apk add --no-cache wget
+
+# Copy the jar from the build stage
 COPY --from=build /app/build/libs/*.jar ./app.jar
 
-# Run the application
+# Expose the application port
+EXPOSE 8083
+
+# Set entrypoint
 ENTRYPOINT ["java", "-jar", "app.jar"]
+
+# Healthcheck using wget
+HEALTHCHECK --interval=30s --timeout=5s \
+    CMD wget -qO- http://localhost:8083/actuator/health || exit 1
