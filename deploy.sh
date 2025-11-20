@@ -11,7 +11,7 @@ PROJECT_DIR=~/cibf-reservation-system
 cd $PROJECT_DIR || { echo "❌ Project directory not found!"; exit 1; }
 
 # Docker image repository (Docker Hub or AWS ECR)
-DOCKER_REPO=yourdockerhubusername
+DOCKER_REPO=kavindasandamal
 
 # Service list
 SERVICES=(
