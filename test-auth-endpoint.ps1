@@ -8,7 +8,7 @@ Write-Host ""
 Write-Host "Test 1: User Registration" -ForegroundColor Yellow
 try {
     $body = @{
-        username = "testuser@cibf.com"
+        username = "testuser10@cibf.com"
         password = "password123"
         businessName = "Test Business"
     } | ConvertTo-Json
@@ -30,7 +30,7 @@ Write-Host ""
 Write-Host "Test 2: User Login" -ForegroundColor Yellow
 try {
     $body = @{
-        username = "testuser@cibf.com"
+        username = "testuser10@cibf.com"
         password = "password123"
     } | ConvertTo-Json
 
@@ -50,11 +50,11 @@ Write-Host ""
 Write-Host "Test 3: Employee Registration" -ForegroundColor Yellow
 try {
     $body = @{
-        username = "employee1@cibf.com"
+        username = "employee10@cibf.com"
         password = "password123"
-        name = "Jane Employee"
-        email = "employee1@cibf.com"
-        employeeId = "EMP-001"
+        name = "Janes Employee"
+        email = "employee10@cibf.com"
+        employeeId = "EMP-0010"
         role = "EMPLOYEE"
     } | ConvertTo-Json
 
