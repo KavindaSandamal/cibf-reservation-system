@@ -38,7 +38,7 @@ services:
       - SPRING_DATASOURCE_URL=jdbc:postgresql://cibf-database.cj4yusc4c0b4.us-west-2.rds.amazonaws.com:5432/cibf_db?currentSchema=stall_schema
       - SPRING_DATASOURCE_USERNAME=postgres
       - SPRING_DATASOURCE_PASSWORD=postgres
-      - JWT_SECRET=${JWT_SECRET}
+      - JWT_SECRET=${JWT_SECRET:-JE6WwDKZ8uMOOwt+XnkQTPvb2sj0BD58Kc1WwxTHfVaB7otOwANuKKhbGPvKjA6hDyo0y7qls24Irt6rHLINEA==}
       - SPRING_RABBITMQ_HOST=rabbitmq
       - SPRING_RABBITMQ_PORT=5672
       - SPRING_RABBITMQ_USERNAME=admin
@@ -65,14 +65,14 @@ services:
       - SPRING_DATASOURCE_URL=jdbc:postgresql://cibf-database.cj4yusc4c0b4.us-west-2.rds.amazonaws.com:5432/cibf_db?currentSchema=reservation_schema
       - SPRING_DATASOURCE_USERNAME=postgres
       - SPRING_DATASOURCE_PASSWORD=postgres
-      - JWT_SECRET=${JWT_SECRET}
+      - JWT_SECRET=${JWT_SECRET:-JE6WwDKZ8uMOOwt+XnkQTPvb2sj0BD58Kc1WwxTHfVaB7otOwANuKKhbGPvKjA6hDyo0y7qls24Irt6rHLINEA==}
       - SPRING_RABBITMQ_HOST=rabbitmq
       - SPRING_RABBITMQ_PORT=5672
       - SPRING_RABBITMQ_USERNAME=admin
       - SPRING_RABBITMQ_PASSWORD=changeme123
       - STALL_SERVICE_URL=http://stall-service:8082
-      - GMAIL_USERNAME=${GMAIL_USERNAME}
-      - GMAIL_APP_PASSWORD=${GMAIL_APP_PASSWORD}
+      - GMAIL_USERNAME=${info.cibf@gmail.com}
+      - GMAIL_APP_PASSWORD=${mpcggwvlillvtsmt}
     restart: unless-stopped
     depends_on:
       - rabbitmq
@@ -96,7 +96,7 @@ services:
       - SPRING_DATASOURCE_URL=jdbc:postgresql://cibf-database.cj4yusc4c0b4.us-west-2.rds.amazonaws.com:5432/cibf_db?currentSchema=user_schema
       - SPRING_DATASOURCE_USERNAME=postgres
       - SPRING_DATASOURCE_PASSWORD=postgres
-      - JWT_SECRET=${JWT_SECRET}
+      - JWT_SECRET=${JWT_SECRET:-JE6WwDKZ8uMOOwt+XnkQTPvb2sj0BD58Kc1WwxTHfVaB7otOwANuKKhbGPvKjA6hDyo0y7qls24Irt6rHLINEA==}
       - SPRING_RABBITMQ_HOST=rabbitmq
       - SPRING_RABBITMQ_PORT=5672
       - SPRING_RABBITMQ_USERNAME=admin
