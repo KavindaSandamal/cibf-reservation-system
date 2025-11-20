@@ -2,7 +2,7 @@ services:
 
   # Authentication Service
   auth-service:
-    image: yourdockerhubusername/authentication-service:latest
+    image: kavindasandamal/authentication-service:latest
     container_name: auth-service
     ports:
       - "8081:8081"
@@ -30,7 +30,7 @@ services:
 
   # Stall Service
   stall-service:
-    image: yourdockerhubusername/stall-service:latest
+    image: kavindasandamal/stall-service:latest
     container_name: stall-service
     ports:
       - "8082:8082"
@@ -57,7 +57,7 @@ services:
 
   # Reservation Service
   reservation-service:
-    image: yourdockerhubusername/reservation-service:latest
+    image: kavindasandamal/reservation-service:latest
     container_name: reservation-service
     ports:
       - "8083:8083"
@@ -88,7 +88,7 @@ services:
 
   # User Service
   user-service:
-    image: yourdockerhubusername/user-service:latest
+    image: kavindasandamal/user-service:latest
     container_name: user-service
     ports:
       - "8086:8086"
