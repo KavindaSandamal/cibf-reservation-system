@@ -26,7 +26,7 @@ services:
     deploy:
       resources:
         limits:
-          memory: ${MEM_LIMIT_MB}m
+          memory: "${MEM_LIMIT_MB:-512}m"
 
   # Authentication Service
   auth-service:
@@ -58,7 +58,7 @@ services:
     deploy:
       resources:
         limits:
-          memory: ${MEM_LIMIT_MB}m
+          memory: "${MEM_LIMIT_MB:-512}m"
 
   # Stall Service
   stall-service:
@@ -90,7 +90,7 @@ services:
     deploy:
       resources:
         limits:
-          memory: ${MEM_LIMIT_MB}m
+          memory: "${MEM_LIMIT_MB:-512}m"
 
   # Reservation Service
   reservation-service:
@@ -127,7 +127,7 @@ services:
     deploy:
       resources:
         limits:
-          memory: ${MEM_LIMIT_MB}m
+          memory: "${MEM_LIMIT_MB:-512}m"
 
   # User Service
   user-service:
@@ -159,7 +159,7 @@ services:
     deploy:
       resources:
         limits:
-          memory: ${MEM_LIMIT_MB}m
+          memory: "${MEM_LIMIT_MB:-512}m"
 
   # Nginx Reverse Proxy
   nginx:
@@ -184,7 +184,7 @@ services:
     deploy:
       resources:
         limits:
-          memory: ${MEM_LIMIT_MB}m
+          memory: "${MEM_LIMIT_MB:-512}m"
 
 networks:
   cibf-network:
