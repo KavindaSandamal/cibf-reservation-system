@@ -71,8 +71,8 @@ services:
       - SPRING_RABBITMQ_USERNAME=admin
       - SPRING_RABBITMQ_PASSWORD=changeme123
       - STALL_SERVICE_URL=http://stall-service:8082
-      - GMAIL_USERNAME=${info.cibf@gmail.com}
-      - GMAIL_APP_PASSWORD=${mpcggwvlillvtsmt}
+      - GMAIL_USERNAME=info.cibf@gmail.com
+      - GMAIL_APP_PASSWORD=mpcggwvlillvtsmt
     restart: unless-stopped
     depends_on:
       - rabbitmq
