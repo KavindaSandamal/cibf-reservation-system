@@ -15,11 +15,12 @@ DOCKER_REPO=kavindasandamal
 
 # Service list
 SERVICES=(
-  "authentication-service"
+  "auth-service"
   "stall-service"
   "user-service"
   "reservation-service"
 )
+
 
 echo "🚀 Deploying CIBF Services..."
 echo "📂 Project directory: $PROJECT_DIR"
