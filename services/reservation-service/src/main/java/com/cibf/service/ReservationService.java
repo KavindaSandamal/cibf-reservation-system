@@ -325,7 +325,15 @@ public class ReservationService {
 
     private List<ReservationConfirmationDto.StallInfo> getStallsInfoByIds(List<Long> stallIds) {
         try {
-            List<StallResponse> stallResponses = stallServiceClient.getStallsByIds(stallIds);
+            // FIX START: Convert List<Long> to comma-separated String for the Feign client
+            String commaSeparatedIds = stallIds.stream()
+                    .map(Object::toString)
+                    .collect(Collectors.joining(","));
+
+            // Pass the String to the StallServiceClient
+            List<StallResponse> stallResponses = stallServiceClient.getStallsByIds(commaSeparatedIds);
+            // FIX END: stallServiceClient.getStallsByIds(stallIds); was the old incorrect
+            // line
 
             return stallResponses.stream()
                     .map(stall -> ReservationConfirmationDto.StallInfo.builder()
