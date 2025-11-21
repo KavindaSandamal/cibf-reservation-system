@@ -1,10 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Search, MapPin, List, Filter, X, Check, AlertCircle, Calendar, DollarSign, Maximize2 } from 'lucide-react';
-import stallApi from "../../services/stallApi"
-import {useAuth} from '../../context/AuthContext';
-
-// Mock Auth Context (replace with your actual context)
-
+import { useAuth } from '../../context/AuthContext';
+import stallApi from '../../services/stallApi';
 
 
 const StallReservationSystem = () => {
@@ -20,20 +17,33 @@ const StallReservationSystem = () => {
   const [selectedStall, setSelectedStall] = useState(null);
   const [showReservationModal, setShowReservationModal] = useState(false);
   const [reservationForm, setReservationForm] = useState({
-    vendorName: user.businessName || "",
-    vendorEmail: '',
+    vendorName: user?.businessName || '',
+    vendorEmail: user?.email || '',
     vendorPhone: '',
-    companyName: user.businessName || "",
+    companyName: user?.businessName || '',
     reservationDate: '',
     notes: ''
   });
   const [notification, setNotification] = useState(null);
+  const [holdToken, setHoldToken] = useState(null);
+  const [submitting, setSubmitting] = useState(false);
 
   const userRole = user?.role || 'VENDOR';
 
   useEffect(() => {
     fetchData();
   }, []);
+
+  useEffect(() => {
+    if (user) {
+      setReservationForm(prev => ({
+        ...prev,
+        vendorName: user.businessName || '',
+        vendorEmail: user.email || '',
+        companyName: user.businessName || ''
+      }));
+    }
+  }, [user]);
 
   const fetchData = async () => {
     try {
@@ -64,7 +74,7 @@ const StallReservationSystem = () => {
 
   const showNotification = (message, type = 'success') => {
     setNotification({ message, type });
-    setTimeout(() => setNotification(null), 3000);
+    setTimeout(() => setNotification(null), 5000);
   };
 
   const handleReserveStall = (stall) => {
@@ -72,50 +82,122 @@ const StallReservationSystem = () => {
       showNotification('This stall is not available for reservation', 'error');
       return;
     }
+    
+    if (!user?.id) {
+      showNotification('Please log in to reserve a stall', 'error');
+      return;
+    }
+
     setSelectedStall(stall);
     setShowReservationModal(true);
+    setReservationForm({
+      vendorName: user?.businessName || '',
+      vendorEmail: user?.email || '',
+      vendorPhone: '',
+      companyName: user?.businessName || '',
+      reservationDate: '',
+      notes: ''
+    });
+    setHoldToken(null);
   };
 
   const handleSubmitReservation = async () => {
-    if (!reservationForm.vendorEmail || !reservationForm.vendorPhone || !reservationForm.reservationDate) {
+    // Validation
+    if (!reservationForm.vendorName || !reservationForm.vendorEmail || 
+        !reservationForm.vendorPhone || !reservationForm.reservationDate) {
       showNotification('Please fill in all required fields', 'error');
       return;
     }
 
+    if (!user?.id) {
+      showNotification('User not authenticated', 'error');
+      return;
+    }
+
+    // Email validation
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(reservationForm.vendorEmail)) {
+      showNotification('Please enter a valid email address', 'error');
+      return;
+    }
+
+    // Phone validation
+    const phoneRegex = /^[\d\s\-\+\(\)]+$/;
+    if (!phoneRegex.test(reservationForm.vendorPhone)) {
+      showNotification('Please enter a valid phone number', 'error');
+      return;
+    }
+
+    setSubmitting(true);
+
     try {
-      await stallApi.post('/api/reservations', {
-        stallId: selectedStall.id,
-        ...reservationForm
+      // Step 1: Hold the stall
+      const holdResponse = await stallApi.post('/api/reservations/hold', {
+        userId: user.id,
+        stallIds: [selectedStall.id]
+      });
+
+      const token = holdResponse.data.holdToken;
+      setHoldToken(token);
+
+      // Step 2: Confirm the reservation
+      await stallApi.post('/api/reservations/confirm', {
+        userId: user.id,
+        holdToken: token,
+        vendorName: reservationForm.vendorName,
+        vendorEmail: reservationForm.vendorEmail,
+        vendorPhone: reservationForm.vendorPhone,
+        companyName: reservationForm.companyName,
+        reservationDate: reservationForm.reservationDate,
+        notes: reservationForm.notes
       });
       
       showNotification(`Successfully reserved ${selectedStall.stallName}!`, 'success');
       setShowReservationModal(false);
+      setSelectedStall(null);
+      setHoldToken(null);
       setReservationForm({
-        vendorName: '',
-        vendorEmail: '',
+        vendorName: user?.businessName || '',
+        vendorEmail: user?.email || '',
         vendorPhone: '',
-        companyName: '',
+        companyName: user?.businessName || '',
         reservationDate: '',
         notes: ''
       });
-      fetchData();
+      
+      // Refresh stall data
+      await fetchData();
     } catch (error) {
       console.error('Error submitting reservation:', error);
-      showNotification('Failed to submit reservation', 'error');
+      const errorMessage = error.response?.data?.message || 
+                          error.response?.data?.error || 
+                          'Failed to submit reservation. Please try again.';
+      showNotification(errorMessage, 'error');
+      
+      // Clear hold token on error
+      setHoldToken(null);
+    } finally {
+      setSubmitting(false);
     }
   };
 
   const handleUpdateStatus = async (id, status) => {
+    if (!window.confirm(`Are you sure you want to change the status to ${status}?`)) {
+      return;
+    }
+
     try {
       await stallApi.patch(`/api/stalls/${id}/status`, null, {
-        params: { status },
-        headers: { Authorization: `Bearer ${localStorage.getItem('token')}` },
+        params: { status }
       });
       showNotification('Status updated successfully', 'success');
-      fetchData();
+      await fetchData();
     } catch (error) {
       console.error('Error updating status:', error);
-      showNotification('Failed to update status', 'error');
+      const errorMessage = error.response?.data?.message || 
+                          error.response?.data?.error || 
+                          'Failed to update status';
+      showNotification(errorMessage, 'error');
     }
   };
 
@@ -143,6 +225,13 @@ const StallReservationSystem = () => {
 
   const getSizeLabel = (size) =>
     size ? size.charAt(0) + size.slice(1).toLowerCase() : 'N/A';
+
+  const handleModalClose = () => {
+    if (submitting) return;
+    setShowReservationModal(false);
+    setSelectedStall(null);
+    setHoldToken(null);
+  };
 
   if (loading) {
     return (
@@ -359,12 +448,13 @@ const StallReservationSystem = () => {
                               </button>
                             )}
                             
-                            {userRole === 'ADMIN' && (
+                            {userRole === 'EMPLOYEE' && (
                               <div className="btn-group btn-group-sm">
                                 {stall.status !== 'AVAILABLE' && (
                                   <button
                                     onClick={() => handleUpdateStatus(stall.id, 'AVAILABLE')}
                                     className="btn btn-outline-success"
+                                    title="Mark as Available"
                                   >
                                     Available
                                   </button>
@@ -373,6 +463,7 @@ const StallReservationSystem = () => {
                                   <button
                                     onClick={() => handleUpdateStatus(stall.id, 'RESERVED')}
                                     className="btn btn-outline-primary"
+                                    title="Mark as Reserved"
                                   >
                                     Reserve
                                   </button>
@@ -381,6 +472,7 @@ const StallReservationSystem = () => {
                                   <button
                                     onClick={() => handleUpdateStatus(stall.id, 'UNAVAILABLE')}
                                     className="btn btn-outline-danger"
+                                    title="Mark as Unavailable"
                                   >
                                     Unavailable
                                   </button>
@@ -399,6 +491,16 @@ const StallReservationSystem = () => {
                 <div className="text-center py-5">
                   <Filter size={48} className="text-muted mb-3" />
                   <h5 className="text-muted">No stalls found matching your filters</h5>
+                  <button 
+                    className="btn btn-outline-primary mt-3"
+                    onClick={() => {
+                      setSearchTerm('');
+                      setSelectedSize('ALL');
+                      setSelectedStatus('ALL');
+                    }}
+                  >
+                    Clear Filters
+                  </button>
                 </div>
               )}
             </div>
@@ -428,30 +530,39 @@ const StallReservationSystem = () => {
                 className="position-relative border border-2 rounded bg-light overflow-hidden"
                 style={{ height: '600px' }}
               >
-                {filteredStalls.map((stall) => (
-                  <div
-                    key={stall.id}
-                    onClick={() => stall.status === 'AVAILABLE' && userRole === 'VENDOR' && handleReserveStall(stall)}
-                    className={`position-absolute rounded shadow d-flex flex-column align-items-center justify-content-center text-white fw-bold ${
-                      stall.status === 'AVAILABLE' ? 'bg-success' : stall.status === 'RESERVED' ? 'bg-primary' : 'bg-danger'
-                    }`}
-                    style={{
-                      left: `${stall.locationX}%`,
-                      top: `${stall.locationY}%`,
-                      width: '80px',
-                      height: '80px',
-                      transform: 'translate(-50%, -50%)',
-                      cursor: stall.status === 'AVAILABLE' && userRole === 'VENDOR' ? 'pointer' : 'default',
-                      transition: 'transform 0.2s'
-                    }}
-                    title={`${stall.stallName} - ${stall.status} - $${stall.price} - ${stall.dimension}`}
-                    onMouseEnter={(e) => e.currentTarget.style.transform = 'translate(-50%, -50%) scale(1.1)'}
-                    onMouseLeave={(e) => e.currentTarget.style.transform = 'translate(-50%, -50%) scale(1)'}
-                  >
-                    <div style={{ fontSize: '1rem' }}>{stall.stallName}</div>
-                    <div style={{ fontSize: '0.75rem', opacity: 0.9 }}>${stall.price}</div>
+                {filteredStalls.length > 0 ? (
+                  filteredStalls.map((stall) => (
+                    <div
+                      key={stall.id}
+                      onClick={() => stall.status === 'AVAILABLE' && userRole === 'VENDOR' && handleReserveStall(stall)}
+                      className={`position-absolute rounded shadow d-flex flex-column align-items-center justify-content-center text-white fw-bold ${
+                        stall.status === 'AVAILABLE' ? 'bg-success' : stall.status === 'RESERVED' ? 'bg-primary' : 'bg-danger'
+                      }`}
+                      style={{
+                        left: `${stall.locationX}%`,
+                        top: `${stall.locationY}%`,
+                        width: '80px',
+                        height: '80px',
+                        transform: 'translate(-50%, -50%)',
+                        cursor: stall.status === 'AVAILABLE' && userRole === 'VENDOR' ? 'pointer' : 'default',
+                        transition: 'transform 0.2s'
+                      }}
+                      title={`${stall.stallName} - ${stall.status} - $${stall.price} - ${stall.dimension}`}
+                      onMouseEnter={(e) => e.currentTarget.style.transform = 'translate(-50%, -50%) scale(1.1)'}
+                      onMouseLeave={(e) => e.currentTarget.style.transform = 'translate(-50%, -50%) scale(1)'}
+                    >
+                      <div style={{ fontSize: '1rem' }}>{stall.stallName}</div>
+                      <div style={{ fontSize: '0.75rem', opacity: 0.9 }}>${stall.price}</div>
+                    </div>
+                  ))
+                ) : (
+                  <div className="d-flex align-items-center justify-content-center h-100">
+                    <div className="text-center">
+                      <MapPin size={48} className="text-muted mb-3" />
+                      <h5 className="text-muted">No stalls to display on map</h5>
+                    </div>
                   </div>
-                ))}
+                )}
               </div>
             </div>
           </div>
@@ -463,7 +574,7 @@ const StallReservationSystem = () => {
         <div 
           className="modal d-block" 
           style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}
-          onClick={() => setShowReservationModal(false)}
+          onClick={handleModalClose}
         >
           <div 
             className="modal-dialog modal-dialog-centered modal-dialog-scrollable"
@@ -475,7 +586,8 @@ const StallReservationSystem = () => {
                 <button 
                   type="button" 
                   className="btn-close"
-                  onClick={() => setShowReservationModal(false)}
+                  onClick={handleModalClose}
+                  disabled={submitting}
                 ></button>
               </div>
               <div className="modal-body">
@@ -489,35 +601,47 @@ const StallReservationSystem = () => {
                 </div>
 
                 <div className="mb-3">
-                  <label className="form-label fw-semibold">Vendor Name *</label>
+                  <label className="form-label fw-semibold">
+                    Vendor Name <span className="text-danger">*</span>
+                  </label>
                   <input
                     type="text"
                     className="form-control"
+                    placeholder="Enter vendor name"
                     value={reservationForm.vendorName}
                     onChange={(e) => setReservationForm({...reservationForm, vendorName: e.target.value})}
+                    disabled={submitting}
+                    required
                   />
                 </div>
 
                 <div className="mb-3">
-                  <label className="form-label fw-semibold">Email *</label>
+                  <label className="form-label fw-semibold">
+                    Email <span className="text-danger">*</span>
+                  </label>
                   <input
                     type="email"
-                    placeholder='Enter your email'
+                    placeholder="Enter your email"
                     className="form-control"
                     value={reservationForm.vendorEmail}
                     onChange={(e) => setReservationForm({...reservationForm, vendorEmail: e.target.value})}
+                    disabled={submitting}
+                    required
                   />
                 </div>
 
                 <div className="mb-3">
-                  <label className="form-label fw-semibold">Phone *</label>
+                  <label className="form-label fw-semibold">
+                    Phone <span className="text-danger">*</span>
+                  </label>
                   <input
                     type="tel"
-                    
-                    placeholder='Enter your Phone Number'
+                    placeholder="Enter your phone number"
                     className="form-control"
                     value={reservationForm.vendorPhone}
                     onChange={(e) => setReservationForm({...reservationForm, vendorPhone: e.target.value})}
+                    disabled={submitting}
+                    required
                   />
                 </div>
 
@@ -525,21 +649,26 @@ const StallReservationSystem = () => {
                   <label className="form-label fw-semibold">Company Name</label>
                   <input
                     type="text"
-                    placeholder='Enter your Company Name'
+                    placeholder="Enter your company name"
                     className="form-control"
                     value={reservationForm.companyName}
                     onChange={(e) => setReservationForm({...reservationForm, companyName: e.target.value})}
+                    disabled={submitting}
                   />
                 </div>
 
                 <div className="mb-3">
-                  <label className="form-label fw-semibold">Reservation Date *</label>
+                  <label className="form-label fw-semibold">
+                    Reservation Date <span className="text-danger">*</span>
+                  </label>
                   <input
                     type="date"
                     className="form-control"
-                    placeholder='Enter Reservation Date'
                     value={reservationForm.reservationDate}
                     onChange={(e) => setReservationForm({...reservationForm, reservationDate: e.target.value})}
+                    disabled={submitting}
+                    min={new Date().toISOString().split('T')[0]}
+                    required
                   />
                 </div>
 
@@ -548,17 +677,25 @@ const StallReservationSystem = () => {
                   <textarea
                     className="form-control"
                     rows="3"
-                    placeholder='Additional Notes'
+                    placeholder="Any special requirements or notes"
                     value={reservationForm.notes}
                     onChange={(e) => setReservationForm({...reservationForm, notes: e.target.value})}
+                    disabled={submitting}
                   ></textarea>
                 </div>
+
+                {holdToken && (
+                  <div className="alert alert-info">
+                    <small>Hold Token: {holdToken}</small>
+                  </div>
+                )}
               </div>
               <div className="modal-footer">
                 <button 
                   type="button" 
                   className="btn btn-secondary"
-                  onClick={() => setShowReservationModal(false)}
+                  onClick={handleModalClose}
+                  disabled={submitting}
                 >
                   Cancel
                 </button>
@@ -566,8 +703,16 @@ const StallReservationSystem = () => {
                   type="button" 
                   className="btn btn-primary"
                   onClick={handleSubmitReservation}
+                  disabled={submitting}
                 >
-                  Confirm Reservation
+                  {submitting ? (
+                    <>
+                      <span className="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+                      Processing...
+                    </>
+                  ) : (
+                    'Confirm Reservation'
+                  )}
                 </button>
               </div>
             </div>
