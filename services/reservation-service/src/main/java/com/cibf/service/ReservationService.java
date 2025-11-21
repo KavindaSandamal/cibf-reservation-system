@@ -11,11 +11,13 @@ import com.cibf.client.StallServiceClient;
 import com.cibf.client.UserServiceClient;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.util.Collections;
 import java.util.List;
 import java.util.UUID;
 import java.util.stream.Collectors;
@@ -229,7 +231,7 @@ public class ReservationService {
 
         if (reservation.getStatus() == ReservationStatus.CONFIRMED) {
             List<ReservationConfirmationDto.StallInfo> stallInfo = getStallsInfoByIds(
-                    List.of(reservation.getStallId()));
+                    Collections.singletonList(reservation.getStallId()));
 
             response.setStalls(stallInfo.stream()
                     .map(s -> ReservationResponse.StallSummary.builder()
@@ -325,7 +327,20 @@ public class ReservationService {
 
     private List<ReservationConfirmationDto.StallInfo> getStallsInfoByIds(List<Long> stallIds) {
         try {
-            List<StallResponse> stallResponses = stallServiceClient.getStallsByIds(stallIds);
+            // FIX: Convert List<Long> to comma-separated String for Feign client
+            String commaSeparatedIds = stallIds.stream()
+                    .map(Object::toString)
+                    .collect(Collectors.joining(","));
+
+            // Handle ResponseEntity return type properly
+            ResponseEntity<List<StallResponse>> stallResponseEntity = stallServiceClient
+                    .getStallsByIds(commaSeparatedIds);
+
+            List<StallResponse> stallResponses = stallResponseEntity.getBody();
+            if (stallResponses == null) {
+                log.warn("Received null response body from StallServiceClient for IDs: {}", stallIds);
+                return Collections.emptyList();
+            }
 
             return stallResponses.stream()
                     .map(stall -> ReservationConfirmationDto.StallInfo.builder()
@@ -338,7 +353,7 @@ public class ReservationService {
                     .collect(Collectors.toList());
         } catch (Exception e) {
             log.error("Failed to get stall information for IDs: {}", stallIds, e);
-            return List.of();
+            return Collections.emptyList();
         }
     }
 }
