@@ -1,4 +1,4 @@
-$EC2_IP = '34.209.143.5'
+$EC2_IP = '34.213.51.153'
 $BASE_URL = "http://$EC2_IP"
 
 Write-Host 'Testing Complete Reservation Flow with RabbitMQ' -ForegroundColor Cyan
@@ -52,7 +52,7 @@ try {
 Write-Host "`n3. Holding stalls..." -ForegroundColor Yellow
 $holdBody = @{
     userId       = $userId
-    stallIds     = @(1)
+    stallIds     = @(2)
     businessName = 'Kavinda Books'
 } | ConvertTo-Json
 
