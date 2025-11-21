@@ -1,9 +1,8 @@
 # Complete Employee Portal API Testing Script
 # Tests all admin endpoints across Authentication, Stall, and Reservation services
 
-$AUTH_URL = "http://localhost:8081"
-$STALL_URL = "http://localhost:8082"
-$RESERVATION_URL = "http://localhost:8083"
+$EC2_IP = '34.213.51.153'
+$BASE_URL = "http://$EC2_IP"
 
 Write-Host "================================================================" -ForegroundColor Cyan
 Write-Host "   CIBF Employee Portal - Complete API Test" -ForegroundColor Cyan
@@ -15,12 +14,12 @@ Write-Host "--- STEP 1: Employee Authentication ---" -ForegroundColor Yellow
 Write-Host ""
 
 $loginBody = @{
-    username = "admincibf@cibf.com"
+    username = "admin@cibf.lk"    # Changed from admin@cibf.com
     password = "admin123"
 } | ConvertTo-Json
 
 try {
-    $authResponse = Invoke-RestMethod -Uri "$AUTH_URL/api/auth/employee/login" `
+    $authResponse = Invoke-RestMethod -Uri "$BASE_URL/api/auth/employee/login" `
         -Method Post `
         -Body $loginBody `
         -ContentType "application/json"
@@ -47,7 +46,7 @@ Write-Host ""
 # Test 1: Get Dashboard
 Write-Host "Test 1: Get Dashboard" -ForegroundColor Yellow
 try {
-    $dashboard = Invoke-RestMethod -Uri "$AUTH_URL/api/admin/dashboard" -Headers $headers
+    $dashboard = Invoke-RestMethod -Uri "$BASE_URL/api/admin/dashboard" -Headers $headers
     Write-Host "[SUCCESS] Dashboard loaded" -ForegroundColor Green
     Write-Host "Total Users: $($dashboard.totalUsers)" -ForegroundColor White
     Write-Host ""
@@ -58,7 +57,7 @@ try {
 # Test 2: Get All Users
 Write-Host "Test 2: Get All Users (Paginated)" -ForegroundColor Yellow
 try {
-    $users = Invoke-RestMethod -Uri "$AUTH_URL/api/admin/users?page=0&size=10" -Headers $headers
+    $users = Invoke-RestMethod -Uri "$BASE_URL/api/admin/users?page=0&size=10" -Headers $headers
     Write-Host "[SUCCESS] Fetched users" -ForegroundColor Green
     Write-Host "Total Users: $($users.totalItems)" -ForegroundColor White
     Write-Host "Current Page: $($users.currentPage + 1) of $($users.totalPages)" -ForegroundColor White
@@ -70,7 +69,7 @@ try {
 # Test 3: Search Users
 Write-Host "Test 3: Search Users" -ForegroundColor Yellow
 try {
-    $searchResults = Invoke-RestMethod -Uri "$AUTH_URL/api/admin/users?search=test" -Headers $headers
+    $searchResults = Invoke-RestMethod -Uri "$BASE_URL/api/admin/users?search=test" -Headers $headers
     Write-Host "[SUCCESS] Search completed" -ForegroundColor Green
     Write-Host "Found: $($searchResults.totalItems) users" -ForegroundColor White
     Write-Host ""
@@ -81,7 +80,7 @@ try {
 # Test 4: Get User Statistics
 Write-Host "Test 4: Get User Statistics" -ForegroundColor Yellow
 try {
-    $stats = Invoke-RestMethod -Uri "$AUTH_URL/api/admin/users/statistics" -Headers $headers
+    $stats = Invoke-RestMethod -Uri "$BASE_URL/api/admin/users/statistics" -Headers $headers
     Write-Host "[SUCCESS] Statistics loaded" -ForegroundColor Green
     Write-Host "Total Users: $($stats.totalUsers)" -ForegroundColor White
     Write-Host "Last 7 Days: $($stats.last7Days)" -ForegroundColor White
@@ -93,7 +92,7 @@ try {
 # Test 5: Export Users to CSV
 Write-Host "Test 5: Export Users to CSV" -ForegroundColor Yellow
 try {
-    Invoke-WebRequest -Uri "$AUTH_URL/api/admin/users/export" `
+    Invoke-WebRequest -Uri "$BASE_URL/api/admin/users/export" `
         -Headers $headers `
         -OutFile "users_export.csv"
     Write-Host "[SUCCESS] Users exported to users_export.csv" -ForegroundColor Green
@@ -113,7 +112,7 @@ Write-Host ""
 # Test 6: Get All Stalls
 Write-Host "Test 6: Get All Stalls" -ForegroundColor Yellow
 try {
-    $stalls = Invoke-RestMethod -Uri "$STALL_URL/api/admin/stalls?page=0&sizePerPage=10" -Headers $headers
+    $stalls = Invoke-RestMethod -Uri "$BASE_URL/api/admin/stalls?page=0&sizePerPage=10" -Headers $headers
     Write-Host "[SUCCESS] Fetched stalls" -ForegroundColor Green
     Write-Host "Total Stalls: $($stalls.totalItems)" -ForegroundColor White
     Write-Host ""
@@ -124,7 +123,7 @@ try {
 # Test 7: Get Stalls by Status
 Write-Host "Test 7: Get Available Stalls" -ForegroundColor Yellow
 try {
-    $availableStalls = Invoke-RestMethod -Uri "$STALL_URL/api/admin/stalls?status=AVAILABLE" -Headers $headers
+    $availableStalls = Invoke-RestMethod -Uri "$BASE_URL/api/admin/stalls?status=AVAILABLE" -Headers $headers
     Write-Host "[SUCCESS] Filtered stalls" -ForegroundColor Green
     Write-Host "Available: $($availableStalls.totalItems)" -ForegroundColor White
     Write-Host ""
@@ -135,7 +134,7 @@ try {
 # Test 8: Get Stall Statistics
 Write-Host "Test 8: Get Stall Statistics" -ForegroundColor Yellow
 try {
-    $stallStats = Invoke-RestMethod -Uri "$STALL_URL/api/admin/stalls/statistics" -Headers $headers
+    $stallStats = Invoke-RestMethod -Uri "$BASE_URL/api/admin/stalls/statistics" -Headers $headers
     Write-Host "[SUCCESS] Statistics loaded" -ForegroundColor Green
     Write-Host "Total Stalls: $($stallStats.totalStalls)" -ForegroundColor White
     Write-Host "Available: $($stallStats.availableStalls)" -ForegroundColor White
@@ -148,7 +147,7 @@ try {
 # Test 9: Get Stalls for Map
 Write-Host "Test 9: Get Stalls for Map Display" -ForegroundColor Yellow
 try {
-    $mapStalls = Invoke-RestMethod -Uri "$STALL_URL/api/admin/stalls/map" -Headers $headers
+    $mapStalls = Invoke-RestMethod -Uri "$BASE_URL/api/admin/stalls/map" -Headers $headers
     Write-Host "[SUCCESS] Map data loaded" -ForegroundColor Green
     Write-Host "Stalls on map: $($mapStalls.Count)" -ForegroundColor White
     Write-Host ""
@@ -159,7 +158,7 @@ try {
 # Test 10: Export Stalls to CSV
 Write-Host "Test 10: Export Stalls to CSV" -ForegroundColor Yellow
 try {
-    Invoke-WebRequest -Uri "$STALL_URL/api/admin/stalls/export" `
+    Invoke-WebRequest -Uri "$BASE_URL/api/admin/stalls/export" `
         -Headers $headers `
         -OutFile "stalls_export.csv"
     Write-Host "[SUCCESS] Stalls exported to stalls_export.csv" -ForegroundColor Green
@@ -179,7 +178,7 @@ Write-Host ""
 # Test 11: Get All Reservations
 Write-Host "Test 11: Get All Reservations" -ForegroundColor Yellow
 try {
-    $reservations = Invoke-RestMethod -Uri "$RESERVATION_URL/api/admin/reservations?page=0&size=10" -Headers $headers
+    $reservations = Invoke-RestMethod -Uri "$BASE_URL/api/admin/reservations?page=0&size=10" -Headers $headers
     Write-Host "[SUCCESS] Fetched reservations" -ForegroundColor Green
     Write-Host "Total Reservations: $($reservations.totalItems)" -ForegroundColor White
     Write-Host ""
@@ -190,7 +189,7 @@ try {
 # Test 12: Filter Reservations by Status
 Write-Host "Test 12: Get Confirmed Reservations" -ForegroundColor Yellow
 try {
-    $confirmed = Invoke-RestMethod -Uri "$RESERVATION_URL/api/admin/reservations?status=CONFIRMED" -Headers $headers
+    $confirmed = Invoke-RestMethod -Uri "$BASE_URL/api/admin/reservations?status=CONFIRMED" -Headers $headers
     Write-Host "[SUCCESS] Filtered reservations" -ForegroundColor Green
     Write-Host "Confirmed: $($confirmed.totalItems)" -ForegroundColor White
     Write-Host ""
@@ -201,7 +200,7 @@ try {
 # Test 13: Search Reservations
 Write-Host "Test 13: Search Reservations" -ForegroundColor Yellow
 try {
-    $searchRes = Invoke-RestMethod -Uri "$RESERVATION_URL/api/admin/reservations?search=test" -Headers $headers
+    $searchRes = Invoke-RestMethod -Uri "$BASE_URL/api/admin/reservations?search=test" -Headers $headers
     Write-Host "[SUCCESS] Search completed" -ForegroundColor Green
     Write-Host "Found: $($searchRes.totalItems) reservations" -ForegroundColor White
     Write-Host ""
@@ -212,7 +211,7 @@ try {
 # Test 14: Get Reservation Statistics
 Write-Host "Test 14: Get Reservation Statistics" -ForegroundColor Yellow
 try {
-    $resStats = Invoke-RestMethod -Uri "$RESERVATION_URL/api/admin/reservations/statistics" -Headers $headers
+    $resStats = Invoke-RestMethod -Uri "$BASE_URL/api/admin/reservations/statistics" -Headers $headers
     Write-Host "[SUCCESS] Statistics loaded" -ForegroundColor Green
     Write-Host "Total: $($resStats.totalReservations)" -ForegroundColor White
     Write-Host "Confirmed: $($resStats.confirmedReservations)" -ForegroundColor White
@@ -224,7 +223,7 @@ try {
 # Test 15: Get Revenue Statistics
 Write-Host "Test 15: Get Revenue Statistics" -ForegroundColor Yellow
 try {
-    $revenue = Invoke-RestMethod -Uri "$RESERVATION_URL/api/admin/reservations/statistics/revenue?period=monthly" -Headers $headers
+    $revenue = Invoke-RestMethod -Uri "$BASE_URL/api/admin/reservations/statistics/revenue?period=monthly" -Headers $headers
     Write-Host "[SUCCESS] Revenue loaded" -ForegroundColor Green
     Write-Host "Total Revenue: Rs. $($revenue.totalRevenue)" -ForegroundColor White
     Write-Host "Reservation Count: $($revenue.reservationCount)" -ForegroundColor White
@@ -236,7 +235,7 @@ try {
 # Test 16: Get Booking Trends
 Write-Host "Test 16: Get Booking Trends" -ForegroundColor Yellow
 try {
-    $trends = Invoke-RestMethod -Uri "$RESERVATION_URL/api/admin/reservations/statistics/trends?period=weekly" -Headers $headers
+    $trends = Invoke-RestMethod -Uri "$BASE_URL/api/admin/reservations/statistics/trends?period=weekly" -Headers $headers
     Write-Host "[SUCCESS] Trends loaded" -ForegroundColor Green
     Write-Host "Total Bookings: $($trends.totalBookings)" -ForegroundColor White
     Write-Host ""
@@ -247,7 +246,7 @@ try {
 # Test 17: Get Dashboard Summary
 Write-Host "Test 17: Get Dashboard Summary" -ForegroundColor Yellow
 try {
-    $summary = Invoke-RestMethod -Uri "$RESERVATION_URL/api/admin/reservations/statistics/summary" -Headers $headers
+    $summary = Invoke-RestMethod -Uri "$BASE_URL/api/admin/reservations/statistics/summary" -Headers $headers
     Write-Host "[SUCCESS] Dashboard summary loaded" -ForegroundColor Green
     Write-Host "Total Reservations: $($summary.totalReservations)" -ForegroundColor White
     Write-Host "Total Revenue: Rs. $($summary.totalRevenue)" -ForegroundColor White
@@ -260,7 +259,7 @@ try {
 # Test 18: Export Reservations to CSV
 Write-Host "Test 18: Export Reservations to CSV" -ForegroundColor Yellow
 try {
-    Invoke-WebRequest -Uri "$RESERVATION_URL/api/admin/reservations/export" `
+    Invoke-WebRequest -Uri "$BASE_URL/api/admin/reservations/export" `
         -Headers $headers `
         -OutFile "reservations_export.csv"
     Write-Host "[SUCCESS] Reservations exported to reservations_export.csv" -ForegroundColor Green
