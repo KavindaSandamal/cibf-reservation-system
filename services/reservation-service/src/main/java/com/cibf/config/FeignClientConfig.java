@@ -1,6 +1,8 @@
 package com.cibf.config;
 
 import feign.RequestInterceptor;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.core.Authentication;
@@ -10,47 +12,48 @@ import org.springframework.security.oauth2.jwt.Jwt;
 @Configuration
 public class FeignClientConfig {
 
+    private static final Logger log = LoggerFactory.getLogger(FeignClientConfig.class);
+
     /**
      * Creates a RequestInterceptor to propagate the current user's JWT
      * to downstream microservices (like the stall-service).
-     * This ensures the user's role and identity are maintained across service
-     * calls.
      */
     @Bean
     public RequestInterceptor jwtRequestInterceptor() {
         return requestTemplate -> {
             // Get the current user's authentication object from Spring Security Context
             Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+            String token = null;
 
             if (authentication != null && authentication.isAuthenticated()) {
-                // Assuming the principal is a JWT object after successful authentication
-                // Note: The specific class might be Jwt or a custom UserDetails implementation
-                // If you are using JwtDecoder, the principal is usually a Jwt.
 
                 try {
-                    // Attempt to cast the principal to a Jwt object
+                    // 1. Attempt to cast the principal to a Jwt object (Standard OAuth2 Resource
+                    // Server flow)
                     Jwt jwt = (Jwt) authentication.getPrincipal();
-
-                    // Extract the raw token value (already signed)
-                    String token = jwt.getTokenValue();
-
-                    // Add the Authorization header for the downstream call
-                    requestTemplate.header("Authorization", "Bearer " + token);
+                    token = jwt.getTokenValue();
+                    log.debug("Extracted token from Jwt principal.");
 
                 } catch (ClassCastException e) {
-                    // Handle case where the principal is not a Jwt (e.g., it's a String token or
-                    // custom object)
-                    // If you are using simple JWT processing without OAuth2/ResourceServer, you
-                    // might need a different extraction logic.
-                    // For example, if the token is stored as the credential:
-                    // String token = (String) authentication.getCredentials();
-
-                    System.err.println(
-                            "Error propagating JWT: Principal is not a Spring Security Jwt object. Are you using OAuth2 Resource Server?");
-                    // Optionally, log the exception or use a fallback mechanism
+                    // 2. Fallback: If the principal isn't a Jwt, check credentials for the raw
+                    // String token
+                    if (authentication.getCredentials() != null) {
+                        // This path assumes the raw token string is stored in the credentials field.
+                        token = authentication.getCredentials().toString();
+                        log.debug("Extracted token from credentials fallback.");
+                    } else {
+                        log.warn("Cannot propagate token: Principal is not a Jwt, and credentials are null.");
+                    }
                 }
+
+                if (token != null) {
+                    // Add the Authorization header for the downstream call
+                    requestTemplate.header("Authorization", "Bearer " + token);
+                    log.debug("Successfully propagated JWT token in Authorization header for Feign call.");
+                }
+
             } else {
-                System.out.println("No authenticated user context found for S2S call. Not adding JWT.");
+                log.debug("No authenticated user context found for S2S call. Not adding JWT.");
             }
         };
     }
