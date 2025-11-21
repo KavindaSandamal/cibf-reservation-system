@@ -327,8 +327,14 @@ public class ReservationService {
 
     private List<ReservationConfirmationDto.StallInfo> getStallsInfoByIds(List<Long> stallIds) {
         try {
-            // FIX: Handle ResponseEntity return type properly
-            ResponseEntity<List<StallResponse>> stallResponseEntity = stallServiceClient.getStallsByIds(stallIds);
+            // FIX: Convert List<Long> to comma-separated String for Feign client
+            String commaSeparatedIds = stallIds.stream()
+                    .map(Object::toString)
+                    .collect(Collectors.joining(","));
+
+            // Handle ResponseEntity return type properly
+            ResponseEntity<List<StallResponse>> stallResponseEntity = stallServiceClient
+                    .getStallsByIds(commaSeparatedIds);
 
             List<StallResponse> stallResponses = stallResponseEntity.getBody();
             if (stallResponses == null) {
