@@ -49,6 +49,8 @@ dependencies {
     
     // Spring Security: Authentication and Authorization framework
     implementation 'org.springframework.boot:spring-boot-starter-security'
+
+    implementation 'org.springframework.boot:spring-boot-starter-oauth2-resource-server'
     
     // Spring Cloud Load Balancer: Required for Feign clients when using service names
     implementation 'org.springframework.cloud:spring-cloud-starter-loadbalancer'
