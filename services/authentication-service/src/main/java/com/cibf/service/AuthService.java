@@ -58,18 +58,22 @@ public class AuthService implements IAuthService {
     public AuthResponse registerUser(UserRegistrationRequest registrationRequest) {
         validateUsernameAvailability(registrationRequest.getUsername());
 
+        // Create user with all fields
         User user = new User(
                 registrationRequest.getUsername(),
                 passwordEncoder.encode(registrationRequest.getPassword()),
                 registrationRequest.getBusinessName(),
-                Role.VENDOR); // Use enum for type safety
+                registrationRequest.getUsername(), // email same as username
+                registrationRequest.getContactNumber(),
+                registrationRequest.getAddress(),
+                Role.VENDOR);
 
         userRepository.save(user);
 
         Authentication authentication = performAuthentication(
                 registrationRequest.getUsername(),
                 registrationRequest.getPassword());
-        
+
         String token = tokenProvider.generateToken(authentication);
 
         return new AuthResponse(token, user.getRole(), user.getBusinessName());
@@ -94,7 +98,7 @@ public class AuthService implements IAuthService {
                 authRequest.getPassword());
 
         User user = findUserByUsername(authRequest.getUsername());
-        
+
         // Validate that the user is actually an employee
         if (!user.isEmployee()) {
             throw new BadCredentialsException("Access denied. Employee credentials required.");
@@ -108,14 +112,20 @@ public class AuthService implements IAuthService {
     public AuthResponse registerEmployee(EmployeeRegistrationRequest registrationRequest) {
         validateUsernameAvailability(registrationRequest.getUsername());
 
-        // Determine role - default to EMPLOYEE if not specified
-        Role effectiveRole = determineEmployeeRole(registrationRequest.getRole());
+        // Role is fixed to EMPLOYEE for self-registration for security reasons.
+        Role effectiveRole = Role.EMPLOYEE;
 
+        // Create User record in users table, using null for vendor-specific fields
+        // (businessName, address)
+        // and using the DTO's contact number.
         User user = new User(
                 registrationRequest.getUsername(),
                 passwordEncoder.encode(registrationRequest.getPassword()),
-                null,
-                effectiveRole); // Use enum for type safety
+                "CIBF Employee", // businessName placeholder for employees
+                registrationRequest.getEmail(), // email for User entity
+                registrationRequest.getContactNumber(), // contactNumber for User entity
+                null, // address for User entity (null)
+                effectiveRole); // Role
 
         userRepository.save(user);
 
@@ -125,7 +135,7 @@ public class AuthService implements IAuthService {
         Authentication authentication = performAuthentication(
                 registrationRequest.getUsername(),
                 registrationRequest.getPassword());
-        
+
         String token = tokenProvider.generateToken(authentication);
 
         return new AuthResponse(token, effectiveRole.getName(), null);
@@ -168,17 +178,17 @@ public class AuthService implements IAuthService {
 
     /**
      * Determine employee role from request.
-     * Defaults to EMPLOYEE if not specified or invalid.
-     * Open/Closed Principle - easy to add new roles.
+     * Defaults to EMPLOYEE if roleString is null/blank. Allows ADMIN only if
+     * explicitly passed.
      */
     private Role determineEmployeeRole(String roleString) {
         if (roleString == null || roleString.isBlank()) {
             return Role.EMPLOYEE;
         }
-        
+
         Role role = Role.fromString(roleString);
-        return (role != null && (role == Role.EMPLOYEE || role == Role.ADMIN)) 
-                ? role 
+        return (role != null && (role == Role.EMPLOYEE || role == Role.ADMIN))
+                ? role
                 : Role.EMPLOYEE;
     }
 
@@ -193,6 +203,8 @@ public class AuthService implements IAuthService {
         employee.setEmail(request.getEmail());
         employee.setEmployeeId(request.getEmployeeId());
         employee.setRole(role.getName());
+        employee.setContactNumber(request.getContactNumber());
+        employee.setDepartment(request.getDepartment());
         return employee;
     }
 
@@ -205,14 +217,18 @@ public class AuthService implements IAuthService {
     public ResponseEntity<?> createEmployeeByAdmin(EmployeeRegistrationRequest registrationRequest) {
         validateUsernameAvailability(registrationRequest.getUsername());
 
-        // Determine role - default to EMPLOYEE if not specified
-        Role effectiveRole = determineEmployeeRole(registrationRequest.getRole());
+        // Since the DTO doesn't contain 'role', we fix the effective role to EMPLOYEE
+        // for simplicity.
+        Role effectiveRole = Role.EMPLOYEE;
 
         // Create User record in users table
         User user = new User(
                 registrationRequest.getUsername(),
                 passwordEncoder.encode(registrationRequest.getPassword()),
-                null,  // business_name is null for employees
+                "CIBF Admin", // business_name placeholder for employees
+                registrationRequest.getEmail(), // email for User entity
+                registrationRequest.getContactNumber(), // contactNumber for User entity
+                null, // address is null
                 effectiveRole);
 
         userRepository.save(user);
@@ -243,11 +259,14 @@ public class AuthService implements IAuthService {
     public ResponseEntity<?> createUserByAdmin(UserRegistrationRequest registrationRequest) {
         validateUsernameAvailability(registrationRequest.getUsername());
 
-        // Create User record in users table
+        // Create User with all fields
         User user = new User(
                 registrationRequest.getUsername(),
                 passwordEncoder.encode(registrationRequest.getPassword()),
                 registrationRequest.getBusinessName(),
+                registrationRequest.getUsername(), // email same as username
+                registrationRequest.getContactNumber(),
+                registrationRequest.getAddress(),
                 Role.VENDOR);
 
         userRepository.save(user);
@@ -258,8 +277,24 @@ public class AuthService implements IAuthService {
         response.put("username", user.getUsername());
         response.put("role", user.getRole());
         response.put("businessName", user.getBusinessName());
+        response.put("email", user.getEmail());
         response.put("message", "User created successfully by admin");
 
         return new ResponseEntity<>(response, HttpStatus.CREATED);
     }
+
+    @Override
+    public boolean userExists(Long userId) {
+        return userRepository.existsById(userId);
+    }
+
+    /**
+     * Retrieves the full user entity by username.
+     * This public method is required for the /me endpoint to get user details.
+     */
+    @Override
+    public User getUserByUsername(String username) {
+        return findUserByUsername(username);
+    }
+
 }

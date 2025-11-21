@@ -22,9 +22,11 @@ Write-Host ""
 Write-Host "Test 1: User Registration" -ForegroundColor Yellow
 try {
     $body = @{
-        username = "testuseraws@cibf.com"
-        password = "password123"
-        businessName = "Test Aws Business"
+        username = "test@gmail.com"
+        password = "test123"
+        businessName = "Testing Books"
+        contactNumber = "+94715691923"
+        address = "Colombo"
     } | ConvertTo-Json
 
     $response = Invoke-RestMethod -Uri "$BASE_URL/api/auth/register" `
@@ -50,8 +52,8 @@ Write-Host ""
 Write-Host "Test 2: User Login" -ForegroundColor Yellow
 try {
     $body = @{
-        username = "testuseraws@cibf.com"
-        password = "password123"
+        username = "test@gmail.com"
+        password = "test123"
     } | ConvertTo-Json
 
     $response = Invoke-RestMethod -Uri "$BASE_URL/api/auth/login" `
@@ -79,12 +81,13 @@ Write-Host ""
 Write-Host "Test 3: Employee Registration" -ForegroundColor Yellow
 try {
     $body = @{
-        username = "employeeaws@cibf.com"
-        password = "password123"
-        name = "Jane Employee"
-        email = "employeeaws@cibf.com"
-        employeeId = "EMP-002"
-        role = "EMPLOYEE"
+        username       = "Testemployee10@cibf.com"
+        password       = "test123"   # Replace with actual password
+        name           = "Test Employee 10"
+        email          = "Testemployee10@cibf.com"
+        employeeId     = "CIBF-0040"
+        contactNumber  = "555-900-8012"
+        department     = "Finance"
     } | ConvertTo-Json
 
     $response = Invoke-RestMethod -Uri "$BASE_URL/api/auth/employee/register" `

@@ -4,13 +4,16 @@ import com.cibf.dto.AuthRequest;
 import com.cibf.dto.AuthResponse;
 import com.cibf.dto.UserRegistrationRequest;
 import com.cibf.dto.EmployeeRegistrationRequest;
+import com.cibf.entity.User;
 import org.springframework.http.ResponseEntity;
 
 /**
  * Interface for authentication service operations.
  * Follows:
- * - Dependency Inversion Principle (DIP): Clients depend on abstraction, not concrete implementation
- * - Interface Segregation Principle (ISP): Focused interface with specific responsibilities
+ * - Dependency Inversion Principle (DIP): Clients depend on abstraction, not
+ * concrete implementation
+ * - Interface Segregation Principle (ISP): Focused interface with specific
+ * responsibilities
  */
 public interface IAuthService {
 
@@ -64,4 +67,9 @@ public interface IAuthService {
      * @return ResponseEntity with created user information
      */
     ResponseEntity<?> createUserByAdmin(UserRegistrationRequest registrationRequest);
+
+    boolean userExists(Long userId);
+
+    User getUserByUsername(String username);
+
 }
