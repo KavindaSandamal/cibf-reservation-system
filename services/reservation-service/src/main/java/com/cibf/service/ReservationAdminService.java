@@ -156,9 +156,9 @@ public class ReservationAdminService {
             throw new IllegalStateException("Cannot resend email for non-confirmed reservation");
         }
 
-        // Fetch stall details - FIX: Handle ResponseEntity return type
-        ResponseEntity<List<StallResponse>> stallResponseEntity = stallServiceClient.getStallsByIds(
-                Collections.singletonList(reservation.getStallId()));
+        // Fetch stall details - FIX: Convert Long to String for Feign client
+        String stallIdString = String.valueOf(reservation.getStallId());
+        ResponseEntity<List<StallResponse>> stallResponseEntity = stallServiceClient.getStallsByIds(stallIdString);
         List<StallResponse> stallDetails = stallResponseEntity.getBody();
 
         if (stallDetails == null) {
@@ -414,12 +414,11 @@ public class ReservationAdminService {
      * Map Reservation entity to ReservationResponse DTO
      */
     private ReservationResponse mapToReservationResponse(Reservation reservation) {
-        // Fetch stall details - FIX: Handle ResponseEntity return type and use
-        // Collections.singletonList
+        // Fetch stall details - FIX: Convert Long to String for Feign client
         List<StallResponse> stallDetails = new ArrayList<>();
         try {
-            ResponseEntity<List<StallResponse>> stallResponseEntity = stallServiceClient.getStallsByIds(
-                    Collections.singletonList(reservation.getStallId()));
+            String stallIdString = String.valueOf(reservation.getStallId());
+            ResponseEntity<List<StallResponse>> stallResponseEntity = stallServiceClient.getStallsByIds(stallIdString);
             if (stallResponseEntity.getBody() != null) {
                 stallDetails = stallResponseEntity.getBody();
             }
