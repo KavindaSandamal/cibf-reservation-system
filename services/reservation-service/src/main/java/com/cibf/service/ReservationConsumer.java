@@ -56,8 +56,11 @@ public class ReservationConsumer {
         Long userId = ((Number) event.get("userId")).longValue();
         String userEmail = (String) event.get("userEmail");
 
+        // FIX: Safely convert stallIds from List<Integer> or List<Long> to List<Long>
         @SuppressWarnings("unchecked")
-        List<Long> stallIds = (List<Long>) event.get("stallIds");
+        List<Long> stallIds = ((List<?>) event.get("stallIds")).stream()
+                .map(id -> id instanceof Long ? (Long) id : ((Number) id).longValue())
+                .collect(Collectors.toList());
 
         log.info("Processing reservation confirmed: reservationId={}, userId={}",
                 reservationId, userId);
