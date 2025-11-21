@@ -1,0 +1,192 @@
+"TopicArn": "arn:aws:sns:us-west-2:767398077631:cibf-notifications
+
+
+sendgrid code - FUL9997KMT42549EL4E6N355
+
+app pss -mpcg gwvl illv tsmt
+
+$registerBody = @{
+    username = "imksandamal99@gmail.com"
+    password = "kavinda123"
+    businessName = "Kavinda Books"
+    contactNumber = "+94715691911"
+    address = "Colombo"
+} | ConvertTo-Json
+
+$registerResponse = Invoke-RestMethod -Uri "http://34.209.143.5/api/auth/register" `
+    -Method Post `
+    -ContentType "application/json" `
+    -Body $registerBody
+
+# Display the response (usually contains the token or success message)
+$registerResponse
+
+# **IMPORTANT:** Replace 'YOUR_TOKEN' with the actual token received after registration/login.
+$token = "eyJhbGciOiJIUzUxMiJ9.eyJzdWIiOiJpbmZvLmthdmluZGFzYW5kYW1hbEBnbWFpbC5jb20iLCJpYXQiOjE3NjM0NDMzMjQsImV4cCI6MTc2MzUyOTcyNH0" 
+
+$reservationBody = @{
+    stallIds = @(1, 2)
+    businessName = "Test Books"
+} | ConvertTo-Json
+
+$headers = @{
+    "Authorization" = "Bearer $token"
+}
+
+$reservationResponse = Invoke-RestMethod -Uri "http://34.209.143.5/api/reservations" `
+    -Method Post `
+    -Headers $headers `
+    -ContentType "application/json" `
+    -Body $reservationBody
+
+# Display the reservation creation response (should include the reservation ID, e.g., '1')
+$reservationResponse
+
+
+////
+# -----------------------------
+# PowerShell - Login Employee
+# -----------------------------
+
+# Replace with employee credentials
+$loginBody = @{
+    username = "Testemployee3@cibf.com"
+    password = "test123"   # Replace with actual password
+} | ConvertTo-Json
+
+# Authentication URL
+$authUrl = "http://34.209.143.5/api/auth/login"
+
+# Send login request
+try {
+    Write-Host "Logging in as employee..." -ForegroundColor Cyan
+
+    $authResponse = Invoke-RestMethod -Uri $authUrl `
+                                      -Method Post `
+                                      -ContentType "application/json" `
+                                      -Body $loginBody
+
+    # JWT Token
+    $jwtToken = $authResponse.accessToken
+
+    Write-Host "✅ Login successful!" -ForegroundColor Green
+    Write-Host "JWT Token:" -ForegroundColor White
+    Write-Host $jwtToken -ForegroundColor Yellow
+
+} catch {
+    Write-Host "❌ Login failed:" -ForegroundColor Red
+    Write-Host $_.Exception.Message -ForegroundColor Red
+}
+
+////
+# -----------------------------
+# PowerShell - Create New Employee
+# -----------------------------
+
+# Replace with employee details
+$employeeBody = @{
+    username       = "employee1@cibf.com"
+    password       = "test123"   # Replace with actual password
+    name           = "Test Employee 1"
+    email          = "Testemployee1@cibf.com"
+    employeeId     = "CIBF-002"
+    contactNumber  = "555-900-8002"
+    department     = "Finance"
+} | ConvertTo-Json
+
+# Employee registration URL
+$registerUrl = "http://34.209.143.5/api/auth/employee/register"
+
+# Send registration request
+try {
+    Write-Host "Registering new employee..." -ForegroundColor Cyan
+
+    $response = Invoke-RestMethod -Uri $registerUrl `
+                                  -Method Post `
+                                  -ContentType "application/json" `
+                                  -Body $employeeBody
+
+    # JWT Token
+    $jwtToken = $response.token
+
+    Write-Host "✅ Employee registered successfully!" -ForegroundColor Green
+    Write-Host "JWT Token:" -ForegroundColor White
+    Write-Host $jwtToken -ForegroundColor Yellow
+
+} catch {
+    Write-Host "❌ Registration failed:" -ForegroundColor Red
+    Write-Host $_.Exception.Message -ForegroundColor Red
+}
+///
+# -----------------------------
+# PowerShell - Create New Stall
+# -----------------------------
+
+# Replace with your actual JWT token
+$token = "eyJhbGciOiJIUzUxMiJ9.eyJzdWIiOiJlbXBsb3llZTFAY2liZi5jb20iLCJpYXQiOjE3NjM3MDI5ODcsImV4cCI6MTc2Mzc4OTM4N30.aYLpoZSh5Bw_n2GQtUKv1D5Qz1j72ZOyV2D8dbesiRNq77TI6RaIs4dJherRvSl7BfO2mQLxI_gKUEaHCWDk4g"
+
+# API base URL
+$baseUrl = "http://34.209.143.5/api/stalls"
+
+# Stall data
+$stallBody = @{
+    stallName  = "C2"
+    size       = "LARGE"
+    dimension  = "20x20"
+    locationX  = 800
+    locationY  = 200
+    price      = 25000
+    status     = "AVAILABLE"
+} | ConvertTo-Json
+
+# Headers
+$headers = @{
+    "Authorization" = "Bearer $token"
+    "Content-Type"  = "application/json"
+}
+
+try {
+    Write-Host "Creating new stall..." -ForegroundColor Cyan
+
+    $response = Invoke-RestMethod -Uri $baseUrl `
+                                  -Method Post `
+                                  -Headers $headers `
+                                  -Body $stallBody
+
+    Write-Host "✅ Stall created successfully!" -ForegroundColor Green
+    Write-Host "Stall ID: $($response.id)" -ForegroundColor White
+    Write-Host "Stall Name: $($response.stallName)" -ForegroundColor White
+    Write-Host "Size: $($response.size)" -ForegroundColor White
+    Write-Host "Price: Rs. $($response.price)" -ForegroundColor White
+
+} catch {
+    Write-Host "❌ Failed to create stall:" -ForegroundColor Red
+    Write-Host $_.Exception.Message -ForegroundColor Red
+}
+
+...................
+package com.cibf.security;
+
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.web.servlet.config.annotation.CorsRegistry;
+import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
+
+@Configuration
+public class CorsConfig {
+
+    @Bean
+    public WebMvcConfigurer corsConfigurer() {
+        return new WebMvcConfigurer() {
+            @Override
+            public void addCorsMappings(CorsRegistry registry) {
+                registry.addMapping("/**")
+                        .allowedOrigins("http://localhost:3000")
+                        .allowedMethods("GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS")
+                        .allowedHeaders("*")
+                        .allowCredentials(true)
+                        .maxAge(3600);
+            }
+        };
+    }
+}
