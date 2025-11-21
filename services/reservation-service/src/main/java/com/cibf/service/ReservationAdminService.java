@@ -11,6 +11,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
+import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -155,9 +156,14 @@ public class ReservationAdminService {
             throw new IllegalStateException("Cannot resend email for non-confirmed reservation");
         }
 
-        // Fetch stall details
-        List<StallResponse> stallDetails = stallServiceClient.getStallsByIds(
-                List.of(reservation.getStallId()));
+        // Fetch stall details - FIX: Handle ResponseEntity return type
+        ResponseEntity<List<StallResponse>> stallResponseEntity = stallServiceClient.getStallsByIds(
+                Collections.singletonList(reservation.getStallId()));
+        List<StallResponse> stallDetails = stallResponseEntity.getBody();
+
+        if (stallDetails == null) {
+            stallDetails = Collections.emptyList();
+        }
 
         ReservationConfirmationDto emailDto = ReservationConfirmationDto.builder()
                 .reservationId(reservation.getId())
@@ -408,10 +414,15 @@ public class ReservationAdminService {
      * Map Reservation entity to ReservationResponse DTO
      */
     private ReservationResponse mapToReservationResponse(Reservation reservation) {
-        // Fetch stall details
+        // Fetch stall details - FIX: Handle ResponseEntity return type and use
+        // Collections.singletonList
         List<StallResponse> stallDetails = new ArrayList<>();
         try {
-            stallDetails = stallServiceClient.getStallsByIds(List.of(reservation.getStallId()));
+            ResponseEntity<List<StallResponse>> stallResponseEntity = stallServiceClient.getStallsByIds(
+                    Collections.singletonList(reservation.getStallId()));
+            if (stallResponseEntity.getBody() != null) {
+                stallDetails = stallResponseEntity.getBody();
+            }
         } catch (Exception e) {
             log.error("Failed to fetch stall details for reservation {}: {}",
                     reservation.getId(), e.getMessage());
