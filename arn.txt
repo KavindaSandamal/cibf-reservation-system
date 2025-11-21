@@ -123,17 +123,17 @@ try {
 # -----------------------------
 
 # Replace with your actual JWT token
-$token = "eyJhbGciOiJIUzUxMiJ9.eyJzdWIiOiJlbXBsb3llZTFAY2liZi5jb20iLCJpYXQiOjE3NjM2Njc1MzksImV4cCI6MTc2Mzc1MzkzOX0.LV1Y17MRuxDQ-6UBtkqOS2HaooU0IidNUpuTOTdpwiwDrjzLzkfbIjcsiItmLNKu-EIahzVKblxJuaf0gzd6sA"
+$token = "eyJhbGciOiJIUzUxMiJ9.eyJzdWIiOiJlbXBsb3llZTFAY2liZi5jb20iLCJpYXQiOjE3NjM3MDI5ODcsImV4cCI6MTc2Mzc4OTM4N30.aYLpoZSh5Bw_n2GQtUKv1D5Qz1j72ZOyV2D8dbesiRNq77TI6RaIs4dJherRvSl7BfO2mQLxI_gKUEaHCWDk4g"
 
 # API base URL
 $baseUrl = "http://34.209.143.5/api/stalls"
 
 # Stall data
 $stallBody = @{
-    stallName  = "C1"
+    stallName  = "C2"
     size       = "LARGE"
     dimension  = "20x20"
-    locationX  = 850
+    locationX  = 800
     locationY  = 200
     price      = 25000
     status     = "AVAILABLE"
