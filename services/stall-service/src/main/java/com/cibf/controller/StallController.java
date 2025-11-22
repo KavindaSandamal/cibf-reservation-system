@@ -133,7 +133,7 @@ public class StallController {
      * Create a new stall (Employee only)
      */
     @PostMapping
-    @PreAuthorize("hasAnyRole('EMPLOYEE', 'VENDOR')")
+    @PreAuthorize("hasRole('EMPLOYEE')")
     public ResponseEntity<StallResponseDTO> createStall(@Valid @RequestBody StallRequestDTO requestDTO) {
         log.info("REST request to create stall: {}", requestDTO.getStallName());
         StallResponseDTO stall = stallService.createStall(requestDTO);
@@ -157,7 +157,7 @@ public class StallController {
      * Update stall status (Employee only)
      */
     @PatchMapping("/{id}/status")
-    @PreAuthorize("hasRole('EMPLOYEE')")
+    @PreAuthorize("hasAnyRole('EMPLOYEE', 'VENDOR')")
     public ResponseEntity<StallResponseDTO> updateStallStatus(
             @PathVariable Long id,
             @RequestParam StallStatus status) {
