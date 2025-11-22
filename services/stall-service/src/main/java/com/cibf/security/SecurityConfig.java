@@ -57,9 +57,9 @@ public class SecurityConfig {
                                 "/api/stalls/**") // Get stall by ID, by-ids, available, etc.
                         .permitAll()
 
-                        // ⭐ Allow PATCH for status updates (service-to-service from
+                        // ⭐ Allow POST for status updates (service-to-service from
                         // reservation-service)
-                        .requestMatchers(HttpMethod.PATCH,
+                        .requestMatchers(HttpMethod.POST,
                                 "/api/stalls/*/status", // Pattern with wildcard
                                 "/api/stalls/{id}/status") // Pattern with path variable
                         .permitAll()
