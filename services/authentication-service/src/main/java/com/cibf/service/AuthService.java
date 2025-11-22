@@ -220,6 +220,10 @@ public class AuthService implements IAuthService {
     private Employee createEmployee(EmployeeRegistrationRequest request, User user, Role role) {
         Employee employee = new Employee();
         employee.setUser(user);
+
+        // --- FIX: Map the required 'username' field ---
+        employee.setUsername(user.getUsername());
+
         employee.setName(request.getName());
         employee.setEmail(request.getEmail());
         employee.setEmployeeId(request.getEmployeeId());
