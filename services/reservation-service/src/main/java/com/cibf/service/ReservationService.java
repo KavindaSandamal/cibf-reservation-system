@@ -133,13 +133,10 @@ public class ReservationService {
 
             // **UPDATE STALL STATUS TO RESERVED**
             try {
-                log.info("🔄 Updating stall {} status to RESERVED", reservation.getStallId());
-                stallServiceClient.updateStallStatus(reservation.getStallId(), StallStatus.RESERVED);
-                log.info("✅ Stall {} status updated successfully", reservation.getStallId());
+                stallServiceClient.updateStallStatus(reservation.getStallId(), "RESERVED");
             } catch (Exception e) {
-                log.error("❌ Failed to update stall status for stall: {}", reservation.getStallId(), e);
+                log.error("Failed to update stall status for stall: {}", reservation.getStallId(), e);
             }
-
         });
 
         Reservation mainReservation = reservations.get(0);
@@ -289,11 +286,9 @@ public class ReservationService {
         }
 
         try {
-            log.info("🔄 Updating stall {} status to AVAILABLE", reservation.getStallId());
-            stallServiceClient.updateStallStatus(reservation.getStallId(), StallStatus.AVAILABLE);
-            log.info("✅ Stall {} status updated successfully", reservation.getStallId());
+            stallServiceClient.updateStallStatus(reservation.getStallId(), "AVAILABLE");
         } catch (Exception e) {
-            log.error("❌ Failed to update stall status for stall: {}", reservation.getStallId(), e);
+            log.error("Failed to update stall status for stall: {}", reservation.getStallId(), e);
         }
 
         reservation.setStatus(ReservationStatus.CANCELLED);

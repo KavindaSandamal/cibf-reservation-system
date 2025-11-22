@@ -1,5 +1,6 @@
 package com.cibf.client;
 
+import com.cibf.config.FeignClientConfig;
 import com.cibf.dto.HoldStallRequest;
 import com.cibf.dto.StallResponse;
 import org.springframework.cloud.openfeign.FeignClient;
@@ -10,9 +11,10 @@ import java.util.List;
 /**
  * Feign Client for communication with the Stall Service.
  * This client relies on FeignClientConfig.java for propagating the JWT token.
- * FIX: Explicitly setting the port 8082 to ensure Docker network connectivity.
+ * Explicitly setting the port 8082 to ensure Docker network connectivity.
  */
-@FeignClient(name = "stall-service", url = "http://stall-service:8082" // FIX: Explicitly specify port 8082
+@FeignClient(name = "stall-service", url = "http://stall-service:8082", configuration = FeignClientConfig.class // ← ADD
+                                                                                                                // THIS
 )
 public interface StallServiceClient {
 
@@ -30,9 +32,11 @@ public interface StallServiceClient {
     ResponseEntity<Void> confirmStallsByReservationId(@PathVariable Long reservationId);
 
     // 4. Update Stall Status (Used for cancellation/cleanup)
-    // Example: /api/stalls/1/status?status=AVAILABLE
+    // Example: /api/stalls/1/status?status=RESERVED
     @PatchMapping("/api/stalls/{stallId}/status")
-    ResponseEntity<Void> updateStallStatus(@PathVariable Long stallId, @RequestParam StallStatus status);
+    ResponseEntity<Void> updateStallStatus(
+            @PathVariable Long stallId,
+            @RequestParam String status);
 
     // 5. Get Stalls by Reservation ID
     @GetMapping("/api/stalls/reservation/{reservationId}")
