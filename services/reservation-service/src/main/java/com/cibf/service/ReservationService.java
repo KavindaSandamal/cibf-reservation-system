@@ -254,10 +254,60 @@ public class ReservationService {
         return response;
     }
 
+    // public List<ReservationResponse> getReservationsByUserId(Long userId) {
+    // return reservationRepository.findByUserIdOrderByCreatedAtDesc(userId)
+    // .stream()
+    // .map(reservation -> mapToResponse(reservation))
+    // .collect(Collectors.toList());
+    // }
     public List<ReservationResponse> getReservationsByUserId(Long userId) {
-        return reservationRepository.findByUserIdOrderByCreatedAtDesc(userId)
-                .stream()
-                .map(reservation -> mapToResponse(reservation))
+        log.info("========== FETCHING RESERVATIONS FOR USER: {} ==========", userId);
+
+        List<Reservation> reservations = reservationRepository.findByUserIdOrderByCreatedAtDesc(userId);
+        log.info("Found {} reservations", reservations.size());
+
+        return reservations.stream()
+                .map(reservation -> {
+                    log.info("--- Processing Reservation ID: {} ---", reservation.getId());
+                    log.info("Stall ID: {}", reservation.getStallId());
+
+                    ReservationResponse response = mapToResponse(reservation);
+
+                    // Populate stall information for each reservation
+                    if (reservation.getStallId() != null) {
+                        log.info("Fetching stall info for stall ID: {}", reservation.getStallId());
+
+                        List<ReservationConfirmationDto.StallInfo> stallInfo = getStallsInfoByIds(
+                                Collections.singletonList(reservation.getStallId()));
+
+                        log.info("Retrieved {} stall info records", stallInfo.size());
+
+                        if (!stallInfo.isEmpty()) {
+                            ReservationConfirmationDto.StallInfo stall = stallInfo.get(0);
+                            log.info("Stall Info: name={}, size={}, dimension={}, price={}",
+                                    stall.getStallName(), stall.getSize(), stall.getDimension(), stall.getPrice());
+
+                            response.setStalls(stallInfo.stream()
+                                    .map(s -> ReservationResponse.StallSummary.builder()
+                                            .id(s.getId())
+                                            .stallName(s.getStallName())
+                                            .size(s.getSize())
+                                            .dimension(s.getDimension())
+                                            .price(s.getPrice())
+                                            .build())
+                                    .collect(Collectors.toList()));
+
+                            log.info("Stalls populated in response: {}", response.getStalls().size());
+                        } else {
+                            log.warn("No stall info found for stall ID: {}", reservation.getStallId());
+                        }
+                    } else {
+                        log.warn("Reservation has null stallId");
+                    }
+
+                    log.info("Response stalls: {}", response.getStalls());
+                    return response;
+                })
                 .collect(Collectors.toList());
     }
 
