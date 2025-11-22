@@ -25,7 +25,7 @@ import java.util.stream.Collectors;
 @CrossOrigin(origins = "http://localhost:3000")
 @RequiredArgsConstructor
 @Slf4j
- // Configure properly in production
+// Configure properly in production
 public class StallController {
 
     private final StallService stallService;
@@ -133,7 +133,7 @@ public class StallController {
      * Create a new stall (Employee only)
      */
     @PostMapping
-    @PreAuthorize("hasRole('EMPLOYEE')")
+    @PreAuthorize("hasAnyRole('EMPLOYEE', 'VENDOR')")
     public ResponseEntity<StallResponseDTO> createStall(@Valid @RequestBody StallRequestDTO requestDTO) {
         log.info("REST request to create stall: {}", requestDTO.getStallName());
         StallResponseDTO stall = stallService.createStall(requestDTO);
