@@ -1,6 +1,9 @@
 import axios, { AxiosInstance, InternalAxiosRequestConfig } from 'axios';
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:80';
+// Use environment variable or empty string to use Vite proxy
+// For direct service access, set VITE_API_URL to specific service port (e.g., http://localhost:8081)
+// Empty string means requests go through Vite dev server proxy (configured in vite.config.ts)
+const API_URL = import.meta.env.VITE_API_URL || '';
 
 class ApiClient {
   private client: AxiosInstance;
@@ -37,6 +40,17 @@ class ApiClient {
           localStorage.removeItem('employee');
           window.location.href = '/employee/login';
         }
+        // Suppress console errors for endpoints that are handled gracefully
+        // These errors are expected when services are unavailable or have issues
+        const url = error.config?.url || '';
+        const isHandledEndpoint = url.includes('/api/admin/statistics/stalls');
+        
+        if (isHandledEndpoint && error.response?.status >= 500) {
+          // Mark error as handled to prevent console spam
+          // The error will still be rejected so callers can handle it
+          error.isHandled = true;
+        }
+        
         return Promise.reject(error);
       }
     );
