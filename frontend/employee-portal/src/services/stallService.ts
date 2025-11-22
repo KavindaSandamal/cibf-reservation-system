@@ -26,8 +26,20 @@ export const stallService = {
       const response = await apiClient.get<StallResponse[]>('/api/admin/stalls', { params });
       return response.data;
     } catch (error: any) {
-      if (error.code === 'ERR_NETWORK' || error.message?.includes('Network Error') || error.message?.includes('ERR_CONNECTION_REFUSED')) {
-        console.warn('Backend unavailable, returning mock stalls list');
+      // Log error for debugging
+      console.error('Error loading stalls:', {
+        status: error.response?.status,
+        statusText: error.response?.statusText,
+        data: error.response?.data,
+        message: error.message,
+      });
+      
+      // Fall back to mock data for network errors or 404s
+      if (error.code === 'ERR_NETWORK' || 
+          error.message?.includes('Network Error') || 
+          error.message?.includes('ERR_CONNECTION_REFUSED') ||
+          error.response?.status === 404) {
+        console.warn('Backend unavailable or endpoint not found, returning mock stalls list');
         return getMockStalls();
       }
       throw error;

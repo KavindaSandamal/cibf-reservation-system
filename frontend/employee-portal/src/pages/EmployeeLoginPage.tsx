@@ -3,12 +3,6 @@ import { useNavigate, Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { useEmployeeAuth } from '../contexts/EmployeeAuthContext';
 
-// Hardcoded test credentials for development/testing
-const TEST_CREDENTIALS = {
-  email: 'employee@cibf.com',
-  password: 'password123',
-};
-
 // Simple email validation
 const isValidEmail = (value: string) => /\S+@\S+\.\S+/.test(value);
 
@@ -16,8 +10,8 @@ const EmployeeLoginPage: React.FC = () => {
   const navigate = useNavigate();
   const { login } = useEmployeeAuth();
 
-  const [email, setEmail] = useState(TEST_CREDENTIALS.email);
-  const [password, setPassword] = useState(TEST_CREDENTIALS.password);
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [errors, setErrors] = useState<{ email?: string; password?: string }>({});
@@ -36,20 +30,6 @@ const EmployeeLoginPage: React.FC = () => {
       navigate('/employee/dashboard');
     } catch (err) {
       // Error is handled inside EmployeeAuthContext
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleQuickLogin = async () => {
-    setEmail(TEST_CREDENTIALS.email);
-    setPassword(TEST_CREDENTIALS.password);
-    setLoading(true);
-    try {
-      await login(TEST_CREDENTIALS.email, TEST_CREDENTIALS.password);
-      navigate('/employee/dashboard');
-    } catch (err) {
-      // handled by EmployeeAuthContext
     } finally {
       setLoading(false);
     }
@@ -246,32 +226,6 @@ const EmployeeLoginPage: React.FC = () => {
                     </>
                   )}
                 </motion.button>
-
-                {/* Dev-only Quick Login */}
-                {import.meta.env.DEV && (
-                  <div className="space-y-3">
-                    <div className="relative py-2">
-                      <div className="absolute inset-0 flex items-center">
-                        <div className="w-full border-t border-slate-700" />
-                      </div>
-                      <div className="relative flex justify-center text-sm">
-                        <span className="bg-slate-900 px-3 text-slate-400">OR</span>
-                      </div>
-                    </div>
-                    <button
-                      type="button"
-                      onClick={handleQuickLogin}
-                      disabled={loading}
-                      title="Quick login with test credentials (Development only)"
-                      className="inline-flex w-full items-center justify-center gap-2 rounded-2xl border-2 border-emerald-300 bg-emerald-50 px-4 py-3 font-semibold text-emerald-700 shadow-sm transition hover:bg-emerald-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 disabled:cursor-not-allowed disabled:opacity-60 dark:border-emerald-500/40 dark:bg-emerald-500/10 dark:text-emerald-300"
-                    >
-                      <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
-                      </svg>
-                      Quick Login (Test Account)
-                    </button>
-                  </div>
-                )}
               </form>
 
               {/* Register Link */}

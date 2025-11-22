@@ -7,6 +7,8 @@ package com.cibf.repository;
 
 import com.cibf.entity.Reservation;
 import com.cibf.entity.ReservationStatus;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -94,4 +96,23 @@ public interface ReservationRepository extends JpaRepository<Reservation, Long> 
         */
        @Query("SELECT r FROM Reservation r WHERE r.createdAt >= :since ORDER BY r.createdAt DESC")
        List<Reservation> findRecentReservations(@Param("since") LocalDateTime since);
+
+       /**
+        * Find all reservations with filters (for admin/employee portal)
+        * Supports filtering by status, date range, and search (by ID, user email, or business name)
+        */
+       @Query("SELECT DISTINCT r FROM Reservation r WHERE " +
+              "(:status IS NULL OR r.status = :status) AND " +
+              "(:startDate IS NULL OR r.createdAt >= :startDate) AND " +
+              "(:endDate IS NULL OR r.createdAt <= :endDate) AND " +
+              "(:search IS NULL OR CAST(r.id AS string) LIKE %:search% OR " +
+              "LOWER(r.userEmail) LIKE LOWER(CONCAT('%', :search, '%')) OR " +
+              "LOWER(r.businessName) LIKE LOWER(CONCAT('%', :search, '%'))) " +
+              "ORDER BY r.createdAt DESC")
+       Page<Reservation> findAllWithFilters(
+              @Param("status") ReservationStatus status,
+              @Param("startDate") LocalDateTime startDate,
+              @Param("endDate") LocalDateTime endDate,
+              @Param("search") String search,
+              Pageable pageable);
 }

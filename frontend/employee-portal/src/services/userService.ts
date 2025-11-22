@@ -19,13 +19,41 @@ export const userService = {
       const params: any = {};
       if (search) params.search = search;
       
-      const response = await apiClient.get<UserResponse[]>('/api/admin/users', { params });
-      return response.data;
+      const response = await apiClient.get<any>('/api/admin/users', { params });
+      
+      // Backend returns paginated response: {users: [], currentPage: 0, totalItems: 0, totalPages: 0}
+      // Extract the users array from the response
+      if (response.data && Array.isArray(response.data.users)) {
+        return response.data.users;
+      }
+      // Fallback: if response is already an array (legacy format)
+      if (Array.isArray(response.data)) {
+        return response.data;
+      }
+      return [];
     } catch (error: any) {
+      // Log detailed error for debugging
+      console.error('Error loading users:', {
+        status: error.response?.status,
+        statusText: error.response?.statusText,
+        data: error.response?.data,
+        message: error.message,
+      });
+      
       if (error.code === 'ERR_NETWORK' || error.message?.includes('Network Error') || error.message?.includes('ERR_CONNECTION_REFUSED')) {
         console.warn('Backend unavailable, returning mock users list');
         return getMockUsers();
       }
+      
+      // For 500 errors, provide more context
+      if (error.response?.status === 500) {
+        const errorMessage = error.response?.data?.message || 
+                           error.response?.data?.error || 
+                           'Internal server error. Check backend logs for database connection issues.';
+        console.error('Backend error:', errorMessage);
+        throw new Error(errorMessage);
+      }
+      
       throw error;
     }
   },
