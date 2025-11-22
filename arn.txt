@@ -85,12 +85,12 @@ try {
 
 # Replace with employee details
 $employeeBody = @{
-    username       = "employee1@cibf.com"
+    username       = "employee2@cibf.com"
     password       = "test123"   # Replace with actual password
-    name           = "Test Employee 1"
-    email          = "Testemployee1@cibf.com"
-    employeeId     = "CIBF-002"
-    contactNumber  = "555-900-8002"
+    name           = "Test Employee 2"
+    email          = "employee2@cibf.com"
+    employeeId     = "CIBF-003"
+    contactNumber  = "555-900-8004"
     department     = "Finance"
 } | ConvertTo-Json
 
