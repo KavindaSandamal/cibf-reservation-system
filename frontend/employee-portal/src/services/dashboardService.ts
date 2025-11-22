@@ -1,6 +1,11 @@
 import { apiClient } from './api';
 import { DashboardStats, Reservation, Stall } from '../types';
-import { generateMockDashboardStats, generateMockReservations, generateMockStalls, generateMockUsers } from '../utils/mockData';
+import { 
+  generateMockDashboardStats, 
+  generateMockReservations, 
+  generateMockStalls, 
+  generateMockUsers 
+} from '../utils/mockData';
 
 // Cache mock data for consistency
 let cachedMockReservations: Reservation[] | null = null;
@@ -18,24 +23,76 @@ const getMockDashboardStats = (): DashboardStats => {
   return generateMockDashboardStats(cachedMockReservations, cachedMockStalls);
 };
 
+// Helper to check if error is a network/connection error
+const isNetworkError = (error: unknown): boolean => {
+  if (!error || typeof error !== 'object') {
+    return false;
+  }
+  
+  const err = error as { 
+    code?: string; 
+    message?: string; 
+    response?: { status?: number } 
+  };
+  
+  const hasNetworkCode = err.code === 'ERR_NETWORK';
+  const hasNetworkMessage = Boolean(err.message?.includes('Network Error'));
+  const hasConnectionRefused = Boolean(err.message?.includes('ERR_CONNECTION_REFUSED') || err.message?.includes('ECONNREFUSED'));
+  
+  return hasNetworkCode || hasNetworkMessage || hasConnectionRefused;
+};
+
+// Helper to check if error is a server error that should fallback to mock
+const shouldUseMockData = (error: unknown): boolean => {
+  if (isNetworkError(error)) {
+    return true;
+  }
+  
+  if (!error || typeof error !== 'object') {
+    return false;
+  }
+  
+  const err = error as { response?: { status?: number } };
+  const status = err.response?.status;
+  
+  // Only use mock for server errors (500+) or service unavailable (503)
+  // Don't use mock for 404 - that indicates wrong endpoint
+  if (status === undefined) {
+    return false;
+  }
+  
+  return status >= 500;
+};
+
 export const dashboardService = {
   // Get dashboard statistics summary from Reservation Service
   getDashboardStats: async (): Promise<DashboardStats> => {
     try {
-      // Try to get summary from reservation service
-      const summaryResponse = await apiClient.get('/api/admin/statistics/summary');
+      // FIXED: Use correct backend endpoint path
+      const summaryResponse = await apiClient.get('/api/admin/reservations/statistics/summary');
       const summary = summaryResponse.data;
       
       // Try to get stall statistics from stall service
-      let stallStats = { totalStalls: 0, availableStalls: 0, reservedStalls: 0, occupancyRate: 0 };
+      let stallStats = { 
+        totalStalls: 0, 
+        availableStalls: 0, 
+        reservedStalls: 0, 
+        occupancyRate: 0 
+      };
+      
       try {
-        const stallResponse = await apiClient.get('/api/admin/statistics/stalls');
+        // FIXED: Use correct backend endpoint path
+        const stallResponse = await apiClient.get('/api/admin/stalls/statistics');
         stallStats = stallResponse.data;
-      } catch (stallError: any) {
-        // Silently handle stall statistics errors - service may be unavailable or have issues
+      } catch (stallError) {
+        // Silently handle stall statistics errors - service may be unavailable
         // Only log in development mode for debugging
         if (import.meta.env.DEV) {
-          console.warn('Stall statistics unavailable:', stallError.response?.status || stallError.message);
+          const err = stallError as { response?: { status?: number }; message?: string };
+          console.warn(
+            'Stall statistics unavailable:', 
+            err.response?.status || err.message
+          );
         }
       }
       
@@ -54,17 +111,20 @@ export const dashboardService = {
         },
         reservationsByDate: summary.reservationsByDate || [],
       };
-    } catch (error: any) {
-      // Handle network errors, connection refused, or server errors (500, 404, etc.)
-      if (
-        error.code === 'ERR_NETWORK' || 
-        error.message?.includes('Network Error') || 
-        error.message?.includes('ERR_CONNECTION_REFUSED') ||
-        error.response?.status >= 400
-      ) {
-        console.warn('Backend unavailable or endpoint not found, returning mock dashboard stats', error.response?.status || error.message);
+    } catch (error) {
+      // Handle network errors or server errors by falling back to mock data
+      if (shouldUseMockData(error)) {
+        const err = error as { response?: { status?: number }; message?: string };
+        if (import.meta.env.DEV) {
+          console.warn(
+            'Backend unavailable, returning mock dashboard stats', 
+            err.response?.status || err.message
+          );
+        }
         return getMockDashboardStats();
       }
+      
+      // Re-throw other errors (like 404, 401, 403, etc.)
       throw error;
     }
   },
@@ -73,10 +133,11 @@ export const dashboardService = {
   getRevenueStats: async (period?: string): Promise<any> => {
     try {
       const params = period ? { period } : {};
-      const response = await apiClient.get('/api/admin/statistics/revenue', { params });
+      // FIXED: Use correct backend endpoint path
+      const response = await apiClient.get('/api/admin/reservations/statistics/revenue', { params });
       return response.data;
-    } catch (error: any) {
-      if (error.code === 'ERR_NETWORK' || error.message?.includes('Network Error')) {
+    } catch (error) {
+      if (isNetworkError(error)) {
         throw new Error('Backend service unavailable');
       }
       throw error;
@@ -87,14 +148,14 @@ export const dashboardService = {
   getBookingTrends: async (period?: string): Promise<any> => {
     try {
       const params = period ? { period } : {};
-      const response = await apiClient.get('/api/admin/statistics/trends', { params });
+      // FIXED: Use correct backend endpoint path
+      const response = await apiClient.get('/api/admin/reservations/statistics/trends', { params });
       return response.data;
-    } catch (error: any) {
-      if (error.code === 'ERR_NETWORK' || error.message?.includes('Network Error')) {
+    } catch (error) {
+      if (isNetworkError(error)) {
         throw new Error('Backend service unavailable');
       }
       throw error;
     }
   },
 };
-
