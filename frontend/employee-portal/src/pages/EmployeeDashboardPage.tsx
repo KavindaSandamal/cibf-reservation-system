@@ -17,7 +17,40 @@ const EmployeeDashboardPage: React.FC = () => {
       const data = await dashboardService.getDashboardStats();
       setStats(data);
     } catch (error: any) {
-      toast.error('Failed to load dashboard statistics');
+      // Handle different error types
+      const status = error.response?.status;
+      
+      if (status === 403) {
+        toast.error('Access denied. You need EMPLOYEE or ADMIN role.');
+        console.error('403 Forbidden - User does not have required permissions');
+        
+        // Check authentication
+        const token = 
+          localStorage.getItem('employee_token') || 
+          localStorage.getItem('authToken') || 
+          localStorage.getItem('token');
+        
+        if (!token) {
+          toast.error('Please log in to continue');
+          setTimeout(() => {
+            window.location.href = '/login';
+          }, 2000);
+        } else {
+          // User is logged in but doesn't have the right role
+          console.error('Token exists but user lacks required role');
+          console.log('User data:', localStorage.getItem('employee') || localStorage.getItem('user'));
+        }
+      } else if (status === 401) {
+        toast.error('Session expired. Please log in again.');
+        setTimeout(() => {
+          window.location.href = '/login';
+        }, 2000);
+      } else if (error.code === 'ERR_NETWORK' || error.message?.includes('Network Error')) {
+        toast.error('Cannot connect to server. Please try again later.');
+      } else {
+        toast.error('Failed to load dashboard statistics');
+      }
+      
       console.error('Error loading dashboard stats:', error);
     } finally {
       setLoading(false);

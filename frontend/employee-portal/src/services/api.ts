@@ -1,9 +1,7 @@
 import axios, { AxiosInstance, InternalAxiosRequestConfig } from 'axios';
 
-// Use environment variable or empty string to use Vite proxy
-// For direct service access, set VITE_API_URL to specific service port (e.g., http://localhost:8081)
-// Empty string means requests go through Vite dev server proxy (configured in vite.config.ts)
-const API_URL = import.meta.env.VITE_API_URL || '';
+// Use environment variable or fallback to your server IP
+const API_URL = import.meta.env.VITE_API_URL || 'http://34.213.51.153';
 
 class ApiClient {
   private client: AxiosInstance;
@@ -14,15 +12,33 @@ class ApiClient {
       headers: {
         'Content-Type': 'application/json',
       },
+      withCredentials: true, // Important for CORS with credentials
     });
 
     // Request interceptor - add JWT token
     this.client.interceptors.request.use(
       (config: InternalAxiosRequestConfig) => {
-        const token = localStorage.getItem('employee_token');
+        // Try multiple token keys for compatibility
+        const token = 
+          localStorage.getItem('employee_token') || 
+          localStorage.getItem('authToken') || 
+          localStorage.getItem('token');
+        
         if (token && config.headers) {
           config.headers.Authorization = `Bearer ${token}`;
+          
+          // Log in development mode
+          if (import.meta.env.DEV) {
+            console.log('API Request:', {
+              method: config.method?.toUpperCase(),
+              url: config.url,
+              hasAuth: !!token,
+            });
+          }
+        } else if (import.meta.env.DEV) {
+          console.warn('No auth token found in localStorage');
         }
+        
         return config;
       },
       (error) => {
@@ -34,20 +50,44 @@ class ApiClient {
     this.client.interceptors.response.use(
       (response) => response,
       (error) => {
-        if (error.response?.status === 401) {
-          // Token expired or invalid
-          localStorage.removeItem('employee_token');
-          localStorage.removeItem('employee');
-          window.location.href = '/employee/login';
-        }
-        // Suppress console errors for endpoints that are handled gracefully
-        // These errors are expected when services are unavailable or have issues
+        const status = error.response?.status;
         const url = error.config?.url || '';
-        const isHandledEndpoint = url.includes('/api/admin/statistics/stalls');
         
-        if (isHandledEndpoint && error.response?.status >= 500) {
+        // Handle 401 Unauthorized - token expired or invalid
+        if (status === 401) {
+          console.warn('401 Unauthorized - redirecting to login');
+          localStorage.removeItem('employee_token');
+          localStorage.removeItem('authToken');
+          localStorage.removeItem('token');
+          localStorage.removeItem('employee');
+          localStorage.removeItem('user');
+          window.location.href = '/login';
+          return Promise.reject(error);
+        }
+        
+        // Handle 403 Forbidden - insufficient permissions
+        if (status === 403) {
+          console.error('403 Forbidden - insufficient permissions');
+          const token = 
+            localStorage.getItem('employee_token') || 
+            localStorage.getItem('authToken') || 
+            localStorage.getItem('token');
+          
+          if (!token) {
+            console.warn('No token found - redirecting to login');
+            window.location.href = '/login';
+          } else {
+            console.error('User does not have required role (EMPLOYEE or ADMIN)');
+            console.log('Current token:', token.substring(0, 20) + '...');
+          }
+        }
+        
+        // Suppress console errors for endpoints that are handled gracefully
+        // These errors are expected when services are unavailable
+        const isHandledEndpoint = url.includes('/api/admin/stalls/statistics');
+        
+        if (isHandledEndpoint && status >= 500) {
           // Mark error as handled to prevent console spam
-          // The error will still be rejected so callers can handle it
           error.isHandled = true;
         }
         
@@ -62,4 +102,3 @@ class ApiClient {
 }
 
 export const apiClient = new ApiClient().instance;
-
