@@ -32,47 +32,46 @@ public class SecurityConfig {
 
     @Bean
     public SecurityFilterChain stallSecurity(HttpSecurity http) throws Exception {
-        http
-            .cors() // enable CORS
-            .and()
-            .csrf(AbstractHttpConfigurer::disable)
-            .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
-            .authorizeHttpRequests(auth -> auth
-                .requestMatchers("/api/auth/**", "/api/public/**").permitAll()
-                .anyRequest().authenticated()
-            )
-            .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
-
-    public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
-        System.out.println("✓ Configuring SecurityFilterChain...");
+        System.out.println("✓ Configuring SecurityFilterChain for Stall Service...");
 
         http
+                .cors(c -> c.configurationSource(corsConfigurationSource())) // Use custom CORS configuration source
                 .csrf(AbstractHttpConfigurer::disable)
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers("/api/**").authenticated()
-                        .anyRequest().permitAll())
+                        .requestMatchers("/api/auth/**", "/api/public/**").permitAll()
+                        .anyRequest().authenticated())
                 .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
 
-        System.out.println("✓ SecurityFilterChain configured!");
+        System.out.println("✓ SecurityFilterChain configured for Stall Service!");
         return http.build();
     }
 
-    // CORS filter bean
-    @Bean
-    public CorsFilter corsFilter() {
+    // Note: The second SecurityFilterChain method 'filterChain' was removed as it's
+    // redundant.
+    // If you need a second configuration, you must rename the bean method.
+
+    // CORS configuration source method
+    private UrlBasedCorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration config = new CorsConfiguration();
-        config.setAllowCredentials(true); // allow cookies/auth headers
-        config.setAllowedOrigins(List.of("http://localhost:3000")); // your React app
-        config.setAllowedHeaders(List.of("*")); // allow all headers
-        config.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS")); // allow methods
+        config.setAllowCredentials(true);
+        config.setAllowedOrigins(List.of("http://localhost:3000"));
+        config.setAllowedHeaders(List.of("*"));
+        config.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
 
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
         source.registerCorsConfiguration("/**", config);
-
-        return new CorsFilter(source);
+        return source;
     }
-}
+
+    // CORS filter bean - generally not needed when using .cors(c ->
+    // c.configurationSource(...)) in Spring Security 6.x
+    // but kept for compatibility/explicit definition.
+    @Bean
+    public CorsFilter corsFilter() {
+        return new CorsFilter(corsConfigurationSource());
+    }
+
     @Bean
     public AuthenticationManager authenticationManager(AuthenticationConfiguration config) throws Exception {
         return config.getAuthenticationManager();
@@ -82,5 +81,4 @@ public class SecurityConfig {
     public PasswordEncoder passwordEncoder() {
         return new BCryptPasswordEncoder();
     }
-
 }
