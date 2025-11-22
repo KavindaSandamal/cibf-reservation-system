@@ -267,4 +267,25 @@ public class StallService {
         }
         return authentication.getName();
     }
+
+    @Transactional(readOnly = true)
+    public List<StallResponseDTO> getStallsByStatusAndSize(StallStatus status, StallSize size) {
+        log.info("Fetching stalls by status: {} and size: {}", status, size);
+
+        return stallRepository.findBySizeAndStatus(size, status)
+                .stream()
+                .map(StallResponseDTO::new)
+                .collect(Collectors.toList());
+    }
+
+    @Transactional(readOnly = true)
+    public List<StallResponseDTO> getStallsByStatus(StallStatus status) {
+        log.info("Fetching stalls by status: {}", status);
+
+        return stallRepository.findByStatusOrderByStallNameAsc(status)
+                .stream()
+                .map(StallResponseDTO::new)
+                .collect(Collectors.toList());
+    }
+
 }

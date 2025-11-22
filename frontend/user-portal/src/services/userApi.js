@@ -1,7 +1,7 @@
 import axios from 'axios';
 
 const userApi = axios.create({
-  baseURL: process.env.REACT_APP_USER_API,
+  baseURL: process.env.REACT_APP_API_BASE_URL || 'http://34.213.51.153',
   headers: { 'Content-Type': 'application/json' },
 });
 
@@ -12,3 +12,4 @@ userApi.interceptors.request.use((config) => {
 });
 
 export default userApi;
+

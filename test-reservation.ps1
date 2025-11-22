@@ -1,249 +1,123 @@
-# Complete CIBF Reservation Test Script
-# Tests: Hold -> Confirm -> QR Generation -> Email Sending
+$EC2_IP = '34.213.51.153'
+$BASE_URL = "http://$EC2_IP"
 
-$BASE_URL = "http://localhost:8083"
-$AUTH_URL = "http://localhost:8081"
+Write-Host 'Testing Complete Reservation Flow with RabbitMQ' -ForegroundColor Cyan
+Write-Host '===================================================' -ForegroundColor Cyan
 
-Write-Host "================================================================" -ForegroundColor Cyan
-Write-Host "   CIBF Reservation System - Complete Flow Test" -ForegroundColor Cyan
-Write-Host "   Hold -> Confirm -> QR Code -> Email" -ForegroundColor Cyan
-Write-Host "================================================================" -ForegroundColor Cyan
-Write-Host ""
-
-# ============================================================
-# STEP 1: AUTHENTICATION
-# ============================================================
-Write-Host "--- STEP 1: Authentication ---" -ForegroundColor Yellow
-Write-Host ""
-
-# Option A: Use existing token
-$existingToken = "eyJhbGciOiJIUzUxMiJ9.eyJzdWIiOiJpbWtzYW5kYW1hbDk5QGdtYWlsLmNvbSIsImlhdCI6MTc2MzQ1NTk2OCwiZXhwIjoxNzYzNTQyMzY4fQ.p8ObmiqeY4DFhDFixgV_MQuLYhim7bOWR0gsbPu25HN6hYRanMutjcFyMyCBPd2EU1YyCPujJn2DYiYoF9hlcQ"
-
-# Using existing token
-$token = $existingToken
-$userId = 19  # Replace with your actual user ID
-
-Write-Host "[SUCCESS] Using existing token" -ForegroundColor Green
-Write-Host "   User ID: $userId" -ForegroundColor Gray
-Write-Host ""
-
-Start-Sleep -Seconds 1
-
-# ============================================================
-# STEP 2: HOLD STALLS
-# ============================================================
-Write-Host "--- STEP 2: Holding Stalls (5 minutes) ---" -ForegroundColor Yellow
-Write-Host ""
-
-$holdBody = @{
-    userId = $userId
-    stallIds = @(6)  # Select 1 stall
-    businessName = "KS Books"
+# Step 1: Login
+Write-Host "`n1. Logging in..." -ForegroundColor Yellow
+$loginBody = @{
+    username = 'imksandamal99@gmail.com'
+    password = 'kavinda123'
 } | ConvertTo-Json
 
+try {
+    $loginResponse = Invoke-RestMethod -Uri "$BASE_URL/api/auth/login" -Method Post -Body $loginBody -ContentType 'application/json'
+    
+    $token = $loginResponse.accessToken
+    $role = $loginResponse.role
+    $businessName = $loginResponse.businessName
+    
+    Write-Host ' - Login successful!' -ForegroundColor Green
+    Write-Host "   Token: $($token.Substring(0,30))..." -ForegroundColor Cyan
+    Write-Host "   Role: $role" -ForegroundColor Cyan
+    Write-Host "   Business: $businessName" -ForegroundColor Cyan
+    
+} catch {
+    Write-Host ' - Login failed!' -ForegroundColor Red
+    Write-Host $_.Exception.Message
+    exit
+}
+
+# Step 2: Get user info to get userId
+Write-Host "`n2. Getting user info..." -ForegroundColor Yellow
 $headers = @{
-    "Authorization" = "Bearer $token"
-    "Content-Type" = "application/json"
+    'Authorization' = "Bearer $token"
+    'Content-Type'  = 'application/json'
 }
 
 try {
-    Write-Host "Requesting to hold stalls..." -ForegroundColor Gray
+    $userInfo = Invoke-RestMethod -Uri "$BASE_URL/api/auth/me" -Method Get -Headers $headers
+    $userId = $userInfo.id
     
-    $holdResponse = Invoke-RestMethod -Uri "$BASE_URL/api/reservations/hold" `
-        -Method Post `
-        -Headers $headers `
-        -Body $holdBody
-    
-    Write-Host "[SUCCESS] Stalls held successfully!" -ForegroundColor Green
-    Write-Host ""
-    Write-Host "   Hold Details:" -ForegroundColor Cyan
-    Write-Host "   - Token: $($holdResponse.holdToken)" -ForegroundColor White
-    Write-Host "   - Stall IDs: $($holdResponse.stallIds -join ', ')" -ForegroundColor White
-    Write-Host "   - Total Amount: Rs. $($holdResponse.totalAmount)" -ForegroundColor White
-    Write-Host "   - Expires At: $($holdResponse.expiresAt)" -ForegroundColor Yellow
-    Write-Host ""
-    Write-Host "   [TIMER] You have 5 minutes to confirm this reservation" -ForegroundColor Yellow
-    Write-Host ""
-    
-    $holdToken = $holdResponse.holdToken
+    Write-Host ' - User info retrieved!' -ForegroundColor Green
+    Write-Host "   User ID: $userId" -ForegroundColor Cyan
     
 } catch {
-    Write-Host "[ERROR] Failed to hold stalls" -ForegroundColor Red
-    Write-Host "   Error: $($_.Exception.Message)" -ForegroundColor Red
-    
-    if ($_.ErrorDetails.Message) {
-        $errorDetail = $_.ErrorDetails.Message | ConvertFrom-Json
-        Write-Host "   Details: $($errorDetail.message)" -ForegroundColor Red
-    }
-    
-    exit
+    Write-Host ' - Could not get user info, using default userId=1' -ForegroundColor Yellow
+    $userId = 1
 }
 
-Start-Sleep -Seconds 2
-
-# ============================================================
-# STEP 3: CONFIRM RESERVATION (QR + Email)
-# ============================================================
-Write-Host "--- STEP 3: Confirming Reservation ---" -ForegroundColor Yellow
-Write-Host ""
-Write-Host "This will:" -ForegroundColor Gray
-Write-Host "  1. Confirm the reservation" -ForegroundColor Gray
-Write-Host "  2. Generate QR code" -ForegroundColor Gray
-Write-Host "  3. Upload QR to S3" -ForegroundColor Gray
-Write-Host "  4. Send email with QR code" -ForegroundColor Gray
-Write-Host ""
-
-$confirmBody = @{
-    userId = $userId
-    holdToken = $holdToken
-    businessName = "KS Books"
-    userEmail = "imksandamal99@gmail.com"  
+# Step 3: Hold stalls
+Write-Host "`n3. Holding stalls..." -ForegroundColor Yellow
+$holdBody = @{
+    userId       = $userId
+    stallIds     = @(2)
+    businessName = 'Kavinda Books'
 } | ConvertTo-Json
 
 try {
-    Write-Host "Confirming reservation..." -ForegroundColor Gray
+    $holdResponse = Invoke-RestMethod -Uri "$BASE_URL/api/reservations/hold" -Method Post -Body $holdBody -Headers $headers
+    $holdToken = $holdResponse.holdToken
+    $expiresAt = $holdResponse.expiresAt
     
-    $confirmResponse = Invoke-RestMethod -Uri "$BASE_URL/api/reservations/confirm" `
-        -Method Post `
-        -Headers $headers `
-        -Body $confirmBody
-    
-    Write-Host ""
-    Write-Host "================================================================" -ForegroundColor Green
-    Write-Host "          RESERVATION CONFIRMED SUCCESSFULLY!" -ForegroundColor Green
-    Write-Host "================================================================" -ForegroundColor Green
-    Write-Host ""
-    
-    # Display reservation details
-    Write-Host "[DETAILS] Reservation Details:" -ForegroundColor Cyan
-    Write-Host "   - ID: #$($confirmResponse.id)" -ForegroundColor White
-    Write-Host "   - Business: $($confirmResponse.businessName)" -ForegroundColor White
-    Write-Host "   - Email: $($confirmResponse.userEmail)" -ForegroundColor White
-    Write-Host "   - Status: $($confirmResponse.status)" -ForegroundColor Green
-    Write-Host "   - Total Amount: Rs. $($confirmResponse.totalAmount)" -ForegroundColor White
-    Write-Host "   - Date: $($confirmResponse.confirmedAt)" -ForegroundColor Gray
-    Write-Host ""
-    
-    # Display stall details
-    if ($confirmResponse.stalls) {
-        Write-Host "[STALLS] Reserved Stalls:" -ForegroundColor Cyan
-        $confirmResponse.stalls | ForEach-Object {
-            Write-Host "   - $($_.stallName) - $($_.size) ($($_.dimensions))" -ForegroundColor White
-            Write-Host "     Price: Rs. $($_.price)" -ForegroundColor Gray
-        }
-        Write-Host ""
-    }
-    
-    # Display QR code details
-    if ($confirmResponse.qrCodeUrl) {
-        Write-Host "[QR CODE] QR Code Generated:" -ForegroundColor Cyan
-        Write-Host "   URL: $($confirmResponse.qrCodeUrl)" -ForegroundColor White
-        Write-Host ""
-        
-        # Try to download QR code
-        Write-Host "Downloading QR Code..." -ForegroundColor Yellow
-        $qrPath = "CIBF-QR-$($confirmResponse.id).png"
-        
-        try {
-            Invoke-WebRequest -Uri $confirmResponse.qrCodeUrl -OutFile $qrPath
-            Write-Host "   [SUCCESS] QR Code saved: $qrPath" -ForegroundColor Green
-            
-            # Open QR code
-            if (Test-Path $qrPath) {
-                Start-Process $qrPath
-                Write-Host "   [SUCCESS] QR Code opened in default viewer" -ForegroundColor Green
-            }
-        } catch {
-            Write-Host "   [WARNING] Could not download QR code: $($_.Exception.Message)" -ForegroundColor Yellow
-            Write-Host "   You can download it manually from: $($confirmResponse.qrCodeUrl)" -ForegroundColor Yellow
-        }
-        Write-Host ""
-    } else {
-        Write-Host "[WARNING] QR Code generation may be in progress..." -ForegroundColor Yellow
-        Write-Host ""
-    }
-    
-    # Email notification
-    Write-Host "================================================================" -ForegroundColor Green
-    Write-Host "                  CHECK YOUR EMAIL!" -ForegroundColor Green
-    Write-Host "================================================================" -ForegroundColor Green
-    Write-Host ""
-    Write-Host "   To: info.kavindasandamal@gmail.com" -ForegroundColor White
-    Write-Host "   Subject: Colombo International Bookfair - Reservation Confirmed #$($confirmResponse.id)" -ForegroundColor White
-    Write-Host ""
-    Write-Host "   The email includes:" -ForegroundColor Gray
-    Write-Host "   [CHECK] Reservation confirmation" -ForegroundColor Gray
-    Write-Host "   [CHECK] Stall details with prices" -ForegroundColor Gray
-    Write-Host "   [CHECK] QR code (embedded image)" -ForegroundColor Gray
-    Write-Host "   [CHECK] Download button for QR code" -ForegroundColor Gray
-    Write-Host "   [CHECK] Exhibition details (dates, venue)" -ForegroundColor Gray
-    Write-Host ""
-    
-    Write-Host "================================================================" -ForegroundColor Cyan
-    Write-Host "                    NEXT STEPS" -ForegroundColor Cyan
-    Write-Host "================================================================" -ForegroundColor Cyan
-    Write-Host ""
-    Write-Host "1. Check your email for confirmation" -ForegroundColor White
-    Write-Host "2. Download or save the QR code" -ForegroundColor White
-    Write-Host "3. Print the QR code (optional)" -ForegroundColor White
-    Write-Host "4. Present QR code at exhibition entrance" -ForegroundColor White
-    Write-Host ""
+    Write-Host ' - Stalls held successfully!' -ForegroundColor Green
+    Write-Host "   Hold Token: $holdToken" -ForegroundColor Cyan
+    Write-Host "   Expires At: $expiresAt" -ForegroundColor Cyan
     
 } catch {
-    Write-Host "[ERROR] Failed to confirm reservation" -ForegroundColor Red
-    Write-Host "   Error: $($_.Exception.Message)" -ForegroundColor Red
-    
-    if ($_.ErrorDetails.Message) {
-        try {
-            $errorDetail = $_.ErrorDetails.Message | ConvertFrom-Json
-            Write-Host "   Details: $($errorDetail.message)" -ForegroundColor Red
-        } catch {
-            Write-Host "   Response: $($_.ErrorDetails.Message)" -ForegroundColor Red
-        }
-    }
-    
+    Write-Host ' - Failed to hold stalls!' -ForegroundColor Red
+    Write-Host $_.Exception.Message
     exit
 }
 
-# ============================================================
-# STEP 4: VERIFY RESERVATION
-# ============================================================
-Write-Host "--- STEP 4: Verifying Reservation ---" -ForegroundColor Yellow
-Write-Host ""
+# Step 4: Confirm reservation (THIS TRIGGERS RABBITMQ!)
+Write-Host "`n4. Confirming reservation (RabbitMQ event triggered)..." -ForegroundColor Yellow
+$confirmBody = @{
+    userId       = $userId
+    holdToken    = $holdToken
+    businessName = 'Kavinda Books'
+    userEmail    = 'imksandamal99@gmail.com'
+} | ConvertTo-Json
 
 try {
-    Write-Host "Fetching reservation details..." -ForegroundColor Gray
+    $confirmResponse = Invoke-RestMethod -Uri "$BASE_URL/api/reservations/confirm" -Method Post -Body $confirmBody -Headers $headers
     
-    $verifyResponse = Invoke-RestMethod -Uri "$BASE_URL/api/reservations/$($confirmResponse.id)" `
-        -Method Get `
-        -Headers $headers
+    Write-Host ' - Reservation confirmed!' -ForegroundColor Green
+    Write-Host "   Reservation ID: $($confirmResponse.id)" -ForegroundColor Cyan
+    Write-Host "   Status: $($confirmResponse.status)" -ForegroundColor Cyan
+    Write-Host "   Total Amount: $($confirmResponse.totalAmount)" -ForegroundColor Cyan
+    Write-Host "   QR Code: $($confirmResponse.qrCodeUrl)" -ForegroundColor Yellow
     
-    Write-Host "[SUCCESS] Reservation verified" -ForegroundColor Green
-    Write-Host "   Status: $($verifyResponse.status)" -ForegroundColor Green
-    if ($verifyResponse.qrCodeUrl) {
-        Write-Host "   QR Code: Available" -ForegroundColor Green
-    } else {
-        Write-Host "   QR Code: Not available" -ForegroundColor Red
-    }
-    Write-Host ""
+    Write-Host "`n - RabbitMQ Processing Started!" -ForegroundColor Green
+    Write-Host '   Event published to reservation.queue' -ForegroundColor White
+    Write-Host '   Email will be sent asynchronously' -ForegroundColor White
+    Write-Host '   QR code will be generated asynchronously' -ForegroundColor White
     
 } catch {
-    Write-Host "[WARNING] Could not verify reservation: $($_.Exception.Message)" -ForegroundColor Yellow
-    Write-Host ""
+    Write-Host ' - Failed to confirm reservation!' -ForegroundColor Red
+    Write-Host $_.Exception.Message
+    exit
 }
 
-# ============================================================
-# SUMMARY
-# ============================================================
-Write-Host "================================================================" -ForegroundColor Cyan
-Write-Host "                    TEST COMPLETE" -ForegroundColor Cyan
-Write-Host "================================================================" -ForegroundColor Cyan
-Write-Host ""
-Write-Host "Summary:" -ForegroundColor White
-Write-Host "  [PASS] Stalls held successfully" -ForegroundColor Green
-Write-Host "  [PASS] Reservation confirmed" -ForegroundColor Green
-Write-Host "  [PASS] QR code generated" -ForegroundColor Green
-Write-Host "  [PASS] Email sent" -ForegroundColor Green
-Write-Host ""
-Write-Host "All systems working perfectly!" -ForegroundColor Green
-Write-Host ""
+# Step 5: Monitor progress
+Write-Host "`n Monitor RabbitMQ Processing:" -ForegroundColor Cyan
+Write-Host '================================================' -ForegroundColor Cyan
+# Note: Used ${EC2_IP} to safely separate the variable from the colon
+Write-Host "   1. RabbitMQ UI: http://${EC2_IP}:15672" -ForegroundColor White
+Write-Host '      Login: admin / changeme123' -ForegroundColor Gray
+Write-Host '      Check: Queues tab -> See message flow' -ForegroundColor Gray
+Write-Host ''
+Write-Host '   2. Check Logs (SSH to EC2):' -ForegroundColor White
+Write-Host '      docker logs -f auth-service' -ForegroundColor Gray
+Write-Host ''
+Write-Host '   3. Expected Timeline:' -ForegroundColor White
+Write-Host '      • Now: Event published to RabbitMQ' -ForegroundColor Gray
+Write-Host '      • 1-2s: ReservationConsumer processes event' -ForegroundColor Gray
+Write-Host '      • 2-3s: QR code generated' -ForegroundColor Gray
+Write-Host '      • 3-5s: Email sent' -ForegroundColor Gray
+Write-Host '      • 5-10s: You receive email!' -ForegroundColor Gray
+Write-Host ''
+
+Write-Host ' - Test completed successfully!' -ForegroundColor Green
+Write-Host ' - Check your email: imksandamal99@gmail.com' -ForegroundColor Yellow

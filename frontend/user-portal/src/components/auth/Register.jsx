@@ -7,10 +7,13 @@ import { toast } from 'react-toastify';
 
 function Register() {
   const [formData, setFormData] = useState({
+    // ADDED: contactNumber and address to initial state
     username: '',
     password: '',
     confirmPassword: '',
-    businessName: ''
+    businessName: '',
+    contactNumber: '',
+    address: ''
   });
   const [validated, setValidated] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -46,8 +49,12 @@ function Register() {
     setError('');
 
     // Remove confirmPassword and add role before sending to backend
+    // The resulting 'registrationData' will contain: username, password, businessName, contactNumber, address, and role.
     const { confirmPassword, ...registrationData } = formData;
     registrationData.role = 'VENDOR'; // Default role for registration
+    
+    // Log data before sending to verify
+    console.log("Registration Payload:", registrationData);
     
     const result = await register(registrationData);
     
@@ -55,6 +62,7 @@ function Register() {
       toast.success('Registration successful! Please login.');
       navigate('/login');
     } else {
+      // Assuming result.message is a string error message
       setError(result.message);
       toast.error(result.message);
     }
@@ -82,7 +90,7 @@ function Register() {
                     required
                     type="email"
                     name="username"
-                    placeholder="Enter your email"
+                    placeholder="example@gmail.com"
                     value={formData.username}
                     onChange={handleChange}
                     
@@ -132,14 +140,14 @@ function Register() {
                 </Form.Group>
               </Col>
 
-              <Col md={12}>
+              <Col md={12}> {/* Changed from md={12} to md={12} for full width */}
                 <Form.Group className="mb-3">
                   <Form.Label>Business Name *</Form.Label>
                   <Form.Control
                     required
                     type="text"
                     name="businessName"
-                    placeholder="Enter your business/publisher name"
+                    placeholder="ABC Publishers"
                     value={formData.businessName}
                     onChange={handleChange}
                   />
@@ -148,6 +156,48 @@ function Register() {
                   </Form.Control.Feedback>
                   <Form.Text className="text-muted">
                     Enter your publishing house or bookshop name
+                  </Form.Text>
+                </Form.Group>
+              </Col>
+
+              {/* Corrected <Col md={18}> to <Col md={12}> or <Col md={6}> */}
+              <Col md={6}> 
+                <Form.Group className="mb-3">
+                  <Form.Label>Contact Number *</Form.Label>
+                  <Form.Control
+                    required
+                    type="text"
+                    name="contactNumber"
+                    placeholder="+94712345678"
+                    value={formData.contactNumber}
+                    onChange={handleChange}
+                  />
+                  <Form.Control.Feedback type="invalid">
+                    Contact Number is required.
+                  </Form.Control.Feedback>
+                  <Form.Text className="text-muted">
+                    Enter your Contact Number
+                  </Form.Text>
+                </Form.Group>
+              </Col>
+
+              {/* Corrected <Col md={18}> to <Col md={6}> or <Col md={12}> */}
+              <Col md={6}>
+                <Form.Group className="mb-3">
+                  <Form.Label>Address *</Form.Label>
+                  <Form.Control
+                    required
+                    type="text"
+                    name="address"
+                    placeholder="Local address"
+                    value={formData.address}
+                    onChange={handleChange}
+                  />
+                  <Form.Control.Feedback type="invalid">
+                    Address is required.
+                  </Form.Control.Feedback>
+                  <Form.Text className="text-muted">
+                    Enter your address
                   </Form.Text>
                 </Form.Group>
               </Col>

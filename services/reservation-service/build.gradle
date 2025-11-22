@@ -49,13 +49,21 @@ dependencies {
     
     // Spring Security: Authentication and Authorization framework
     implementation 'org.springframework.boot:spring-boot-starter-security'
+
+    implementation 'org.springframework.boot:spring-boot-starter-oauth2-resource-server'
+    
+    // Spring Cloud Load Balancer: Required for Feign clients when using service names
+    implementation 'org.springframework.cloud:spring-cloud-starter-loadbalancer'
     
     // Validation: JSR-380 Bean Validation implementation
     implementation 'org.springframework.boot:spring-boot-starter-validation'
 
-     // --- Swagger / OpenAPI (fixes @Operation, @ApiResponse, etc.) ---
+    // --- Swagger / OpenAPI (fixes @Operation, @ApiResponse, etc.) ---
     implementation 'org.springdoc:springdoc-openapi-starter-webmvc-ui:2.5.0'
     implementation 'org.springframework.cloud:spring-cloud-starter-openfeign:4.1.0'
+
+    implementation 'org.springframework.boot:spring-boot-starter-amqp'
+    implementation 'org.springframework.boot:spring-boot-starter-actuator'
     
     // --- Database ---
     // PostgreSQL Driver (runtime dependency)

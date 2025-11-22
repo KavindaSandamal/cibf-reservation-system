@@ -24,7 +24,6 @@ import java.util.stream.Collectors;
 @RequestMapping("/api/stalls")
 @RequiredArgsConstructor
 @Slf4j
-@CrossOrigin(origins = "*") // Configure properly in production
 public class StallController {
 
     private final StallService stallService;
@@ -40,19 +39,38 @@ public class StallController {
     }
 
     /**
-     * Get stalls by multiple IDs - MUST BE BEFORE /{id} to avoid routing conflicts
+     * ⭐ Get stalls by multiple IDs - MUST BE BEFORE /{id} to avoid routing
+     * conflicts
+     * This endpoint is used by reservation-service (service-to-service call)
      */
     @GetMapping("/by-ids")
-    public ResponseEntity<List<StallResponseDTO>> getStallsByIds(@RequestParam String ids) {
-        log.info("REST request to get stalls by IDs: {}", ids);
+    public ResponseEntity<List<StallResponseDTO>> getStallsByIds(
+            @RequestParam String ids,
+            @RequestHeader(value = "Authorization", required = false) String authHeader) {
 
-        List<Long> stallIds = Arrays.stream(ids.split(","))
-                .map(String::trim)
-                .map(Long::parseLong)
-                .collect(Collectors.toList());
+        log.info("🔍 REST request to get stalls by IDs: {}", ids);
+        log.info("🔑 Authorization header present: {}", authHeader != null ? "YES" : "NO");
 
-        List<StallResponseDTO> stalls = stallService.getStallsByIds(stallIds);
-        return ResponseEntity.ok(stalls);
+        try {
+            List<Long> stallIds = Arrays.stream(ids.split(","))
+                    .map(String::trim)
+                    .map(Long::parseLong)
+                    .collect(Collectors.toList());
+
+            log.info("📋 Parsed stall IDs: {}", stallIds);
+
+            List<StallResponseDTO> stalls = stallService.getStallsByIds(stallIds);
+            log.info("✅ Found {} stalls for IDs: {}", stalls.size(), ids);
+
+            return ResponseEntity.ok(stalls);
+
+        } catch (NumberFormatException e) {
+            log.error("❌ Invalid stall IDs format: {}", ids, e);
+            return ResponseEntity.badRequest().build();
+        } catch (Exception e) {
+            log.error("❌ Error fetching stalls by IDs: {}", ids, e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        }
     }
 
     /**
@@ -153,10 +171,11 @@ public class StallController {
     }
 
     /**
-     * Update stall status (Employee only)
+     * Update stall status (Employee only + Service-to-Service from
+     * reservation-service)
      */
-    @PatchMapping("/{id}/status")
-    @PreAuthorize("hasRole('EMPLOYEE')")
+    @PostMapping("/{id}/status")
+    @PreAuthorize("hasAnyRole('EMPLOYEE', 'VENDOR')")
     public ResponseEntity<StallResponseDTO> updateStallStatus(
             @PathVariable Long id,
             @RequestParam StallStatus status) {
