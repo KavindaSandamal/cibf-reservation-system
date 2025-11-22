@@ -56,12 +56,18 @@ public class SecurityConfig {
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
-        // Use allowedOriginPatterns instead of allowedOrigins for Spring Security 6.x
-        // This allows credentials with pattern matching
+
+        // FIXED: Add your production domain and localhost origins
         configuration.setAllowedOriginPatterns(Arrays.asList(
                 "http://localhost:3000",
+                "http://localhost:5173",
                 "http://localhost:5174",
-                "http://localhost:5175"));
+                "http://localhost:5175",
+                "http://34.213.51.153",
+                "http://34.213.51.153:*", // Allow any port on production IP
+                "https://34.213.51.153", // In case you add HTTPS later
+                "https://34.213.51.153:*"));
+
         configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"));
         configuration.setAllowedHeaders(List.of("*"));
         configuration.setExposedHeaders(Arrays.asList("Authorization", "Content-Type"));
