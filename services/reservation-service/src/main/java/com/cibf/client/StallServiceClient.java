@@ -32,7 +32,7 @@ public interface StallServiceClient {
     // 4. Update Stall Status (Used for cancellation/cleanup)
     // Example: /api/stalls/1/status?status=AVAILABLE
     @PatchMapping("/api/stalls/{stallId}/status")
-    ResponseEntity<Void> updateStallStatus(@PathVariable Long stallId, @RequestParam String status);
+    ResponseEntity<Void> updateStallStatus(@PathVariable Long stallId, @RequestParam StallStatus status);
 
     // 5. Get Stalls by Reservation ID
     @GetMapping("/api/stalls/reservation/{reservationId}")
