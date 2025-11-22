@@ -20,9 +20,8 @@ import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 import java.util.Arrays;
 import java.util.List;
 
-
- //Main configuration for Spring Security (Secured Endpoints).
- //This chain runs after the PublicSecurityConfig (Order 1) and handles all authenticated routes.
+//Main configuration for Spring Security (Secured Endpoints).
+//This chain runs after the PublicSecurityConfig (Order 1) and handles all authenticated routes.
 
 @Configuration
 @EnableWebSecurity
@@ -52,8 +51,7 @@ public class SecurityConfig {
         return configuration.getAuthenticationManager();
     }
 
-   
-    //CORS configuration for cross-origin requests
+    // CORS configuration for cross-origin requests
 
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
@@ -63,8 +61,7 @@ public class SecurityConfig {
         configuration.setAllowedOriginPatterns(Arrays.asList(
                 "http://localhost:3000",
                 "http://localhost:5174",
-                "http://localhost:5175"
-        ));
+                "http://localhost:5175"));
         configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"));
         configuration.setAllowedHeaders(List.of("*"));
         configuration.setExposedHeaders(Arrays.asList("Authorization", "Content-Type"));
@@ -105,6 +102,7 @@ public class SecurityConfig {
                 .authorizeHttpRequests(authorize -> authorize
                         // Explicitly exclude public paths - these are handled by PublicSecurityConfig
                         .requestMatchers("/api/auth/**", "/api/public/**").permitAll()
+                        .requestMatchers("/api/admin/**").hasAnyRole("EMPLOYEE", "ADMIN")
                         // All other /api/** paths require authentication
                         .anyRequest().authenticated());
 
