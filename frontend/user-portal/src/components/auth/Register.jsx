@@ -7,10 +7,13 @@ import { toast } from 'react-toastify';
 
 function Register() {
   const [formData, setFormData] = useState({
+    // ADDED: contactNumber and address to initial state
     username: '',
     password: '',
     confirmPassword: '',
-    businessName: ''
+    businessName: '',
+    contactNumber: '',
+    address: ''
   });
   const [validated, setValidated] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -46,8 +49,12 @@ function Register() {
     setError('');
 
     // Remove confirmPassword and add role before sending to backend
+    // The resulting 'registrationData' will contain: username, password, businessName, contactNumber, address, and role.
     const { confirmPassword, ...registrationData } = formData;
     registrationData.role = 'VENDOR'; // Default role for registration
+    
+    // Log data before sending to verify
+    console.log("Registration Payload:", registrationData);
     
     const result = await register(registrationData);
     
@@ -55,6 +62,7 @@ function Register() {
       toast.success('Registration successful! Please login.');
       navigate('/login');
     } else {
+      // Assuming result.message is a string error message
       setError(result.message);
       toast.error(result.message);
     }
@@ -132,7 +140,7 @@ function Register() {
                 </Form.Group>
               </Col>
 
-              <Col md={12}>
+              <Col md={12}> {/* Changed from md={12} to md={12} for full width */}
                 <Form.Group className="mb-3">
                   <Form.Label>Business Name *</Form.Label>
                   <Form.Control
@@ -152,15 +160,15 @@ function Register() {
                 </Form.Group>
               </Col>
 
-              
-              <Col md={18}>
+              {/* Corrected <Col md={18}> to <Col md={12}> or <Col md={6}> */}
+              <Col md={6}> 
                 <Form.Group className="mb-3">
                   <Form.Label>Contact Number *</Form.Label>
                   <Form.Control
                     required
                     type="text"
                     name="contactNumber"
-                    placeholder="+91234567890"
+                    placeholder="+94712345678"
                     value={formData.contactNumber}
                     onChange={handleChange}
                   />
@@ -173,7 +181,8 @@ function Register() {
                 </Form.Group>
               </Col>
 
-                   <Col md={18}>
+              {/* Corrected <Col md={18}> to <Col md={6}> or <Col md={12}> */}
+              <Col md={6}>
                 <Form.Group className="mb-3">
                   <Form.Label>Address *</Form.Label>
                   <Form.Control
