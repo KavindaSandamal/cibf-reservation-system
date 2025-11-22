@@ -63,6 +63,7 @@ public class SecurityConfig {
                                 "/api/stalls/*/status", // Pattern with wildcard
                                 "/api/stalls/{id}/status") // Pattern with path variable
                         .permitAll()
+                        .requestMatchers("/api/admin/**").hasAnyRole("EMPLOYEE", "ADMIN")
 
                         // All other requests require authentication
                         .anyRequest().authenticated())
