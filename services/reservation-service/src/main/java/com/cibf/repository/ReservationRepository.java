@@ -2,6 +2,8 @@ package com.cibf.repository;
 
 import com.cibf.entity.Reservation;
 import com.cibf.entity.ReservationStatus;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 import org.springframework.data.jpa.repository.Query;
@@ -96,6 +98,7 @@ public interface ReservationRepository extends JpaRepository<Reservation, Long>,
        List<Reservation> findRecentReservations(@Param("since") LocalDateTime since);
 
        /**
+        * <<<<<<< HEAD
         * Find top 10 recent reservations
         */
        List<Reservation> findTop10ByOrderByCreatedAtDesc();
