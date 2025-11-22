@@ -9,7 +9,6 @@ import com.cibf.exception.ResourceNotFoundException;
 import com.cibf.repository.ReservationRepository;
 import com.cibf.client.StallServiceClient;
 import com.cibf.client.UserServiceClient;
-import com.cibf.entity.Stall.StallStatus;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
