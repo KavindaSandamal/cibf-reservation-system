@@ -9,6 +9,7 @@ import com.cibf.exception.ResourceNotFoundException;
 import com.cibf.repository.ReservationRepository;
 import com.cibf.client.StallServiceClient;
 import com.cibf.client.UserServiceClient;
+import com.cibf.entity.Stall.StallStatus;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
@@ -132,10 +133,13 @@ public class ReservationService {
 
             // **UPDATE STALL STATUS TO RESERVED**
             try {
-                stallServiceClient.updateStallStatus(reservation.getStallId(), "RESERVED");
+                log.info("🔄 Updating stall {} status to RESERVED", reservation.getStallId());
+                stallServiceClient.updateStallStatus(reservation.getStallId(), StallStatus.RESERVED);
+                log.info("✅ Stall {} status updated successfully", reservation.getStallId());
             } catch (Exception e) {
-                log.error("Failed to update stall status for stall: {}", reservation.getStallId(), e);
+                log.error("❌ Failed to update stall status for stall: {}", reservation.getStallId(), e);
             }
+
         });
 
         Reservation mainReservation = reservations.get(0);
@@ -285,9 +289,11 @@ public class ReservationService {
         }
 
         try {
-            stallServiceClient.updateStallStatus(reservation.getStallId(), "AVAILABLE");
+            log.info("🔄 Updating stall {} status to AVAILABLE", reservation.getStallId());
+            stallServiceClient.updateStallStatus(reservation.getStallId(), StallStatus.AVAILABLE);
+            log.info("✅ Stall {} status updated successfully", reservation.getStallId());
         } catch (Exception e) {
-            log.error("Failed to update stall status for stall: {}", reservation.getStallId(), e);
+            log.error("❌ Failed to update stall status for stall: {}", reservation.getStallId(), e);
         }
 
         reservation.setStatus(ReservationStatus.CANCELLED);
