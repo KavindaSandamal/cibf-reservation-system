@@ -14,7 +14,7 @@ export interface User {
   firstName: string;
   lastName: string;
   businessName?: string;
-  createdAt: string;
+  createdAt?: string;
   reservationCount?: number;
 }
 

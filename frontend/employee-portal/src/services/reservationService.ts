@@ -2,6 +2,28 @@ import { apiClient } from './api';
 import { Reservation, ReservationResponse, ReservationStatus } from '../types';
 import { generateMockReservations, generateMockStalls, generateMockUsers } from '../utils/mockData';
 
+type PaginatedResponse<T> = {
+  content: T[];
+  totalElements?: number;
+  totalPages?: number;
+  size?: number;
+  number?: number;
+};
+
+type ReservationListResponse = ReservationResponse[] | PaginatedResponse<ReservationResponse>;
+
+const normalizeReservationsResponse = (data: ReservationListResponse): Reservation[] => {
+  if (Array.isArray(data)) {
+    return data as Reservation[];
+  }
+
+  if (Array.isArray(data.content)) {
+    return data.content as Reservation[];
+  }
+
+  return [];
+};
+
 // Cache mock data for consistency
 let cachedMockReservations: Reservation[] | null = null;
 
@@ -33,17 +55,23 @@ export const reservationService = {
       if (filters?.page) params.page = filters.page;
       if (filters?.size) params.size = filters.size;
       
-      const response = await apiClient.get<ReservationResponse[]>('/api/admin/reservations', { params });
-      // Handle paginated response
-      if (response.data && Array.isArray(response.data)) {
-        return response.data;
-      } else if (response.data?.content && Array.isArray(response.data.content)) {
-        return response.data.content;
-      }
-      return response.data;
+      const response = await apiClient.get<ReservationListResponse>('/api/admin/reservations', { params });
+      return normalizeReservationsResponse(response.data);
     } catch (error: any) {
-      if (error.code === 'ERR_NETWORK' || error.message?.includes('Network Error') || error.message?.includes('ERR_CONNECTION_REFUSED')) {
-        console.warn('Backend unavailable, returning mock reservations list');
+      const isNetworkError =
+        error.code === 'ERR_NETWORK' ||
+        error.message?.includes('Network Error') ||
+        error.message?.includes('ERR_CONNECTION_REFUSED');
+      const isServerError = error.response?.status >= 500;
+      const isAuthError = error.response?.status === 401 || error.response?.status === 403;
+      
+      // For auth errors, don't fall back to mock - let the error propagate so user can see the issue
+      if (isAuthError) {
+        throw error;
+      }
+      
+      if (isNetworkError || isServerError) {
+        console.warn('Reservation service unavailable, returning mock reservations list');
         return getMockReservations();
       }
       throw error;
@@ -103,8 +131,8 @@ export const reservationService = {
   // Get reservations by user ID
   getReservationsByUserId: async (userId: number): Promise<Reservation[]> => {
     try {
-      const response = await apiClient.get<ReservationResponse[]>(`/api/admin/reservations/user/${userId}`);
-      return response.data;
+      const response = await apiClient.get<ReservationListResponse>(`/api/admin/reservations/user/${userId}`);
+      return normalizeReservationsResponse(response.data);
     } catch (error: any) {
       if (error.code === 'ERR_NETWORK' || error.message?.includes('Network Error')) {
         throw new Error('Backend service unavailable. Please start the reservation service.');
@@ -116,13 +144,19 @@ export const reservationService = {
   // Get reservations by status
   getReservationsByStatus: async (status: ReservationStatus): Promise<Reservation[]> => {
     try {
-      const response = await apiClient.get<ReservationResponse[]>(`/api/admin/reservations`, {
-        params: { status }
+      const response = await apiClient.get<ReservationListResponse>(`/api/admin/reservations`, {
+        params: { status },
       });
-      return response.data;
+      return normalizeReservationsResponse(response.data);
     } catch (error: any) {
-      if (error.code === 'ERR_NETWORK' || error.message?.includes('Network Error') || error.message?.includes('ERR_CONNECTION_REFUSED')) {
-        console.warn('Backend unavailable, returning mock reservations list');
+      const isNetworkError =
+        error.code === 'ERR_NETWORK' ||
+        error.message?.includes('Network Error') ||
+        error.message?.includes('ERR_CONNECTION_REFUSED');
+      const isServerError = error.response?.status >= 500;
+      
+      if (isNetworkError || isServerError) {
+        console.warn('Reservation service unavailable, returning mock reservations list');
         return getMockReservations();
       }
       throw error;
