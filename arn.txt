@@ -130,11 +130,11 @@ $baseUrl = "http://34.213.51.153/api/stalls"
 
 # Stall data
 $stallBody = @{
-    stallName  = "C5"
+    stallName  = "C6"
     size       = "LARGE"
     dimension  = "20x20"
     locationX  = 750
-    locationY  = 300
+    locationY  = 400
     price      = 25000
     status     = "AVAILABLE"
 } | ConvertTo-Json
