@@ -34,7 +34,7 @@ import java.util.Map;
  */
 @RestController
 @RequestMapping("/api/admin")
-@CrossOrigin(origins = "*") // Allow frontend access
+// CORS is handled globally by CorsConfig - no need for @CrossOrigin here
 public class AdminController {
 
     private final IAuthService authService;
