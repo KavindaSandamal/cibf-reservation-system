@@ -58,8 +58,9 @@ public class SecurityConfig {
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
-        // Use specific origins when allowCredentials is true (wildcard not allowed)
-        configuration.setAllowedOrigins(Arrays.asList(
+        // Use allowedOriginPatterns instead of allowedOrigins for Spring Security 6.x
+        // This allows credentials with pattern matching
+        configuration.setAllowedOriginPatterns(Arrays.asList(
                 "http://localhost:3000",
                 "http://localhost:5174",
                 "http://localhost:5175"
