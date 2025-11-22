@@ -1,8 +1,9 @@
 package com.cibf.security;
 
 import com.cibf.entity.User;
-import com.cibf.entity.Role;
 import com.cibf.repository.UserRepository;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
@@ -10,37 +11,57 @@ import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.stereotype.Service;
 
-import java.util.Set;
+import java.util.Collection;
+import java.util.Collections;
 
-/**
- * Loads user-specific data during authentication from the database.
- * Follows:
- * - Single Responsibility Principle (SRP): Handles user data loading only
- * - Encapsulation: Hides user-to-SecurityUser conversion logic
- */
 @Service
+@RequiredArgsConstructor
+@Slf4j
 public class CustomUserDetailsService implements UserDetailsService {
 
     private final UserRepository userRepository;
 
-    public CustomUserDetailsService(UserRepository userRepository) {
-        this.userRepository = userRepository;
-    }
-
     @Override
     public UserDetails loadUserByUsername(String username) throws UsernameNotFoundException {
+        log.info("Loading user by username: {}", username);
+
         User user = userRepository.findByUsername(username)
-                .orElseThrow(() -> new UsernameNotFoundException("User not found with username: " + username));
+                .orElseThrow(() -> {
+                    log.error("User not found: {}", username);
+                    return new UsernameNotFoundException("User not found: " + username);
+                });
 
-        // Use Role enum for type safety and get authority
-        Role userRole = user.getRoleEnum();
-        Set<GrantedAuthority> authorities = Set.of(
-                new SimpleGrantedAuthority(userRole.getAuthority())
-        );
+        log.info("User found: {}, Role: {}", user.getUsername(), user.getRole());
 
-        return new org.springframework.security.core.userdetails.User(
-                user.getUsername(),
-                user.getPassword(),
-                authorities);
+        // CRITICAL FIX: getRole() returns String, not Role enum
+        Collection<GrantedAuthority> authorities = getAuthorities(user.getRole());
+
+        log.info("User authorities: {}", authorities);
+
+        return org.springframework.security.core.userdetails.User.builder()
+                .username(user.getUsername())
+                .password(user.getPassword())
+                .authorities(authorities)
+                .accountExpired(false)
+                .accountLocked(false)
+                .credentialsExpired(false)
+                .disabled(false)
+                .build();
+    }
+
+    /**
+     * CRITICAL FIX: Convert role string to GrantedAuthority with ROLE_ prefix
+     */
+    private Collection<GrantedAuthority> getAuthorities(String role) {
+        if (role == null || role.isEmpty()) {
+            log.warn("User has no role assigned");
+            return Collections.emptyList();
+        }
+
+        // Ensure ROLE_ prefix
+        String authorityName = role.startsWith("ROLE_") ? role : "ROLE_" + role;
+        log.debug("Converting role '{}' to authority '{}'", role, authorityName);
+
+        return Collections.singletonList(new SimpleGrantedAuthority(authorityName));
     }
 }
