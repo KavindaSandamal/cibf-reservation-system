@@ -31,8 +31,12 @@ export const dashboardService = {
       try {
         const stallResponse = await apiClient.get('/api/admin/statistics/stalls');
         stallStats = stallResponse.data;
-      } catch (stallError) {
-        console.warn('Stall statistics unavailable');
+      } catch (stallError: any) {
+        // Silently handle stall statistics errors - service may be unavailable or have issues
+        // Only log in development mode for debugging
+        if (import.meta.env.DEV) {
+          console.warn('Stall statistics unavailable:', stallError.response?.status || stallError.message);
+        }
       }
       
       // Combine data into DashboardStats format

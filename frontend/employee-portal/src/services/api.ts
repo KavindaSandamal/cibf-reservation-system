@@ -40,6 +40,17 @@ class ApiClient {
           localStorage.removeItem('employee');
           window.location.href = '/employee/login';
         }
+        // Suppress console errors for endpoints that are handled gracefully
+        // These errors are expected when services are unavailable or have issues
+        const url = error.config?.url || '';
+        const isHandledEndpoint = url.includes('/api/admin/statistics/stalls');
+        
+        if (isHandledEndpoint && error.response?.status >= 500) {
+          // Mark error as handled to prevent console spam
+          // The error will still be rejected so callers can handle it
+          error.isHandled = true;
+        }
+        
         return Promise.reject(error);
       }
     );
