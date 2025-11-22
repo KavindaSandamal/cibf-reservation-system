@@ -1,7 +1,7 @@
 import axios from 'axios';
 
 const stallApi = axios.create({
-  baseURL: process.env.REACT_APP_RESERVATION_API,
+  baseURL: process.env.BASE_URL,
   headers: { 'Content-Type': 'application/json' },
 });
 

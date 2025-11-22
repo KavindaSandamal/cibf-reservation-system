@@ -1,7 +1,7 @@
 import axios from 'axios';
 
 const authApi = axios.create({
-  baseURL: process.env.REACT_APP_AUTH_API, // no trailing slash
+  baseURL: process.env.BASE_URL, // no trailing slash
   headers: { 'Content-Type': 'application/json' },
 });
 

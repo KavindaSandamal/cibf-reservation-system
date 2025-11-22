@@ -1,3 +1,5 @@
+package com.cibf.config;
+
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.web.servlet.config.annotation.CorsRegistry;
@@ -13,7 +15,7 @@ public class WebConfig {
             public void addCorsMappings(CorsRegistry registry) {
                 registry.addMapping("/api/**") // allow all /api endpoints
                         .allowedOrigins("http://localhost:3000")
-                        .allowedMethods("GET","POST","PUT","DELETE")
+                        .allowedMethods("GET", "POST", "PUT", "DELETE")
                         .allowCredentials(true);
             }
         };
