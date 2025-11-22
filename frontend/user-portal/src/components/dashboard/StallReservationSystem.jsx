@@ -3,7 +3,6 @@ import { Search, MapPin, List, Filter, X, Check, AlertCircle, Calendar, DollarSi
 import { useAuth } from '../../context/AuthContext';
 import stallApi from '../../services/stallApi';
 
-
 const StallReservationSystem = () => {
   const { user } = useAuth();
   
@@ -17,11 +16,6 @@ const StallReservationSystem = () => {
   const [selectedStall, setSelectedStall] = useState(null);
   const [showReservationModal, setShowReservationModal] = useState(false);
   const [reservationForm, setReservationForm] = useState({
-    vendorName: user?.businessName || '',
-    vendorEmail: user?.email || '',
-    vendorPhone: '',
-    companyName: user?.businessName || '',
-    reservationDate: '',
     notes: ''
   });
   const [notification, setNotification] = useState(null);
@@ -30,18 +24,23 @@ const StallReservationSystem = () => {
 
   const userRole = user?.role || 'VENDOR';
 
+  // Debug user object
+  useEffect(() => {
+    console.log('🔵 Current user object:', user);
+    console.log('🔵 User ID:', user?.id);
+    console.log('🔵 User email:', user?.email);
+    console.log('🔵 User role:', user?.role);
+  }, [user]);
+
   useEffect(() => {
     fetchData();
   }, []);
 
   useEffect(() => {
     if (user) {
-      setReservationForm(prev => ({
-        ...prev,
-        vendorName: user.businessName || '',
-        vendorEmail: user.email || '',
-        companyName: user.businessName || ''
-      }));
+      setReservationForm({
+        notes: ''
+      });
     }
   }, [user]);
 
@@ -83,94 +82,85 @@ const StallReservationSystem = () => {
       return;
     }
     
-    if (!user?.id) {
+    // Check if user is logged in
+    if (!user) {
+      console.error('❌ User not authenticated:', user);
       showNotification('Please log in to reserve a stall', 'error');
       return;
     }
 
+    console.log('✅ User authenticated, opening reservation modal');
     setSelectedStall(stall);
     setShowReservationModal(true);
     setReservationForm({
-      vendorName: user?.businessName || '',
-      vendorEmail: user?.email || '',
-      vendorPhone: '',
-      companyName: user?.businessName || '',
-      reservationDate: '',
       notes: ''
     });
     setHoldToken(null);
   };
 
   const handleSubmitReservation = async () => {
-    // Validation
-    if (!reservationForm.vendorName || !reservationForm.vendorEmail || 
-        !reservationForm.vendorPhone || !reservationForm.reservationDate) {
-      showNotification('Please fill in all required fields', 'error');
+    // Check if user is logged in and has ID
+    if (!user || !user.id) {
+      showNotification('User not authenticated. Please log in again.', 'error');
       return;
     }
 
-    if (!user?.id) {
-      showNotification('User not authenticated', 'error');
-      return;
-    }
-
-    // Email validation
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(reservationForm.vendorEmail)) {
-      showNotification('Please enter a valid email address', 'error');
-      return;
-    }
-
-    // Phone validation
-    const phoneRegex = /^[\d\s\-\+\(\)]+$/;
-    if (!phoneRegex.test(reservationForm.vendorPhone)) {
-      showNotification('Please enter a valid phone number', 'error');
+    // Validation - only check notes if you want them required
+    if (reservationForm.notes && reservationForm.notes.trim().length === 0) {
+      showNotification('Please enter valid notes or leave it empty', 'error');
       return;
     }
 
     setSubmitting(true);
 
     try {
+      console.log('🔵 Submitting reservation for user:', user);
+      console.log('🔵 User ID:', user.id);
+      console.log('🔵 Business Name:', user.businessName);
+      console.log('🔵 Selected Stall:', selectedStall);
+      
       // Step 1: Hold the stall
+      console.log('🔵 Step 1: Holding stall...');
       const holdResponse = await stallApi.post('/api/reservations/hold', {
         userId: user.id,
-        stallIds: [selectedStall.id]
+        stallIds: [selectedStall.id],
+        businessName: user.businessName || 'Unknown Business'
       });
 
       const token = holdResponse.data.holdToken;
       setHoldToken(token);
+      console.log('✅ Stall held successfully, token:', token);
 
       // Step 2: Confirm the reservation
-      await stallApi.post('/api/reservations/confirm', {
+      console.log('🔵 Step 2: Confirming reservation...');
+      const confirmResponse = await stallApi.post('/api/reservations/confirm', {
         userId: user.id,
         holdToken: token,
-        vendorName: reservationForm.vendorName,
-        vendorEmail: reservationForm.vendorEmail,
-        vendorPhone: reservationForm.vendorPhone,
-        companyName: reservationForm.companyName,
-        reservationDate: reservationForm.reservationDate,
-        notes: reservationForm.notes
+        businessName: user.businessName || 'Unknown Business',
+        userEmail: user.email || user.username,
+        notes: reservationForm.notes || ''
       });
       
+      console.log('✅ Reservation confirmed:', confirmResponse.data);
       showNotification(`Successfully reserved ${selectedStall.stallName}!`, 'success');
+      
+      // Reset form and close modal
       setShowReservationModal(false);
       setSelectedStall(null);
       setHoldToken(null);
       setReservationForm({
-        vendorName: user?.businessName || '',
-        vendorEmail: user?.email || '',
-        vendorPhone: '',
-        companyName: user?.businessName || '',
-        reservationDate: '',
         notes: ''
       });
       
       // Refresh stall data
       await fetchData();
+      
     } catch (error) {
-      console.error('Error submitting reservation:', error);
+      console.error('❌ Error submitting reservation:', error);
+      console.error('❌ Error response:', error.response?.data);
       const errorMessage = error.response?.data?.message || 
                           error.response?.data?.error || 
+                          error.message ||
                           'Failed to submit reservation. Please try again.';
       showNotification(errorMessage, 'error');
       
@@ -600,93 +590,30 @@ const StallReservationSystem = () => {
                   </div>
                 </div>
 
-                <div className="mb-3">
-                  <label className="form-label fw-semibold">
-                    Vendor Name <span className="text-danger">*</span>
-                  </label>
-                  <input
-                    type="text"
-                    className="form-control"
-                    placeholder="Enter vendor name"
-                    value={reservationForm.vendorName}
-                    onChange={(e) => setReservationForm({...reservationForm, vendorName: e.target.value})}
-                    disabled={submitting}
-                    required
-                  />
+                <div className="alert alert-info mb-4">
+                  <h6 className="fw-bold mb-2">Reservation Details</h6>
+                  <p className="mb-1"><strong>Business:</strong> {user?.businessName || 'N/A'}</p>
+                  <p className="mb-1"><strong>Email:</strong> {user?.email || user?.username || 'N/A'}</p>
+                  <p className="mb-0"><strong>User ID:</strong> {user?.id || 'N/A'}</p>
                 </div>
 
                 <div className="mb-3">
-                  <label className="form-label fw-semibold">
-                    Email <span className="text-danger">*</span>
-                  </label>
-                  <input
-                    type="email"
-                    placeholder="Enter your email"
-                    className="form-control"
-                    value={reservationForm.vendorEmail}
-                    onChange={(e) => setReservationForm({...reservationForm, vendorEmail: e.target.value})}
-                    disabled={submitting}
-                    required
-                  />
-                </div>
-
-                <div className="mb-3">
-                  <label className="form-label fw-semibold">
-                    Phone <span className="text-danger">*</span>
-                  </label>
-                  <input
-                    type="tel"
-                    placeholder="Enter your phone number"
-                    className="form-control"
-                    value={reservationForm.vendorPhone}
-                    onChange={(e) => setReservationForm({...reservationForm, vendorPhone: e.target.value})}
-                    disabled={submitting}
-                    required
-                  />
-                </div>
-
-                <div className="mb-3">
-                  <label className="form-label fw-semibold">Company Name</label>
-                  <input
-                    type="text"
-                    placeholder="Enter your company name"
-                    className="form-control"
-                    value={reservationForm.companyName}
-                    onChange={(e) => setReservationForm({...reservationForm, companyName: e.target.value})}
-                    disabled={submitting}
-                  />
-                </div>
-
-                <div className="mb-3">
-                  <label className="form-label fw-semibold">
-                    Reservation Date <span className="text-danger">*</span>
-                  </label>
-                  <input
-                    type="date"
-                    className="form-control"
-                    value={reservationForm.reservationDate}
-                    onChange={(e) => setReservationForm({...reservationForm, reservationDate: e.target.value})}
-                    disabled={submitting}
-                    min={new Date().toISOString().split('T')[0]}
-                    required
-                  />
-                </div>
-
-                <div className="mb-3">
-                  <label className="form-label fw-semibold">Additional Notes</label>
+                  <label className="form-label fw-semibold">Additional Notes (Optional)</label>
                   <textarea
                     className="form-control"
-                    rows="3"
-                    placeholder="Any special requirements or notes"
+                    rows="4"
+                    placeholder="Any special requirements or notes about your reservation"
                     value={reservationForm.notes}
                     onChange={(e) => setReservationForm({...reservationForm, notes: e.target.value})}
                     disabled={submitting}
                   ></textarea>
+                  <div className="form-text">These notes will be included in your reservation confirmation.</div>
                 </div>
 
                 {holdToken && (
-                  <div className="alert alert-info">
-                    <small>Hold Token: {holdToken}</small>
+                  <div className="alert alert-success">
+                    <small className="d-block"><strong>Hold Token:</strong></small>
+                    <small className="font-monospace">{holdToken}</small>
                   </div>
                 )}
               </div>

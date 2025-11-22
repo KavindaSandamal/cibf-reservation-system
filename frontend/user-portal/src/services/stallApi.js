@@ -1,7 +1,7 @@
 import axios from 'axios';
 
 const stallApi = axios.create({
-  baseURL: process.env.BASE_URL,
+  baseURL: process.env.REACT_APP_API_BASE_URL || 'http://34.213.51.153',
   headers: { 'Content-Type': 'application/json' },
 });
 

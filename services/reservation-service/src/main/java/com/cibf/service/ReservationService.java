@@ -129,6 +129,13 @@ public class ReservationService {
             reservation.setStatus(ReservationStatus.CONFIRMED);
             reservation.setConfirmedAt(confirmedAt);
             reservationRepository.save(reservation);
+
+            // **UPDATE STALL STATUS TO RESERVED**
+            try {
+                stallServiceClient.updateStallStatus(reservation.getStallId(), "RESERVED");
+            } catch (Exception e) {
+                log.error("Failed to update stall status for stall: {}", reservation.getStallId(), e);
+            }
         });
 
         Reservation mainReservation = reservations.get(0);
