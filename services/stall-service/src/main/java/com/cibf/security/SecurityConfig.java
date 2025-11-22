@@ -31,7 +31,6 @@ public class SecurityConfig {
     }
 
     @Bean
-<<<<<<< HEAD
     public SecurityFilterChain stallSecurity(HttpSecurity http) throws Exception {
         http
             .cors() // enable CORS
@@ -43,10 +42,9 @@ public class SecurityConfig {
                 .anyRequest().authenticated()
             )
             .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
-=======
+
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
         System.out.println("✓ Configuring SecurityFilterChain...");
->>>>>>> aaa423defe29c765dc2fef11b079324424191c5a
 
         http
                 .csrf(AbstractHttpConfigurer::disable)
@@ -60,7 +58,6 @@ public class SecurityConfig {
         return http.build();
     }
 
-<<<<<<< HEAD
     // CORS filter bean
     @Bean
     public CorsFilter corsFilter() {
@@ -76,7 +73,6 @@ public class SecurityConfig {
         return new CorsFilter(source);
     }
 }
-=======
     @Bean
     public AuthenticationManager authenticationManager(AuthenticationConfiguration config) throws Exception {
         return config.getAuthenticationManager();
@@ -86,5 +82,5 @@ public class SecurityConfig {
     public PasswordEncoder passwordEncoder() {
         return new BCryptPasswordEncoder();
     }
+
 }
->>>>>>> aaa423defe29c765dc2fef11b079324424191c5a
