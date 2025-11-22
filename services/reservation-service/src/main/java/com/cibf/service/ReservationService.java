@@ -16,9 +16,13 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
-import java.util.List;
-import java.util.UUID;
+import java.time.LocalDate;
+import java.time.LocalTime;
+import java.util.*;
 import java.util.stream.Collectors;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.PageRequest;
 
 @Service
 @Transactional
@@ -283,6 +287,295 @@ public class ReservationService {
         eventPublisher.publishReservationCancelled(id, reservation.getUserId(), reservation.getStallId());
 
         log.info("✅ Reservation {} cancelled by user {}", id, userId);
+    }
+
+    /**
+     * Admin/Employee confirmation of a pending reservation (by ID only, no hold token required)
+     */
+    @Transactional
+    public ReservationResponse confirmReservationById(Long id) {
+        log.info("Admin confirming reservation by ID: {}", id);
+        
+        Reservation reservation = reservationRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Reservation not found with ID: " + id));
+
+        if (reservation.getStatus() != ReservationStatus.PENDING) {
+            throw new BadRequestException("Only PENDING reservations can be confirmed. Current status: " + reservation.getStatus());
+        }
+
+        // Find all reservations with the same hold token (if exists) or just this one
+        List<Reservation> reservationsToConfirm;
+        if (reservation.getHoldToken() != null) {
+            reservationsToConfirm = reservationRepository.findByUserIdAndHoldToken(
+                    reservation.getUserId(), reservation.getHoldToken());
+        } else {
+            reservationsToConfirm = List.of(reservation);
+        }
+
+        LocalDateTime confirmedAt = LocalDateTime.now();
+        reservationsToConfirm.forEach(r -> {
+            r.setStatus(ReservationStatus.CONFIRMED);
+            r.setConfirmedAt(confirmedAt);
+            reservationRepository.save(r);
+        });
+
+        Reservation mainReservation = reservationsToConfirm.get(0);
+        List<Long> stallIds = reservationsToConfirm.stream()
+                .map(Reservation::getStallId)
+                .collect(Collectors.toList());
+
+        List<ReservationConfirmationDto.StallInfo> stallInfos = getStallsInfoByIds(stallIds);
+        BigDecimal totalAmount = stallInfos.stream()
+                .map(ReservationConfirmationDto.StallInfo::getPrice)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+
+        reservationsToConfirm.forEach(r -> r.setTotalAmount(totalAmount));
+
+        String qrCodeUrl = null;
+        try {
+            qrCodeUrl = qrCodeService.generateAndUploadQRCode(
+                    mainReservation.getId(),
+                    mainReservation.getBusinessName(),
+                    mainReservation.getUserEmail());
+            final String finalQrCodeUrl = qrCodeUrl;
+            reservationsToConfirm.forEach(r -> {
+                r.setQrCodeUrl(finalQrCodeUrl);
+                reservationRepository.save(r);
+            });
+        } catch (Exception e) {
+            log.error("Failed to generate QR code for reservation: {}", mainReservation.getId(), e);
+        }
+
+        try {
+            ReservationConfirmationDto emailDto = ReservationConfirmationDto.builder()
+                    .reservationId(mainReservation.getId())
+                    .userEmail(mainReservation.getUserEmail())
+                    .businessName(mainReservation.getBusinessName())
+                    .totalAmount(totalAmount)
+                    .stalls(stallInfos)
+                    .qrCodeUrl(qrCodeUrl)
+                    .build();
+            emailService.sendReservationConfirmation(emailDto);
+        } catch (Exception e) {
+            log.error("Failed to send email notification", e);
+        }
+
+        eventPublisher.publishReservationConfirmed(mainReservation.getUserId(), stallIds);
+
+        ReservationResponse response = mapToResponse(mainReservation);
+        response.setQrCodeUrl(qrCodeUrl);
+        response.setStalls(stallInfos.stream()
+                .map(s -> ReservationResponse.StallSummary.builder()
+                        .id(s.getId())
+                        .stallName(s.getStallName())
+                        .size(s.getSize())
+                        .dimensions(s.getDimensions())
+                        .price(s.getPrice())
+                        .build())
+                .collect(Collectors.toList()));
+        response.setTotalAmount(totalAmount);
+
+        log.info("✅ Reservation {} confirmed by admin", id);
+        return response;
+    }
+
+    /**
+     * Admin/Employee cancellation of a reservation (by ID only, no userId required)
+     */
+    @Transactional
+    public void cancelReservationById(Long id) {
+        log.info("Admin cancelling reservation by ID: {}", id);
+        
+        Reservation reservation = reservationRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Reservation not found with ID: " + id));
+
+        if (reservation.getStatus() == ReservationStatus.CANCELLED) {
+            throw new BadRequestException("Reservation is already cancelled");
+        }
+
+        try {
+            stallServiceClient.updateStallStatus(reservation.getStallId(), "AVAILABLE");
+        } catch (Exception e) {
+            log.error("Failed to update stall status for stall: {}", reservation.getStallId(), e);
+        }
+
+        reservation.setStatus(ReservationStatus.CANCELLED);
+        reservation.setCancelledAt(LocalDateTime.now());
+        reservation.setCancelledBy(reservation.getUserId()); // Admin cancelling on behalf of user
+        reservation.setQrCodeUrl(null);
+
+        reservationRepository.save(reservation);
+        lockService.releaseLock(reservation.getStallId().toString());
+        eventPublisher.publishReservationCancelled(id, reservation.getUserId(), reservation.getStallId());
+
+        log.info("✅ Reservation {} cancelled by admin", id);
+    }
+
+    /**
+     * Resend confirmation email for a confirmed reservation
+     */
+    public void resendConfirmationEmail(Long id) {
+        log.info("Resending confirmation email for reservation: {}", id);
+        
+        Reservation reservation = reservationRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Reservation not found with ID: " + id));
+
+        if (reservation.getStatus() != ReservationStatus.CONFIRMED) {
+            throw new BadRequestException("Can only resend email for CONFIRMED reservations. Current status: " + reservation.getStatus());
+        }
+
+        List<Long> stallIds = List.of(reservation.getStallId());
+        List<ReservationConfirmationDto.StallInfo> stallInfos = getStallsInfoByIds(stallIds);
+
+        try {
+            ReservationConfirmationDto emailDto = ReservationConfirmationDto.builder()
+                    .reservationId(reservation.getId())
+                    .userEmail(reservation.getUserEmail())
+                    .businessName(reservation.getBusinessName())
+                    .totalAmount(reservation.getTotalAmount())
+                    .stalls(stallInfos)
+                    .qrCodeUrl(reservation.getQrCodeUrl())
+                    .build();
+            emailService.sendReservationConfirmation(emailDto);
+            log.info("✅ Confirmation email resent for reservation {}", id);
+        } catch (Exception e) {
+            log.error("Failed to resend confirmation email", e);
+            throw new RuntimeException("Failed to resend confirmation email", e);
+        }
+    }
+
+    /**
+     * Get all reservations with filters and pagination (for admin/employee portal)
+     */
+    @Transactional(readOnly = true)
+    public Page<ReservationResponse> getAllReservations(
+            String status,
+            String search,
+            String startDate,
+            String endDate,
+            int page,
+            int size) {
+        log.info("Getting all reservations with filters: status={}, search={}, startDate={}, endDate={}, page={}, size={}",
+                status, search, startDate, endDate, page, size);
+
+        Pageable pageable = PageRequest.of(page - 1, size); // Frontend uses 1-based, Spring uses 0-based
+        ReservationStatus statusEnum = null;
+        if (status != null && !status.isEmpty() && !status.equalsIgnoreCase("ALL")) {
+            try {
+                statusEnum = ReservationStatus.valueOf(status.toUpperCase());
+            } catch (IllegalArgumentException e) {
+                log.warn("Invalid status: {}", status);
+            }
+        }
+
+        LocalDateTime startDateTime = null;
+        LocalDateTime endDateTime = null;
+        if (startDate != null && !startDate.isEmpty()) {
+            try {
+                startDateTime = LocalDate.parse(startDate).atStartOfDay();
+            } catch (Exception e) {
+                log.warn("Invalid start date format: {}", startDate);
+            }
+        }
+        if (endDate != null && !endDate.isEmpty()) {
+            try {
+                endDateTime = LocalDate.parse(endDate).atTime(LocalTime.MAX);
+            } catch (Exception e) {
+                log.warn("Invalid end date format: {}", endDate);
+            }
+        }
+
+        String searchTerm = (search != null && !search.trim().isEmpty()) ? search.trim() : null;
+
+        Page<Reservation> reservations = reservationRepository.findAllWithFilters(
+                statusEnum, startDateTime, endDateTime, searchTerm, pageable);
+
+        // Map to response with stall information
+        Page<ReservationResponse> responsePage = reservations.map(reservation -> {
+            ReservationResponse response = mapToResponse(reservation);
+            
+            // If confirmed, fetch stall information
+            if (reservation.getStatus() == ReservationStatus.CONFIRMED) {
+                try {
+                    List<ReservationConfirmationDto.StallInfo> stallInfo = getStallsInfoByIds(
+                            List.of(reservation.getStallId()));
+                    response.setStalls(stallInfo.stream()
+                            .map(s -> ReservationResponse.StallSummary.builder()
+                                    .id(s.getId())
+                                    .stallName(s.getStallName())
+                                    .size(s.getSize())
+                                    .dimensions(s.getDimensions())
+                                    .price(s.getPrice())
+                                    .build())
+                            .collect(Collectors.toList()));
+                } catch (Exception e) {
+                    log.error("Failed to fetch stall info for reservation {}", reservation.getId(), e);
+                }
+            }
+            
+            return response;
+        });
+
+        log.info("Found {} reservations (page {} of {})", 
+                responsePage.getTotalElements(), page, responsePage.getTotalPages());
+        return responsePage;
+    }
+
+    /**
+     * Get statistics summary for dashboard
+     */
+    @Transactional(readOnly = true)
+    public Map<String, Object> getStatisticsSummary() {
+        log.info("Calculating reservation statistics summary");
+
+        // Count reservations by status
+        long totalReservations = reservationRepository.count();
+        long pendingReservations = reservationRepository.countByStatus(ReservationStatus.PENDING);
+        long confirmedReservations = reservationRepository.countByStatus(ReservationStatus.CONFIRMED);
+        long cancelledReservations = reservationRepository.countByStatus(ReservationStatus.CANCELLED);
+
+        // Calculate total revenue from confirmed reservations
+        List<Reservation> confirmedReservationsList = reservationRepository.findByStatus(ReservationStatus.CONFIRMED);
+        BigDecimal totalRevenue = confirmedReservationsList.stream()
+                .filter(r -> r.getTotalAmount() != null)
+                .map(Reservation::getTotalAmount)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+
+        // Get reservations by date (last 30 days)
+        LocalDateTime thirtyDaysAgo = LocalDateTime.now().minusDays(30);
+        List<Reservation> recentReservations = reservationRepository.findByDateRange(
+                thirtyDaysAgo, LocalDateTime.now());
+
+        // Group by date
+        Map<LocalDate, Long> reservationsByDateMap = recentReservations.stream()
+                .collect(Collectors.groupingBy(
+                        r -> r.getCreatedAt().toLocalDate(),
+                        Collectors.counting()
+                ));
+
+        // Convert to list format expected by frontend
+        List<Map<String, Object>> reservationsByDate = reservationsByDateMap.entrySet().stream()
+                .sorted(Map.Entry.comparingByKey())
+                .map(entry -> {
+                    Map<String, Object> dateEntry = new HashMap<>();
+                    dateEntry.put("date", entry.getKey().toString());
+                    dateEntry.put("count", entry.getValue());
+                    return dateEntry;
+                })
+                .collect(Collectors.toList());
+
+        Map<String, Object> summary = new HashMap<>();
+        summary.put("totalReservations", totalReservations);
+        summary.put("pendingReservations", pendingReservations);
+        summary.put("confirmedReservations", confirmedReservations);
+        summary.put("cancelledReservations", cancelledReservations);
+        summary.put("totalRevenue", totalRevenue);
+        summary.put("reservationsByDate", reservationsByDate);
+
+        log.info("Statistics calculated: total={}, pending={}, confirmed={}, cancelled={}, revenue={}",
+                totalReservations, pendingReservations, confirmedReservations, cancelledReservations, totalRevenue);
+
+        return summary;
     }
 
     public void cleanupExpiredHolds() {

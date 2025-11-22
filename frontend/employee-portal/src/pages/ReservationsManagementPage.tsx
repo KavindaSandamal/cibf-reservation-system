@@ -33,8 +33,20 @@ const ReservationsManagementPage: React.FC = () => {
         });
         setReservations(data);
       } catch (error: any) {
-        toast.error('Failed to load reservations');
+        const errorMessage = error.response?.status === 403 
+          ? 'Access denied. Please ensure you are logged in with an employee account.'
+          : error.response?.status === 401
+          ? 'Session expired. Please log in again.'
+          : 'Failed to load reservations';
+        toast.error(errorMessage);
         console.error('Error loading reservations:', error);
+        if (error.response?.status === 401 || error.response?.status === 403) {
+          console.error('Auth error details:', {
+            status: error.response?.status,
+            message: error.response?.data?.message || error.message,
+            url: error.config?.url
+          });
+        }
       } finally {
         setLoading(false);
       }

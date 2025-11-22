@@ -17,6 +17,7 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -247,15 +248,23 @@ public class StallService {
         long mediumAvailable = stallRepository.countBySizeAndStatus(StallSize.MEDIUM, StallStatus.AVAILABLE);
         long largeAvailable = stallRepository.countBySizeAndStatus(StallSize.LARGE, StallStatus.AVAILABLE);
 
-        return Map.of(
-                "totalStalls", totalStalls,
-                "availableStalls", availableStalls,
-                "reservedStalls", reservedStalls,
-                "unavailableStalls", totalStalls - availableStalls - reservedStalls,
-                "availableBySize", Map.of(
-                        "SMALL", smallAvailable,
-                        "MEDIUM", mediumAvailable,
-                        "LARGE", largeAvailable));
+        // Calculate occupancy rate (percentage of reserved stalls)
+        double occupancyRate = totalStalls > 0 
+            ? (double) reservedStalls / totalStalls * 100.0 
+            : 0.0;
+
+        Map<String, Object> stats = new HashMap<>();
+        stats.put("totalStalls", totalStalls);
+        stats.put("availableStalls", availableStalls);
+        stats.put("reservedStalls", reservedStalls);
+        stats.put("unavailableStalls", totalStalls - availableStalls - reservedStalls);
+        stats.put("occupancyRate", Math.round(occupancyRate * 100.0) / 100.0); // Round to 2 decimal places
+        stats.put("availableBySize", Map.of(
+                "SMALL", smallAvailable,
+                "MEDIUM", mediumAvailable,
+                "LARGE", largeAvailable));
+
+        return stats;
     }
 
     private String resolveCurrentEmployee() {
