@@ -13,7 +13,7 @@ $registerBody = @{
     address = "Colombo"
 } | ConvertTo-Json
 
-$registerResponse = Invoke-RestMethod -Uri "http://34.209.143.5/api/auth/register" `
+$registerResponse = Invoke-RestMethod -Uri "http://34.213.51.153/api/auth/register" `
     -Method Post `
     -ContentType "application/json" `
     -Body $registerBody
@@ -33,7 +33,7 @@ $headers = @{
     "Authorization" = "Bearer $token"
 }
 
-$reservationResponse = Invoke-RestMethod -Uri "http://34.209.143.5/api/reservations" `
+$reservationResponse = Invoke-RestMethod -Uri "http://34.213.51.153/api/reservations" `
     -Method Post `
     -Headers $headers `
     -ContentType "application/json" `
@@ -55,7 +55,7 @@ $loginBody = @{
 } | ConvertTo-Json
 
 # Authentication URL
-$authUrl = "http://34.209.143.5/api/auth/login"
+$authUrl = "http://34.213.51.153/api/auth/login"
 
 # Send login request
 try {
@@ -95,7 +95,7 @@ $employeeBody = @{
 } | ConvertTo-Json
 
 # Employee registration URL
-$registerUrl = "http://34.209.143.5/api/auth/employee/register"
+$registerUrl = "http://34.213.51.153/api/auth/employee/register"
 
 # Send registration request
 try {
@@ -123,19 +123,19 @@ try {
 # -----------------------------
 
 # Replace with your actual JWT token
-$token = "eyJhbGciOiJIUzUxMiJ9.eyJzdWIiOiJlbXBsb3llZTFAY2liZi5jb20iLCJpYXQiOjE3NjM3MDI5ODcsImV4cCI6MTc2Mzc4OTM4N30.aYLpoZSh5Bw_n2GQtUKv1D5Qz1j72ZOyV2D8dbesiRNq77TI6RaIs4dJherRvSl7BfO2mQLxI_gKUEaHCWDk4g"
+$token = "eyJhbGciOiJIUzUxMiJ9.eyJzdWIiOiJlbXBsb3llZTFAY2liZi5jb20iLCJpYXQiOjE3NjM4MDMzMzAsImV4cCI6MTc2Mzg4OTczMH0.mrnIAAj5pUkJ0gc-kx0xmwUOl0cu-mXu7n78_fyJt8C3QIV6Ne27R_0rpfffDtDsos1tc3Aqm0jma2O2jXcgSw"
 
 # API base URL
-$baseUrl = "http://34.209.143.5/api/stalls"
+$baseUrl = "http://34.213.51.153/api/stalls"
 
 # Stall data
 $stallBody = @{
-    stallName  = "C2"
-    size       = "LARGE"
-    dimension  = "20x20"
+    stallName  = "C3"
+    size       = "SMALL"
+    dimension  = "10x10"
     locationX  = 800
-    locationY  = 200
-    price      = 25000
+    locationY  = 300
+    price      = 15000
     status     = "AVAILABLE"
 } | ConvertTo-Json
 
