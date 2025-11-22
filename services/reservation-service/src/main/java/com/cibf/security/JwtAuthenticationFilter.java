@@ -32,25 +32,33 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                                     FilterChain filterChain) throws ServletException, IOException {
 
         String token = extractToken(request);
-        try {
-            if (StringUtils.hasText(token) && tokenProvider.validateToken(token)) {
+        
+        if (StringUtils.hasText(token)) {
+            try {
+                if (tokenProvider.validateToken(token)) {
+                    String username = tokenProvider.getUsername(token);
+                    System.out.println("✅ [JwtFilter] Valid token for user: " + username);
 
-                String username = tokenProvider.getUsername(token);
-                System.out.println("✅ [JwtFilter] Token extracted: " + token);
+                    UserDetails userDetails = userDetailsService.loadUserByUsername(username);
 
-                UserDetails userDetails = userDetailsService.loadUserByUsername(username);
+                    UsernamePasswordAuthenticationToken authentication =
+                            new UsernamePasswordAuthenticationToken(
+                                    userDetails, token, userDetails.getAuthorities());
 
-                UsernamePasswordAuthenticationToken authentication =
-                        new UsernamePasswordAuthenticationToken(
-                                userDetails, token, userDetails.getAuthorities());
-
-                authentication.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
-                SecurityContextHolder.getContext().setAuthentication(authentication);
+                    authentication.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
+                    SecurityContextHolder.getContext().setAuthentication(authentication);
+                    
+                    System.out.println("✅ [JwtFilter] Authentication set with authorities: " + userDetails.getAuthorities());
+                } else {
+                    System.out.println("❌ [JwtFilter] Token validation failed");
+                }
+            } catch (Exception ex) {
+                System.out.println("❌ [JwtFilter] Error processing token: " + ex.getMessage());
+                ex.printStackTrace();
+                SecurityContextHolder.clearContext();
             }
-        } catch (Exception ex) {
-                            System.out.println("✅ [JwtFilter] Token extracted: " );
-
-            SecurityContextHolder.clearContext();
+        } else {
+            System.out.println("⚠️ [JwtFilter] No token found in request");
         }
 
         filterChain.doFilter(request, response);
