@@ -43,11 +43,16 @@ public class JwtTokenProvider {
     }
 
     public boolean validateToken(String token) {
-        Jwts.parserBuilder()
-                .setSigningKey(getSigningKey())
-                .build()
-                .parseClaimsJws(token);
-        return true;
+        try {
+            Jwts.parserBuilder()
+                    .setSigningKey(getSigningKey())
+                    .build()
+                    .parseClaimsJws(token);
+            return true;
+        } catch (Exception ex) {
+            System.out.println("❌ [JwtTokenProvider] Token validation failed: " + ex.getMessage());
+            return false;
+        }
     }
 
     private Key getSigningKey() {
