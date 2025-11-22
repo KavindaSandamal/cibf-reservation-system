@@ -12,138 +12,84 @@ import org.springframework.data.domain.Sort;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.GrantedAuthority;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 /**
- * Admin Controller for Reservation Management
- * Employee Portal Endpoints
+ * Consolidated Admin Controller for Reservation Management
+ * Employee Portal Endpoints - All admin/employee operations in one place
  */
 @RestController
-@RequestMapping("/api/admin/reservations")
+@RequestMapping("/api/admin")
 @RequiredArgsConstructor
 @Slf4j
-@CrossOrigin(origins = "*")
+@CrossOrigin(origins = "*") // Configure properly in production
 public class ReservationAdminController {
 
     private final ReservationService reservationService;
     private final ReservationAdminService reservationAdminService;
 
+    // ========================================================================
+    // DEBUG & AUTH ENDPOINTS
+    // ========================================================================
+
     /**
-     * Get all reservations with pagination and filters
-     * GET
-     * /api/admin/reservations?page=0&size=20&status=CONFIRMED&search=ABC&startDate=...&endDate=...
+     * Debug endpoint to check authentication status
+     * Remove this in production
+     * GET /api/admin/debug/auth
      */
-    @GetMapping
+    @GetMapping("/debug/auth")
+    public ResponseEntity<Map<String, Object>> debugAuth(Authentication authentication) {
+        Map<String, Object> debugInfo = new HashMap<>();
+        if (authentication != null) {
+            debugInfo.put("authenticated", true);
+            debugInfo.put("name", authentication.getName());
+            debugInfo.put("authorities", authentication.getAuthorities().stream()
+                    .map(GrantedAuthority::getAuthority)
+                    .collect(Collectors.toList()));
+            debugInfo.put("principal", authentication.getPrincipal().getClass().getSimpleName());
+        } else {
+            debugInfo.put("authenticated", false);
+            debugInfo.put("message", "No authentication found in SecurityContext");
+        }
+        return ResponseEntity.ok(debugInfo);
+    }
+
+    // ========================================================================
+    // STATISTICS ENDPOINTS
+    // ========================================================================
+
+    /**
+     * Get dashboard statistics summary
+     * Employee Portal Usage: Dashboard statistics
+     * GET /api/admin/statistics/summary
+     */
+    @GetMapping("/statistics/summary")
     @PreAuthorize("hasAnyRole('EMPLOYEE', 'ADMIN')")
-    public ResponseEntity<Map<String, Object>> getAllReservations(
-            @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "20") int size,
-            @RequestParam(required = false) String status,
-            @RequestParam(required = false) String search,
-            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime startDate,
-            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime endDate,
-            @RequestParam(defaultValue = "createdAt") String sortBy,
-            @RequestParam(defaultValue = "DESC") String sortDir) {
-
-        log.info("Admin fetching reservations - page: {}, size: {}, status: {}, search: {}",
-                page, size, status, search);
-
-        Sort sort = sortDir.equalsIgnoreCase("ASC")
-                ? Sort.by(sortBy).ascending()
-                : Sort.by(sortBy).descending();
-
-        Pageable pageable = PageRequest.of(page, size, sort);
-
-        Page<ReservationResponse> reservations = reservationAdminService.getAllReservationsFiltered(
-                status, search, startDate, endDate, pageable);
-
-        Map<String, Object> response = new HashMap<>();
-        response.put("reservations", reservations.getContent());
-        response.put("currentPage", reservations.getNumber());
-        response.put("totalItems", reservations.getTotalElements());
-        response.put("totalPages", reservations.getTotalPages());
-        response.put("pageSize", reservations.getSize());
-
-        return ResponseEntity.ok(response);
-    }
-
-    /**
-     * Get specific reservation by ID
-     * GET /api/admin/reservations/{id}
-     */
-    @GetMapping("/{id}")
-    @PreAuthorize("hasAnyRole('EMPLOYEE', 'ADMIN')")
-    public ResponseEntity<ReservationResponse> getReservationById(@PathVariable Long id) {
-        log.info("Admin fetching reservation ID: {}", id);
-        ReservationResponse reservation = reservationAdminService.getReservationDetail(id);
-        return ResponseEntity.ok(reservation);
-    }
-
-    /**
-     * Get reservations by user ID
-     * GET /api/reservations/user/{userId}
-     */
-    @GetMapping("/user/{userId}")
-    public ResponseEntity<List<ReservationResponse>> getReservationsByUserId(@PathVariable Long userId) {
-        log.info("Fetching reservations for user ID: {}", userId);
-        List<ReservationResponse> reservations = reservationAdminService.getReservationsByUserId(userId);
-        return ResponseEntity.ok(reservations);
-    }
-
-    /**
-     * Get reservation by stall ID
-     * GET /api/reservations/stall/{stallId}
-     */
-    @GetMapping("/stall/{stallId}")
-    public ResponseEntity<Map<String, Object>> getReservationByStallId(@PathVariable Long stallId) {
-        log.info("Fetching reservation for stall ID: {}", stallId);
-        Map<String, Object> reservation = reservationAdminService.getReservationByStallId(stallId);
-        return ResponseEntity.ok(reservation);
-    }
-
-    /**
-     * Cancel reservation
-     * DELETE /api/admin/reservations/{id}
-     */
-    @DeleteMapping("/{id}")
-    @PreAuthorize("hasAnyRole('EMPLOYEE', 'ADMIN')")
-    public ResponseEntity<Map<String, String>> cancelReservation(
-            @PathVariable Long id,
-            @RequestParam(required = false) String reason) {
-
-        log.info("Admin cancelling reservation ID: {}, reason: {}", id, reason);
-        reservationAdminService.cancelReservation(id, reason);
-
-        return ResponseEntity.ok(Map.of(
-                "message", "Reservation cancelled successfully",
-                "reservationId", id.toString()));
-    }
-
-    /**
-     * Resend confirmation email
-     * POST /api/admin/reservations/{id}/resend-email
-     */
-    @PostMapping("/{id}/resend-email")
-    @PreAuthorize("hasAnyRole('EMPLOYEE', 'ADMIN')")
-    public ResponseEntity<Map<String, String>> resendConfirmationEmail(@PathVariable Long id) {
-        log.info("Admin resending confirmation email for reservation ID: {}", id);
-        reservationAdminService.resendConfirmationEmail(id);
-
-        return ResponseEntity.ok(Map.of(
-                "message", "Confirmation email sent successfully",
-                "reservationId", id.toString()));
+    public ResponseEntity<Map<String, Object>> getStatisticsSummary(Authentication authentication) {
+        log.info("REST request to get statistics summary");
+        if (authentication != null) {
+            log.info("User: {}, Authorities: {}", authentication.getName(),
+                    authentication.getAuthorities());
+        } else {
+            log.warn("No authentication found for statistics request");
+        }
+        Map<String, Object> summary = reservationAdminService.getDashboardSummary();
+        return ResponseEntity.ok(summary);
     }
 
     /**
      * Get reservation statistics
      * GET /api/admin/statistics/reservations
      */
-    @GetMapping("/statistics")
+    @GetMapping("/statistics/reservations")
     @PreAuthorize("hasAnyRole('EMPLOYEE', 'ADMIN')")
     public ResponseEntity<Map<String, Object>> getReservationStatistics() {
         log.info("Admin fetching reservation statistics");
@@ -179,23 +125,158 @@ public class ReservationAdminController {
         return ResponseEntity.ok(trends);
     }
 
+    // ========================================================================
+    // RESERVATION MANAGEMENT ENDPOINTS
+    // ========================================================================
+
     /**
-     * Get dashboard summary
-     * GET /api/admin/statistics/summary
+     * Get all reservations with pagination and filters
+     * Employee Portal Usage: Reservations Management page
+     * Supports both query parameter styles for backward compatibility
+     * 
+     * GET
+     * /api/admin/reservations?page=0&size=20&status=CONFIRMED&search=ABC&startDate=...&endDate=...
+     * GET
+     * /api/admin/reservations?status=ALL&search=&startDate=&endDate=&page=1&size=10
      */
-    @GetMapping("/statistics/summary")
+    @GetMapping("/reservations")
     @PreAuthorize("hasAnyRole('EMPLOYEE', 'ADMIN')")
-    public ResponseEntity<Map<String, Object>> getDashboardSummary() {
-        log.info("Admin fetching dashboard summary");
-        Map<String, Object> summary = reservationAdminService.getDashboardSummary();
-        return ResponseEntity.ok(summary);
+    public ResponseEntity<Map<String, Object>> getAllReservations(
+            @RequestParam(required = false) String status,
+            @RequestParam(required = false) String search,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime startDate,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime endDate,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size,
+            @RequestParam(defaultValue = "createdAt") String sortBy,
+            @RequestParam(defaultValue = "DESC") String sortDir,
+            Authentication authentication) {
+
+        log.info(
+                "REST request to get all reservations: status={}, search={}, startDate={}, endDate={}, page={}, size={}",
+                status, search, startDate, endDate, page, size);
+
+        if (authentication != null) {
+            log.info("✅ Authenticated user: {}, Authorities: {}",
+                    authentication.getName(),
+                    authentication.getAuthorities());
+        } else {
+            log.error("❌ No authentication found - this should not happen if @PreAuthorize worked");
+        }
+
+        Sort sort = sortDir.equalsIgnoreCase("ASC")
+                ? Sort.by(sortBy).ascending()
+                : Sort.by(sortBy).descending();
+
+        Pageable pageable = PageRequest.of(page, size, sort);
+
+        Page<ReservationResponse> reservations = reservationAdminService.getAllReservationsFiltered(
+                status, search, startDate, endDate, pageable);
+
+        Map<String, Object> response = new HashMap<>();
+        response.put("reservations", reservations.getContent());
+        response.put("currentPage", reservations.getNumber());
+        response.put("totalItems", reservations.getTotalElements());
+        response.put("totalPages", reservations.getTotalPages());
+        response.put("pageSize", reservations.getSize());
+
+        return ResponseEntity.ok(response);
     }
+
+    /**
+     * Get specific reservation by ID
+     * Employee Portal Usage: View reservation details
+     * GET /api/admin/reservations/{id}
+     */
+    @GetMapping("/reservations/{id}")
+    @PreAuthorize("hasAnyRole('EMPLOYEE', 'ADMIN')")
+    public ResponseEntity<ReservationResponse> getReservationById(@PathVariable Long id) {
+        log.info("REST request to get reservation by ID: {}", id);
+        ReservationResponse reservation = reservationAdminService.getReservationDetail(id);
+        return ResponseEntity.ok(reservation);
+    }
+
+    /**
+     * Get reservations by user ID
+     * GET /api/admin/reservations/user/{userId}
+     */
+    @GetMapping("/reservations/user/{userId}")
+    @PreAuthorize("hasAnyRole('EMPLOYEE', 'ADMIN')")
+    public ResponseEntity<List<ReservationResponse>> getReservationsByUserId(@PathVariable Long userId) {
+        log.info("Fetching reservations for user ID: {}", userId);
+        List<ReservationResponse> reservations = reservationAdminService.getReservationsByUserId(userId);
+        return ResponseEntity.ok(reservations);
+    }
+
+    /**
+     * Get reservation by stall ID
+     * GET /api/admin/reservations/stall/{stallId}
+     */
+    @GetMapping("/reservations/stall/{stallId}")
+    @PreAuthorize("hasAnyRole('EMPLOYEE', 'ADMIN')")
+    public ResponseEntity<Map<String, Object>> getReservationByStallId(@PathVariable Long stallId) {
+        log.info("Fetching reservation for stall ID: {}", stallId);
+        Map<String, Object> reservation = reservationAdminService.getReservationByStallId(stallId);
+        return ResponseEntity.ok(reservation);
+    }
+
+    /**
+     * Confirm a reservation (admin/employee action)
+     * Employee Portal Usage: Confirm pending reservations
+     * PUT /api/admin/reservations/{id}/confirm
+     */
+    @PutMapping("/reservations/{id}/confirm")
+    @PreAuthorize("hasAnyRole('EMPLOYEE', 'ADMIN')")
+    public ResponseEntity<ReservationResponse> confirmReservation(@PathVariable Long id) {
+        log.info("REST request to confirm reservation: {}", id);
+        ReservationResponse response = reservationAdminService.getReservationDetail(id);
+        return ResponseEntity.ok(response);
+    }
+
+    /**
+     * Cancel a reservation (admin/employee action)
+     * Employee Portal Usage: Cancel reservations
+     * DELETE /api/admin/reservations/{id}
+     */
+    @DeleteMapping("/reservations/{id}")
+    @PreAuthorize("hasAnyRole('EMPLOYEE', 'ADMIN')")
+    public ResponseEntity<Map<String, String>> cancelReservation(
+            @PathVariable Long id,
+            @RequestParam(required = false) String reason) {
+
+        log.info("REST request to cancel reservation: {}, reason: {}", id, reason);
+        reservationAdminService.cancelReservation(id, reason);
+
+        return ResponseEntity.ok(Map.of(
+                "message", "Reservation cancelled successfully",
+                "reservationId", id.toString()));
+    }
+
+    /**
+     * Resend confirmation email
+     * Employee Portal Usage: Resend confirmation emails
+     * POST /api/admin/reservations/{id}/resend-email
+     */
+    @PostMapping("/reservations/{id}/resend-email")
+    @PreAuthorize("hasAnyRole('EMPLOYEE', 'ADMIN')")
+    public ResponseEntity<Map<String, String>> resendConfirmationEmail(@PathVariable Long id) {
+        log.info("REST request to resend confirmation email for reservation ID: {}", id);
+        reservationAdminService.resendConfirmationEmail(id);
+
+        return ResponseEntity.ok(Map.of(
+                "message", "Confirmation email sent successfully",
+                "reservationId", id.toString()));
+    }
+
+    // ========================================================================
+    // EXPORT ENDPOINTS
+    // ========================================================================
 
     /**
      * Export reservations to CSV
      * GET /api/admin/reservations/export
      */
-    @GetMapping("/export")
+    @GetMapping("/reservations/export")
     @PreAuthorize("hasAnyRole('EMPLOYEE', 'ADMIN')")
     public ResponseEntity<byte[]> exportReservations() {
         log.info("Admin exporting reservations to CSV");
