@@ -174,7 +174,7 @@ public class StallController {
      * Update stall status (Employee only + Service-to-Service from
      * reservation-service)
      */
-    @PatchMapping("/{id}/status")
+    @PostMapping("/{id}/status")
     @PreAuthorize("hasAnyRole('EMPLOYEE', 'VENDOR')")
     public ResponseEntity<StallResponseDTO> updateStallStatus(
             @PathVariable Long id,
