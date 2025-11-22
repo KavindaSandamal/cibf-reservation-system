@@ -7,6 +7,7 @@ import jakarta.servlet.http.HttpServletResponse;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.web.authentication.WebAuthenticationDetailsSource;
@@ -14,12 +15,15 @@ import org.springframework.util.StringUtils;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
+import java.util.stream.Collectors;
 
 /**
  * JWT Authentication Filter
  * Intercepts every request and validates JWT token if present.
- * This filter should NOT block requests to public endpoints like
- * /api/auth/**
+ * Extracts roles from token and sets authentication with proper authorities.
  */
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
@@ -58,22 +62,75 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                     String username = tokenProvider.getUsername(token);
                     logger.debug("Username from token: {}", username);
 
-                    // Load user details
-                    UserDetails userDetails = userDetailsService.loadUserByUsername(username);
-                    logger.debug("User details loaded for: {}", username);
+                    // Extract roles from token
+                    String rolesString = tokenProvider.getRoles(token);
+                    logger.debug("Roles from token: {}", rolesString);
 
-                    // Create authentication object
-                    UsernamePasswordAuthenticationToken authentication = new UsernamePasswordAuthenticationToken(
-                            userDetails,
-                            null,
-                            userDetails.getAuthorities());
+                    // Create authorities list
+                    List<SimpleGrantedAuthority> authorities = new ArrayList<>();
 
-                    authentication.setDetails(
-                            new WebAuthenticationDetailsSource().buildDetails(request));
+                    if (StringUtils.hasText(rolesString)) {
+                        // Parse roles from token (comma-separated)
+                        authorities = Arrays.stream(rolesString.split(","))
+                                .map(String::trim)
+                                .filter(StringUtils::hasText)
+                                .map(role -> {
+                                    // Ensure ROLE_ prefix for Spring Security
+                                    // Spring Security's hasRole() expects ROLE_ prefix
+                                    if (!role.startsWith("ROLE_")) {
+                                        return new SimpleGrantedAuthority("ROLE_" + role);
+                                    }
+                                    return new SimpleGrantedAuthority(role);
+                                })
+                                .collect(Collectors.toList());
 
-                    // Set authentication in Security Context
-                    SecurityContextHolder.getContext().setAuthentication(authentication);
-                    logger.debug("Authentication set in SecurityContext for user: {}", username);
+                        logger.debug("Authorities extracted from token: {}", authorities);
+                    } else {
+                        // If no roles in token, try to load from UserDetails as fallback
+                        logger.warn("No roles found in token, loading from UserDetails");
+                        try {
+                            UserDetails userDetails = userDetailsService.loadUserByUsername(username);
+                            authorities = userDetails.getAuthorities().stream()
+                                    .map(auth -> new SimpleGrantedAuthority(auth.getAuthority()))
+                                    .collect(Collectors.toList());
+                            logger.debug("Authorities loaded from UserDetails: {}", authorities);
+                        } catch (Exception e) {
+                            logger.error("Failed to load user details for username: {}", username, e);
+                        }
+                    }
+
+                    // Only set authentication if we have authorities
+                    if (!authorities.isEmpty()) {
+                        // Load user details for additional information
+                        UserDetails userDetails = null;
+                        try {
+                            userDetails = userDetailsService.loadUserByUsername(username);
+                            logger.debug("User details loaded for: {}", username);
+                        } catch (Exception e) {
+                            logger.warn("Could not load user details for {}, using username only", username);
+                        }
+
+                        // Create authentication object
+                        // If we have UserDetails, use it as principal; otherwise use username
+                        Object principal = userDetails != null ? userDetails : username;
+                        
+                        UsernamePasswordAuthenticationToken authentication = 
+                            new UsernamePasswordAuthenticationToken(
+                                principal,
+                                null,
+                                authorities);
+
+                        authentication.setDetails(
+                                new WebAuthenticationDetailsSource().buildDetails(request));
+
+                        // Set authentication in Security Context
+                        SecurityContextHolder.getContext().setAuthentication(authentication);
+                        
+                        logger.info("Successfully authenticated user: {} with authorities: {}", 
+                                   username, authorities);
+                    } else {
+                        logger.warn("No authorities found for user: {}, authentication not set", username);
+                    }
 
                 } else {
                     logger.warn("Invalid JWT token for URI: {}", requestURI);
@@ -83,7 +140,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             }
 
         } catch (Exception ex) {
-            // Log error 
+            // Log error with full stack trace
             logger.error("Cannot set user authentication in security context for URI: {}", requestURI, ex);
             // Clear any partial authentication
             SecurityContextHolder.clearContext();
@@ -110,6 +167,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             return token;
         }
 
+        logger.debug("No Bearer token found in Authorization header");
         return null;
     }
 }
