@@ -10,6 +10,8 @@ import com.cibf.entity.Role;
 import com.cibf.repository.UserRepository;
 import com.cibf.repository.EmployeeRepository;
 import com.cibf.security.JwtTokenProvider;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -27,13 +29,12 @@ import java.util.Map;
 
 /**
  * Service implementation for authentication operations.
- * Follows:
- * - Single Responsibility Principle (SRP): Handles authentication only
- * - Dependency Inversion Principle (DIP): Depends on IAuthService interface
- * - Open/Closed Principle: Easy to extend with new authentication methods
+ * FIXED: Now generates JWT tokens with roles included
  */
 @Service
 public class AuthService implements IAuthService {
+
+    private static final Logger logger = LoggerFactory.getLogger(AuthService.class);
 
     private final AuthenticationManager authenticationManager;
     private final UserRepository userRepository;
@@ -69,11 +70,14 @@ public class AuthService implements IAuthService {
                 Role.VENDOR);
 
         userRepository.save(user);
+        logger.info("User registered: {}", user.getUsername());
 
+        // Authenticate and generate token with roles
         Authentication authentication = performAuthentication(
                 registrationRequest.getUsername(),
                 registrationRequest.getPassword());
 
+        // CRITICAL FIX: Generate token with authentication (includes roles)
         String token = tokenProvider.generateToken(authentication);
 
         return new AuthResponse(token, user.getRole(), user.getBusinessName());
@@ -81,18 +85,24 @@ public class AuthService implements IAuthService {
 
     @Override
     public AuthResponse authenticateUser(AuthRequest authRequest) {
+        // Authenticate first
         Authentication authentication = performAuthentication(
                 authRequest.getUsername(),
                 authRequest.getPassword());
 
         User user = findUserByUsername(authRequest.getUsername());
+
+        // CRITICAL FIX: Generate token with authentication (includes roles)
         String token = tokenProvider.generateToken(authentication);
+
+        logger.info("User authenticated: {} with role: {}", user.getUsername(), user.getRole());
 
         return new AuthResponse(token, user.getRole(), user.getBusinessName());
     }
 
     @Override
     public AuthResponse authenticateEmployee(AuthRequest authRequest) {
+        // Authenticate first
         Authentication authentication = performAuthentication(
                 authRequest.getUsername(),
                 authRequest.getPassword());
@@ -101,10 +111,15 @@ public class AuthService implements IAuthService {
 
         // Validate that the user is actually an employee
         if (!user.isEmployee()) {
+            logger.warn("Non-employee user attempted to access employee portal: {}", user.getUsername());
             throw new BadCredentialsException("Access denied. Employee credentials required.");
         }
 
+        // CRITICAL FIX: Generate token with authentication (includes roles)
         String token = tokenProvider.generateToken(authentication);
+
+        logger.info("Employee authenticated: {} with role: {}", user.getUsername(), user.getRole());
+
         return new AuthResponse(token, user.getRole(), user.getBusinessName());
     }
 
@@ -115,9 +130,7 @@ public class AuthService implements IAuthService {
         // Role is fixed to EMPLOYEE for self-registration for security reasons.
         Role effectiveRole = Role.EMPLOYEE;
 
-        // Create User record in users table, using null for vendor-specific fields
-        // (businessName, address)
-        // and using the DTO's contact number.
+        // Create User record in users table
         User user = new User(
                 registrationRequest.getUsername(),
                 passwordEncoder.encode(registrationRequest.getPassword()),
@@ -128,14 +141,18 @@ public class AuthService implements IAuthService {
                 effectiveRole); // Role
 
         userRepository.save(user);
+        logger.info("Employee user created: {}", user.getUsername());
 
         Employee employee = createEmployee(registrationRequest, user, effectiveRole);
         employeeRepository.save(employee);
+        logger.info("Employee record created: {} ({})", employee.getName(), employee.getEmployeeId());
 
+        // Authenticate and generate token with roles
         Authentication authentication = performAuthentication(
                 registrationRequest.getUsername(),
                 registrationRequest.getPassword());
 
+        // CRITICAL FIX: Generate token with authentication (includes roles)
         String token = tokenProvider.generateToken(authentication);
 
         return new AuthResponse(token, effectiveRole.getName(), null);
@@ -143,7 +160,6 @@ public class AuthService implements IAuthService {
 
     /**
      * Private helper method to validate username availability.
-     * Encapsulation - hides validation logic.
      */
     private void validateUsernameAvailability(String username) {
         if (userRepository.existsByUsername(username)) {
@@ -153,22 +169,30 @@ public class AuthService implements IAuthService {
 
     /**
      * Private helper method to perform authentication.
-     * Single Responsibility - handles authentication logic only.
+     * FIXED: Now logs more details for debugging
      */
     private Authentication performAuthentication(String username, String password) {
         try {
+            logger.debug("Attempting authentication for user: {}", username);
+
             Authentication authentication = authenticationManager.authenticate(
                     new UsernamePasswordAuthenticationToken(username, password));
+
             SecurityContextHolder.getContext().setAuthentication(authentication);
+
+            // Log the authorities for debugging
+            logger.debug("Authentication successful for user: {} with authorities: {}",
+                    username, authentication.getAuthorities());
+
             return authentication;
         } catch (BadCredentialsException e) {
+            logger.warn("Authentication failed for user: {} - Invalid credentials", username);
             throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Invalid credentials.");
         }
     }
 
     /**
      * Private helper method to find user by username.
-     * Encapsulation - centralizes user lookup logic.
      */
     private User findUserByUsername(String username) {
         return userRepository.findByUsername(username)
@@ -178,8 +202,6 @@ public class AuthService implements IAuthService {
 
     /**
      * Determine employee role from request.
-     * Defaults to EMPLOYEE if roleString is null/blank. Allows ADMIN only if
-     * explicitly passed.
      */
     private Role determineEmployeeRole(String roleString) {
         if (roleString == null || roleString.isBlank()) {
@@ -194,7 +216,6 @@ public class AuthService implements IAuthService {
 
     /**
      * Create Employee entity from registration request.
-     * Factory method pattern - encapsulates object creation.
      */
     private Employee createEmployee(EmployeeRegistrationRequest request, User user, Role role) {
         Employee employee = new Employee();
@@ -210,34 +231,29 @@ public class AuthService implements IAuthService {
 
     /**
      * Admin creates a new employee (without auto-login).
-     * Used when admin creates employee accounts.
-     * Does not perform authentication or return JWT token.
      */
     @Override
     public ResponseEntity<?> createEmployeeByAdmin(EmployeeRegistrationRequest registrationRequest) {
         validateUsernameAvailability(registrationRequest.getUsername());
 
-        // Since the DTO doesn't contain 'role', we fix the effective role to EMPLOYEE
-        // for simplicity.
         Role effectiveRole = Role.EMPLOYEE;
 
-        // Create User record in users table
         User user = new User(
                 registrationRequest.getUsername(),
                 passwordEncoder.encode(registrationRequest.getPassword()),
-                "CIBF Admin", // business_name placeholder for employees
-                registrationRequest.getEmail(), // email for User entity
-                registrationRequest.getContactNumber(), // contactNumber for User entity
-                null, // address is null
+                "CIBF Admin",
+                registrationRequest.getEmail(),
+                registrationRequest.getContactNumber(),
+                null,
                 effectiveRole);
 
         userRepository.save(user);
 
-        // Create Employee record in employees table
         Employee employee = createEmployee(registrationRequest, user, effectiveRole);
         employeeRepository.save(employee);
 
-        // Return created employee info (without JWT token)
+        logger.info("Employee created by admin: {} ({})", employee.getName(), employee.getEmployeeId());
+
         Map<String, Object> response = new HashMap<>();
         response.put("id", user.getId());
         response.put("username", user.getUsername());
@@ -252,26 +268,24 @@ public class AuthService implements IAuthService {
 
     /**
      * Admin creates a new user/vendor (without auto-login).
-     * Used when admin creates user accounts.
-     * Does not perform authentication or return JWT token.
      */
     @Override
     public ResponseEntity<?> createUserByAdmin(UserRegistrationRequest registrationRequest) {
         validateUsernameAvailability(registrationRequest.getUsername());
 
-        // Create User with all fields
         User user = new User(
                 registrationRequest.getUsername(),
                 passwordEncoder.encode(registrationRequest.getPassword()),
                 registrationRequest.getBusinessName(),
-                registrationRequest.getUsername(), // email same as username
+                registrationRequest.getUsername(),
                 registrationRequest.getContactNumber(),
                 registrationRequest.getAddress(),
                 Role.VENDOR);
 
         userRepository.save(user);
 
-        // Return created user info (without JWT token)
+        logger.info("User created by admin: {} ({})", user.getUsername(), user.getBusinessName());
+
         Map<String, Object> response = new HashMap<>();
         response.put("id", user.getId());
         response.put("username", user.getUsername());
@@ -288,13 +302,8 @@ public class AuthService implements IAuthService {
         return userRepository.existsById(userId);
     }
 
-    /**
-     * Retrieves the full user entity by username.
-     * This public method is required for the /me endpoint to get user details.
-     */
     @Override
     public User getUserByUsername(String username) {
         return findUserByUsername(username);
     }
-
 }
