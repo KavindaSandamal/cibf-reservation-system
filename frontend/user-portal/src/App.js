@@ -12,6 +12,8 @@ import Dashboard from './components/dashboard/Dashboard';
 import GenreSelection from './components/dashboard/GenreSelection';
 import ProtectedRoute from './components/auth/ProtectedRoute';
 import Footer from './components/layout/Footer';
+import StallReservationSystem from './components/dashboard/StallReservationSystem';
+import MyReservationsPage from './components/dashboard/MyReservation';
 
 function App() {
   return (
@@ -38,6 +40,25 @@ function App() {
                 element={
                   <ProtectedRoute allowedRoles={['VENDOR', 'ADMIN']}>
                     <GenreSelection />
+                    
+                  </ProtectedRoute>
+                }
+              />
+                <Route
+                path="/stalls"
+                element={
+                  <ProtectedRoute allowedRoles={['VENDOR', 'ADMIN']}>
+                    <StallReservationSystem />
+                    
+                  </ProtectedRoute>
+                }
+              />
+               <Route
+                path="/reservations"
+                element={
+                  <ProtectedRoute allowedRoles={['VENDOR', 'ADMIN']}>
+                    <MyReservationsPage />
+                    
                   </ProtectedRoute>
                 }
               />
