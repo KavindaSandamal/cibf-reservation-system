@@ -27,7 +27,7 @@ import java.util.stream.Collectors;
  * Employee Portal Endpoints - All admin/employee operations in one place
  */
 @RestController
-@RequestMapping("/api/admin")
+@RequestMapping("/api/admin/reservations")
 @RequiredArgsConstructor
 @Slf4j
 @CrossOrigin(origins = "*") // Configure properly in production
