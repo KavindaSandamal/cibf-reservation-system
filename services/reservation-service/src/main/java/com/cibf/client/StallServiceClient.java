@@ -28,12 +28,12 @@ public interface StallServiceClient {
     ResponseEntity<List<StallResponse>> getStallsByIds(@RequestParam("ids") String commaSeparatedIds);
 
     // 3. Confirm Stalls (Used by Reservation Consumer after payment/confirmation)
-    @PatchMapping("/api/stalls/confirm/{reservationId}")
+    @PostMapping("/api/stalls/confirm/{reservationId}")
     ResponseEntity<Void> confirmStallsByReservationId(@PathVariable Long reservationId);
 
     // 4. Update Stall Status (Used for cancellation/cleanup)
     // Example: /api/stalls/1/status?status=RESERVED
-    @PatchMapping("/api/stalls/{stallId}/status")
+    @PostMapping("/api/stalls/{stallId}/status")
     ResponseEntity<Void> updateStallStatus(
             @PathVariable Long stallId,
             @RequestParam String status);
