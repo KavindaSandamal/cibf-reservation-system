@@ -18,7 +18,6 @@ import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
 import java.util.Arrays;
-import java.util.List;
 
 @Configuration
 @EnableWebSecurity
@@ -40,17 +39,38 @@ public class SecurityConfig {
                 .csrf(AbstractHttpConfigurer::disable)
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
+                        // Allow OPTIONS requests (for CORS preflight)
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
+
+                        // Public endpoints
                         .requestMatchers(
                                 "/api/auth/**",
                                 "/api/public/**",
                                 "/actuator/**",
                                 "/error")
                         .permitAll()
+
+                        // ⭐ Allow GET requests to stall endpoints (for service-to-service and public
+                        // access)
+                        .requestMatchers(HttpMethod.GET,
+                                "/api/stalls", // Get all stalls
+                                "/api/stalls/**") // Get stall by ID, by-ids, available, etc.
+                        .permitAll()
+
+                        // ⭐ Allow PATCH for status updates (service-to-service from
+                        // reservation-service)
+                        .requestMatchers(HttpMethod.PATCH,
+                                "/api/stalls/*/status", // Pattern with wildcard
+                                "/api/stalls/{id}/status") // Pattern with path variable
+                        .permitAll()
+
+                        // All other requests require authentication
                         .anyRequest().authenticated())
                 .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
 
         System.out.println("✓ SecurityFilterChain configured for Stall Service!");
+        System.out.println("✓ Public GET access enabled for /api/stalls/**");
+        System.out.println("✓ Public PATCH access enabled for /api/stalls/*/status");
         return http.build();
     }
 
