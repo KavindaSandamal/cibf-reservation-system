@@ -11,11 +11,13 @@ import com.cibf.client.StallServiceClient;
 import com.cibf.client.UserServiceClient;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.util.Collections;
 import java.util.List;
 import java.util.UUID;
 import java.util.stream.Collectors;
@@ -37,9 +39,6 @@ public class ReservationService {
     private final QRCodeService qrCodeService;
     private final EmailService emailService;
 
-    /**
-     * Hold stalls temporarily
-     */
     public HoldStallResponse holdStalls(HoldStallRequest request) {
         Long userId = request.getUserId();
         List<Long> stallIds = request.getStallIds();
@@ -94,13 +93,9 @@ public class ReservationService {
         return new HoldStallResponse(holdToken, expiresAt);
     }
 
-    /**
-     * Confirm reservation - Generate QR code and send email
-     */
     public ReservationResponse confirmReservation(ConfirmReservationRequest request) {
         log.info("Confirming reservation for user: {}, holdToken: {}", request.getUserId(), request.getHoldToken());
 
-        // ✅ FIXED: Changed to List<Reservation>
         List<Reservation> reservations = reservationRepository
                 .findByUserIdAndHoldToken(request.getUserId(), request.getHoldToken());
 
@@ -134,6 +129,13 @@ public class ReservationService {
             reservation.setStatus(ReservationStatus.CONFIRMED);
             reservation.setConfirmedAt(confirmedAt);
             reservationRepository.save(reservation);
+
+            // **UPDATE STALL STATUS TO RESERVED**
+            try {
+                stallServiceClient.updateStallStatus(reservation.getStallId(), "RESERVED");
+            } catch (Exception e) {
+                log.error("Failed to update stall status for stall: {}", reservation.getStallId(), e);
+            }
         });
 
         Reservation mainReservation = reservations.get(0);
@@ -150,35 +152,70 @@ public class ReservationService {
 
         reservations.forEach(r -> r.setTotalAmount(totalAmount));
 
-        String qrCodeUrl = null;
+        // 🎯 PUBLISH EVENT TO RABBITMQ (instead of direct processing)
         try {
-            log.info("Generating QR code for reservation: {}", mainReservation.getId());
+            log.info("📤 Publishing reservation confirmed event to RabbitMQ");
 
-            qrCodeUrl = qrCodeService.generateAndUploadQRCode(
+            eventPublisher.publishReservationConfirmed(
                     mainReservation.getId(),
-                    request.getBusinessName() != null ? request.getBusinessName() : mainReservation.getBusinessName(),
-                    request.getUserEmail() != null ? request.getUserEmail() : mainReservation.getUserEmail());
+                    mainReservation.getUserId(),
+                    request.getUserEmail() != null ? request.getUserEmail() : mainReservation.getUserEmail(),
+                    stallIds);
 
-            final String finalQrCodeUrl = qrCodeUrl;
-            reservations.forEach(r -> {
-                r.setQrCodeUrl(finalQrCodeUrl);
-                reservationRepository.save(r);
-            });
-
-            log.info("✅ QR code generated and saved: {}", qrCodeUrl);
+            log.info("✅ Reservation event published to RabbitMQ - async processing started");
 
         } catch (Exception e) {
-            log.error("❌ Failed to generate QR code for reservation: {}", mainReservation.getId(), e);
+            log.error("⚠️ Failed to publish event to RabbitMQ, falling back to direct processing", e);
+
+            // FALLBACK: Direct processing if RabbitMQ fails
+            processReservationDirectly(mainReservation, request, stallInfos, totalAmount);
         }
 
-        try {
-            log.info("Sending confirmation email to: {}", request.getUserEmail());
+        // Return response immediately (email and QR will be processed async)
+        ReservationResponse response = mapToResponse(mainReservation);
+        response.setStalls(stallInfos.stream()
+                .map(s -> ReservationResponse.StallSummary.builder()
+                        .id(s.getId())
+                        .stallName(s.getStallName())
+                        .size(s.getSize())
+                        .dimension(s.getDimension())
+                        .price(s.getPrice())
+                        .build())
+                .collect(Collectors.toList()));
+        response.setTotalAmount(totalAmount);
+        response.setQrCodeUrl("Processing..."); // Will be updated async
 
+        log.info("✅ Reservation confirmed successfully: ID={}", mainReservation.getId());
+        log.info("📧 Email and QR code will be processed asynchronously");
+
+        return response;
+    }
+
+    /**
+     * Fallback method for direct processing if RabbitMQ fails
+     */
+    private void processReservationDirectly(Reservation reservation,
+            ConfirmReservationRequest request,
+            List<ReservationConfirmationDto.StallInfo> stallInfos,
+            BigDecimal totalAmount) {
+        try {
+            log.info("Processing reservation directly (RabbitMQ unavailable)");
+
+            // Generate QR Code
+            String qrCodeUrl = qrCodeService.generateAndUploadQRCode(
+                    reservation.getId(),
+                    request.getBusinessName() != null ? request.getBusinessName() : reservation.getBusinessName(),
+                    request.getUserEmail() != null ? request.getUserEmail() : reservation.getUserEmail());
+
+            reservation.setQrCodeUrl(qrCodeUrl);
+            reservationRepository.save(reservation);
+
+            // Send Email
             ReservationConfirmationDto emailDto = ReservationConfirmationDto.builder()
-                    .reservationId(mainReservation.getId())
-                    .userEmail(request.getUserEmail() != null ? request.getUserEmail() : mainReservation.getUserEmail())
+                    .reservationId(reservation.getId())
+                    .userEmail(request.getUserEmail() != null ? request.getUserEmail() : reservation.getUserEmail())
                     .businessName(request.getBusinessName() != null ? request.getBusinessName()
-                            : mainReservation.getBusinessName())
+                            : reservation.getBusinessName())
                     .totalAmount(totalAmount)
                     .stalls(stallInfos)
                     .qrCodeUrl(qrCodeUrl)
@@ -186,31 +223,11 @@ public class ReservationService {
 
             emailService.sendReservationConfirmation(emailDto);
 
-            log.info("✅ Email notification sent successfully");
+            log.info("✅ Direct processing completed");
 
         } catch (Exception e) {
-            log.error("❌ Failed to send email notification", e);
+            log.error("❌ Direct processing also failed", e);
         }
-
-        // ✅ FIXED: Removed third parameter (reservationId)
-        eventPublisher.publishReservationConfirmed(mainReservation.getUserId(), stallIds);
-
-        ReservationResponse response = mapToResponse(mainReservation);
-        response.setQrCodeUrl(qrCodeUrl);
-        response.setStalls(stallInfos.stream()
-                .map(s -> ReservationResponse.StallSummary.builder()
-                        .id(s.getId())
-                        .stallName(s.getStallName())
-                        .size(s.getSize())
-                        .dimensions(s.getDimensions())
-                        .price(s.getPrice())
-                        .build())
-                .collect(Collectors.toList()));
-        response.setTotalAmount(totalAmount);
-
-        log.info("✅ Reservation confirmed successfully: ID={}, QR={}", mainReservation.getId(), qrCodeUrl);
-
-        return response;
     }
 
     public ReservationResponse getReservationById(Long id) {
@@ -221,14 +238,14 @@ public class ReservationService {
 
         if (reservation.getStatus() == ReservationStatus.CONFIRMED) {
             List<ReservationConfirmationDto.StallInfo> stallInfo = getStallsInfoByIds(
-                    List.of(reservation.getStallId()));
+                    Collections.singletonList(reservation.getStallId()));
 
             response.setStalls(stallInfo.stream()
                     .map(s -> ReservationResponse.StallSummary.builder()
                             .id(s.getId())
                             .stallName(s.getStallName())
                             .size(s.getSize())
-                            .dimensions(s.getDimensions())
+                            .dimension(s.getDimension())
                             .price(s.getPrice())
                             .build())
                     .collect(Collectors.toList()));
@@ -240,7 +257,7 @@ public class ReservationService {
     public List<ReservationResponse> getReservationsByUserId(Long userId) {
         return reservationRepository.findByUserIdOrderByCreatedAtDesc(userId)
                 .stream()
-                .map(this::mapToResponse)
+                .map(reservation -> mapToResponse(reservation))
                 .collect(Collectors.toList());
     }
 
@@ -275,7 +292,7 @@ public class ReservationService {
 
         reservation.setStatus(ReservationStatus.CANCELLED);
         reservation.setCancelledAt(LocalDateTime.now());
-        reservation.setCancelledBy(userId);
+        reservation.setCancelledBy(userId.toString()); // Convert Long to String
         reservation.setQrCodeUrl(null);
 
         reservationRepository.save(reservation);
@@ -315,27 +332,35 @@ public class ReservationService {
                 .build();
     }
 
-    // ✅ FIXED: Explicit type for StallResponse
     private List<ReservationConfirmationDto.StallInfo> getStallsInfoByIds(List<Long> stallIds) {
         try {
-            List<StallResponse> stallResponses = stallServiceClient.getStallsByIds(stallIds);
+            // FIX: Convert List<Long> to comma-separated String for Feign client
+            String commaSeparatedIds = stallIds.stream()
+                    .map(Object::toString)
+                    .collect(Collectors.joining(","));
+
+            // Handle ResponseEntity return type properly
+            ResponseEntity<List<StallResponse>> stallResponseEntity = stallServiceClient
+                    .getStallsByIds(commaSeparatedIds);
+
+            List<StallResponse> stallResponses = stallResponseEntity.getBody();
+            if (stallResponses == null) {
+                log.warn("Received null response body from StallServiceClient for IDs: {}", stallIds);
+                return Collections.emptyList();
+            }
 
             return stallResponses.stream()
                     .map(stall -> ReservationConfirmationDto.StallInfo.builder()
                             .id(stall.getId())
                             .stallName(stall.getStallName())
                             .size(stall.getSize())
-                            .dimensions(stall.getDimensions())
+                            .dimension(stall.getDimension())
                             .price(stall.getPrice())
                             .build())
                     .collect(Collectors.toList());
         } catch (Exception e) {
             log.error("Failed to get stall information for IDs: {}", stallIds, e);
-            return List.of();
+            return Collections.emptyList();
         }
-    }
-
-    private String generateConfirmationCode(Long reservationId) {
-        return String.format("CIBF-%04d", reservationId);
     }
 }

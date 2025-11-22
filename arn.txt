@@ -7,13 +7,13 @@ app pss -mpcg gwvl illv tsmt
 
 $registerBody = @{
     username = "imksandamal99@gmail.com"
-    password = "sandamal123"
-    businessName = "KS Books"
-    contactNumber = "+94715691912"
+    password = "kavinda123"
+    businessName = "Kavinda Books"
+    contactNumber = "+94715691911"
     address = "Colombo"
 } | ConvertTo-Json
 
-$registerResponse = Invoke-RestMethod -Uri "http://localhost:8081/api/auth/register" `
+$registerResponse = Invoke-RestMethod -Uri "http://34.213.51.153/api/auth/register" `
     -Method Post `
     -ContentType "application/json" `
     -Body $registerBody
@@ -33,7 +33,7 @@ $headers = @{
     "Authorization" = "Bearer $token"
 }
 
-$reservationResponse = Invoke-RestMethod -Uri "http://localhost:8083/api/reservations" `
+$reservationResponse = Invoke-RestMethod -Uri "http://34.213.51.153/api/reservations" `
     -Method Post `
     -Headers $headers `
     -ContentType "application/json" `
@@ -55,7 +55,7 @@ $loginBody = @{
 } | ConvertTo-Json
 
 # Authentication URL
-$authUrl = "http://localhost:8081/api/auth/login"
+$authUrl = "http://34.213.51.153/api/auth/login"
 
 # Send login request
 try {
@@ -85,17 +85,17 @@ try {
 
 # Replace with employee details
 $employeeBody = @{
-    username       = "Testemployee3@cibf.com"
+    username       = "employee1@cibf.com"
     password       = "test123"   # Replace with actual password
-    name           = "Test Employee 3"
-    email          = "Testemployee3@cibf.com"
-    employeeId     = "CIBF-004"
+    name           = "Test Employee 1"
+    email          = "Testemployee1@cibf.com"
+    employeeId     = "CIBF-002"
     contactNumber  = "555-900-8002"
     department     = "Finance"
 } | ConvertTo-Json
 
 # Employee registration URL
-$registerUrl = "http://localhost:8081/api/auth/employee/register"
+$registerUrl = "http://34.213.51.153/api/auth/employee/register"
 
 # Send registration request
 try {
@@ -123,19 +123,19 @@ try {
 # -----------------------------
 
 # Replace with your actual JWT token
-$token = "eyJhbGciOiJIUzUxMiJ9.eyJzdWIiOiJUZXN0ZW1wbG95ZWUzQGNpYmYuY29tIiwiaWF0IjoxNzYzNDUwOTMxLCJleHAiOjE3NjM1MzczMzF9.LPlApqyxGQiWA1btG1z1iPBEyNevfR5QThidiaxLqB0KZa_O1KjKPKmdwNrNGxGsWBfMXJ8u8gPoTPk0C8TsGg"
+$token = "eyJhbGciOiJIUzUxMiJ9.eyJzdWIiOiJlbXBsb3llZTFAY2liZi5jb20iLCJpYXQiOjE3NjM4MDMzMzAsImV4cCI6MTc2Mzg4OTczMH0.mrnIAAj5pUkJ0gc-kx0xmwUOl0cu-mXu7n78_fyJt8C3QIV6Ne27R_0rpfffDtDsos1tc3Aqm0jma2O2jXcgSw"
 
 # API base URL
-$baseUrl = "http://localhost:8082/api/stalls"
+$baseUrl = "http://34.213.51.153/api/stalls"
 
 # Stall data
 $stallBody = @{
-    stallName  = "C10"
-    size       = "SMALL"
-    dimension  = "10x10"
-    locationX  = 700
-    locationY  = 200
-    price      = 15000
+    stallName  = "C7"
+    size       = "LARGE"
+    dimension  = "20x20"
+    locationX  = 950
+    locationY  = 400
+    price      = 25000
     status     = "AVAILABLE"
 } | ConvertTo-Json
 
@@ -164,3 +164,29 @@ try {
     Write-Host $_.Exception.Message -ForegroundColor Red
 }
 
+...................
+package com.cibf.security;
+
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.web.servlet.config.annotation.CorsRegistry;
+import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
+
+@Configuration
+public class CorsConfig {
+
+    @Bean
+    public WebMvcConfigurer corsConfigurer() {
+        return new WebMvcConfigurer() {
+            @Override
+            public void addCorsMappings(CorsRegistry registry) {
+                registry.addMapping("/**")
+                        .allowedOrigins("http://localhost:3000")
+                        .allowedMethods("GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS")
+                        .allowedHeaders("*")
+                        .allowCredentials(true)
+                        .maxAge(3600);
+            }
+        };
+    }
+}

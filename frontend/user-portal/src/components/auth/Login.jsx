@@ -36,17 +36,26 @@ function Login() {
     setLoading(true);
     setError('');
 
-    const result = await login(formData.username, formData.password);
-    
-    if (result.success) {
-      toast.success('Login successful!');
-      navigate('/dashboard');
-    } else {
-      setError(result.message);
-      toast.error(result.message);
+    try {
+      console.log('🔵 Attempting login with:', formData.username);
+      const result = await login(formData.username, formData.password);
+      
+      if (result.success) {
+        console.log('✅ Login successful!');
+        toast.success('Login successful!');
+        navigate('/dashboard');
+      } else {
+        console.error('❌ Login failed:', result.message);
+        setError(result.message);
+        toast.error(result.message);
+      }
+    } catch (err) {
+      console.error('❌ Unexpected error:', err);
+      setError('An unexpected error occurred. Please try again.');
+      toast.error('An unexpected error occurred');
+    } finally {
+      setLoading(false);
     }
-    
-    setLoading(false);
   };
 
   return (
@@ -58,11 +67,15 @@ function Login() {
             Access your Colombo Bookfair account
           </p>
           
-          {error && <Alert variant="danger">{error}</Alert>}
+          {error && (
+            <Alert variant="danger" dismissible onClose={() => setError('')}>
+              {error}
+            </Alert>
+          )}
           
           <Form noValidate validated={validated} onSubmit={handleSubmit}>
             <Form.Group className="mb-3">
-              <Form.Label>Username</Form.Label>
+              <Form.Label>Email</Form.Label>
               <Form.Control
                 required
                 type="email"
@@ -70,9 +83,10 @@ function Login() {
                 placeholder="Enter your email"
                 value={formData.username}
                 onChange={handleChange}
+                disabled={loading}
               />
               <Form.Control.Feedback type="invalid">
-                Please provide a valid username.
+                Please provide a valid email address.
               </Form.Control.Feedback>
             </Form.Group>
 
@@ -85,9 +99,11 @@ function Login() {
                 placeholder="Enter your password"
                 value={formData.password}
                 onChange={handleChange}
+                disabled={loading}
+                minLength={6}
               />
               <Form.Control.Feedback type="invalid">
-                Password is required.
+                Password must be at least 6 characters.
               </Form.Control.Feedback>
             </Form.Group>
 
