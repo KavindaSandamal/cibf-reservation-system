@@ -52,3 +52,21 @@ git commit -m "feat(auth): Implemented core SOLID architecture for User/Employee
 # The -u flag sets the upstream, so future pushes are simpler (git push)
 
 git push -u origin feature/auth-setup
+
+# Example for Docker Hub
+
+docker login
+
+# Build
+
+docker build -t kavindasandamal/auth-service:latest ./services/authentication-service
+docker build -t kavindasandamal/stall-service:latest ./services/stall-service
+docker build -t kavindasandamal/user-service:latest ./services/user-service
+docker build -t kavindasandamal/reservation-service:latest ./services/reservation-service
+
+# Push
+
+docker push kavindasandamal/auth-service:latest
+docker push kavindasandamal/stall-service:latest
+docker push kavindasandamal/user-service:latest
+docker push kavindasandamal/reservation-service:latest

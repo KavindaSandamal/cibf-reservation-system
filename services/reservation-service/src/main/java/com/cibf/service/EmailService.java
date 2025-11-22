@@ -65,6 +65,28 @@ public class EmailService {
         }
     }
 
+    public void sendSimpleEmail(String to, String subject, String content) {
+        try {
+            log.info("Sending simple email to: {}", to);
+
+            MimeMessage message = mailSender.createMimeMessage();
+            MimeMessageHelper helper = new MimeMessageHelper(message, true, "UTF-8");
+
+            helper.setFrom(fromEmail);
+            helper.setTo(to);
+            helper.setSubject(subject);
+            helper.setText(content, false); // false = plain text
+
+            mailSender.send(message);
+
+            log.info("✅ Simple email sent successfully to: {}", to);
+
+        } catch (Exception e) {
+            log.error("❌ Failed to send simple email to: {}", to, e);
+            throw new RuntimeException("Failed to send email", e);
+        }
+    }
+
     /**
      * Build HTML email with embedded QR code
      */
@@ -82,7 +104,7 @@ public class EmailService {
                     """,
                     stall.getStallName(),
                     stall.getSize(),
-                    stall.getDimensions(),
+                    stall.getDimension(),
                     stall.getPrice()));
         }
 
@@ -116,7 +138,7 @@ public class EmailService {
                             <tr style="background: #f2f2f2;">
                                 <th>Stall</th>
                                 <th>Size</th>
-                                <th>Dimensions</th>
+                                <th>Dimension</th>
                                 <th>Price</th>
                             </tr>
                             %s
