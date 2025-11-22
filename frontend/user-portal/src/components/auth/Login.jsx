@@ -136,17 +136,6 @@ function Login() {
               Don't have an account? <Link to="/register">Register here</Link>
             </p>
           </div>
-
-          {/* Debug Info - Remove in production */}
-          {process.env.NODE_ENV === 'development' && (
-            <div className="mt-3 p-2 bg-light border rounded">
-              <small className="text-muted">
-                <strong>Debug Info:</strong><br />
-                API URL: {process.env.REACT_APP_API_BASE_URL || 'Not set'}<br />
-                Username: {formData.username || 'Empty'}
-              </small>
-            </div>
-          )}
         </Card.Body>
       </Card>
     </Container>
