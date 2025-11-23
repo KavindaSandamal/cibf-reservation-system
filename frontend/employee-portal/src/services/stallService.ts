@@ -12,6 +12,40 @@ const getMockStalls = (): Stall[] => {
   return cachedMockStalls;
 };
 
+type PaginatedResponse<T> = {
+  content?: T[];
+  stalls?: T[];
+  totalElements?: number;
+  totalItems?: number;
+  totalPages?: number;
+  size?: number;
+  pageSize?: number;
+  number?: number;
+  currentPage?: number;
+};
+
+type StallListResponse = StallResponse[] | PaginatedResponse<StallResponse>;
+
+const normalizeStallsResponse = (data: StallListResponse): Stall[] => {
+  // Direct array response
+  if (Array.isArray(data)) {
+    return data as Stall[];
+  }
+
+  // Spring's default Page format (content property)
+  if (Array.isArray(data.content)) {
+    return data.content as Stall[];
+  }
+
+  // Custom format (stalls property)
+  if (Array.isArray(data.stalls)) {
+    return data.stalls as Stall[];
+  }
+
+  console.warn('Unexpected stalls response format:', data);
+  return [];
+};
+
 export const stallService = {
   // Get all stalls with filters
   getAllStalls: async (filters?: {
@@ -21,10 +55,24 @@ export const stallService = {
     try {
       const params: any = {};
       if (filters?.status) params.status = filters.status;
-      if (filters?.size) params.size = filters.size;
+      if (filters?.size) params.stallSize = filters.size;
       
-      const response = await apiClient.get<StallResponse[]>('/api/admin/stalls', { params });
-      return response.data;
+      // Add pagination params
+      params.page = 0;
+      params.sizePerPage = 100; // Get more stalls for client-side filtering
+      
+      const response = await apiClient.get<StallListResponse>('/api/admin/stalls', { params });
+      
+      // Debug logging
+      console.log('Stall API Response:', {
+        hasData: !!response.data,
+        isArray: Array.isArray(response.data),
+        hasContent: !!(response.data as any)?.content,
+        hasStalls: !!(response.data as any)?.stalls,
+        keys: response.data ? Object.keys(response.data) : []
+      });
+      
+      return normalizeStallsResponse(response.data);
     } catch (error: any) {
       // Log error for debugging
       console.error('Error loading stalls:', {
@@ -49,10 +97,13 @@ export const stallService = {
   // Get available stalls
   getAvailableStalls: async (): Promise<Stall[]> => {
     try {
-      const response = await apiClient.get<StallResponse[]>('/api/admin/stalls', {
-        params: { status: 'AVAILABLE' }
-      });
-      return response.data;
+      const params = {
+        status: 'AVAILABLE',
+        page: 0,
+        sizePerPage: 100
+      };
+      const response = await apiClient.get<StallListResponse>('/api/admin/stalls', { params });
+      return normalizeStallsResponse(response.data);
     } catch (error: any) {
       if (error.code === 'ERR_NETWORK' || error.message?.includes('Network Error') || error.message?.includes('ERR_CONNECTION_REFUSED')) {
         console.warn('Backend unavailable, returning mock stalls list');
@@ -65,8 +116,8 @@ export const stallService = {
   // Get stall by ID
   getStallById: async (id: number): Promise<Stall> => {
     try {
-      const response = await apiClient.get<StallResponse>(`/api/admin/stalls/${id}`);
-      return response.data;
+      const response = await apiClient.get<{ stall: StallResponse }>(`/api/admin/stalls/${id}`);
+      return response.data.stall || response.data as any;
     } catch (error: any) {
       if (error.code === 'ERR_NETWORK' || error.message?.includes('Network Error')) {
         throw new Error('Backend service unavailable. Please start the stall service.');
@@ -95,7 +146,7 @@ export const stallService = {
   // Get stall statistics
   getStallStatistics: async (): Promise<any> => {
     try {
-      const response = await apiClient.get('/api/admin/statistics/stalls');
+      const response = await apiClient.get('/api/admin/stalls/statistics');
       return response.data;
     } catch (error: any) {
       if (error.code === 'ERR_NETWORK' || error.message?.includes('Network Error')) {
@@ -118,4 +169,3 @@ export const stallService = {
     }
   },
 };
-
