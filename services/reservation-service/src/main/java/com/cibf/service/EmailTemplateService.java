@@ -36,11 +36,11 @@ public class EmailTemplateService {
 
                                             <!-- Header -->
                                             <tr>
-                                                <td style="background: linear-gradient(135deg, #667eea 0%%, #764ba2 100%%); padding: 40px 30px; text-align: center;">
+                                                <td style="background-color: #667eea; background: linear-gradient(135deg, #667eea 0%%, #764ba2 100%%); padding: 40px 30px; text-align: center;">
                                                     <h1 style="margin: 0; color: #ffffff; font-size: 28px; font-weight: 700; letter-spacing: -0.5px;">
                                                         🎉 Reservation Confirmed!
                                                     </h1>
-                                                    <p style="margin: 10px 0 0 0; color: rgba(255, 255, 255, 0.9); font-size: 16px;">
+                                                    <p style="margin: 10px 0 0 0; color: #ffffff; font-size: 16px;">
                                                         Your spot is secured
                                                     </p>
                                                 </td>
@@ -88,7 +88,7 @@ public class EmailTemplateService {
                                                     </table>
 
                                                     <!-- QR Code Section with Image -->
-                                                    <table width="100%%" cellpadding="0" cellspacing="0" border="0" style="background: linear-gradient(135deg, #667eea 0%%, #764ba2 100%%); border-radius: 12px; margin-bottom: 24px;">
+                                                    <table width="100%%" cellpadding="0" cellspacing="0" border="0" style="background-color: #667eea; background: linear-gradient(135deg, #667eea 0%%, #764ba2 100%%); border-radius: 12px; margin-bottom: 24px;">
                                                         <tr>
                                                             <td align="center" style="padding: 32px 24px;">
                                                                 <h3 style="margin: 0 0 16px 0; color: #ffffff; font-size: 18px; font-weight: 600;">
@@ -100,7 +100,7 @@ public class EmailTemplateService {
                                                                     <img src="%s" alt="Reservation QR Code" width="240" height="240" style="display: block; max-width: 240px; border-radius: 8px;" />
                                                                 </div>
 
-                                                                <p style="margin: 0 0 20px 0; color: rgba(255, 255, 255, 0.9); font-size: 14px; line-height: 1.5;">
+                                                                <p style="margin: 0 0 20px 0; color: #ffffff; font-size: 14px; line-height: 1.5;">
                                                                     Present this QR code at the venue entrance
                                                                 </p>
 
@@ -214,11 +214,11 @@ public class EmailTemplateService {
 
                                             <!-- Header -->
                                             <tr>
-                                                <td style="background: linear-gradient(135deg, #667eea 0%%, #764ba2 100%%); padding: 40px 30px; text-align: center;">
+                                                <td style="background-color: #667eea; background: linear-gradient(135deg, #667eea 0%%, #764ba2 100%%); padding: 40px 30px; text-align: center;">
                                                     <h1 style="margin: 0; color: #ffffff; font-size: 28px; font-weight: 700; letter-spacing: -0.5px;">
                                                         🎉 Reservation Confirmed!
                                                     </h1>
-                                                    <p style="margin: 10px 0 0 0; color: rgba(255, 255, 255, 0.9); font-size: 16px;">
+                                                    <p style="margin: 10px 0 0 0; color: #ffffff; font-size: 16px;">
                                                         Your spot is secured
                                                     </p>
                                                 </td>
@@ -332,11 +332,11 @@ public class EmailTemplateService {
 
                                             <!-- Header -->
                                             <tr>
-                                                <td style="background: linear-gradient(135deg, #ef4444 0%%, #dc2626 100%%); padding: 40px 30px; text-align: center;">
+                                                <td style="background-color: #ef4444; background: linear-gradient(135deg, #ef4444 0%%, #dc2626 100%%); padding: 40px 30px; text-align: center;">
                                                     <h1 style="margin: 0; color: #ffffff; font-size: 28px; font-weight: 700; letter-spacing: -0.5px;">
                                                         ❌ Reservation Cancelled
                                                     </h1>
-                                                    <p style="margin: 10px 0 0 0; color: rgba(255, 255, 255, 0.9); font-size: 16px;">
+                                                    <p style="margin: 10px 0 0 0; color: #ffffff; font-size: 16px;">
                                                         Reservation #%d
                                                     </p>
                                                 </td>
