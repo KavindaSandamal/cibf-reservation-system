@@ -117,6 +117,7 @@ public class ReservationService {
             }
         }
 
+        // Update business name and email if provided
         if (request.getBusinessName() != null) {
             reservations.forEach(r -> r.setBusinessName(request.getBusinessName()));
         }
@@ -124,22 +125,7 @@ public class ReservationService {
             reservations.forEach(r -> r.setUserEmail(request.getUserEmail()));
         }
 
-        LocalDateTime confirmedAt = LocalDateTime.now();
-        reservations.forEach(reservation -> {
-            reservation.setStatus(ReservationStatus.CONFIRMED);
-            reservation.setConfirmedAt(confirmedAt);
-            reservationRepository.save(reservation);
-
-            // **UPDATE STALL STATUS TO RESERVED**
-            try {
-                stallServiceClient.updateStallStatus(reservation.getStallId(), "RESERVED");
-            } catch (Exception e) {
-                log.error("Failed to update stall status for stall: {}", reservation.getStallId(), e);
-            }
-        });
-
-        Reservation mainReservation = reservations.get(0);
-
+        // Get stall information and calculate total
         List<Long> stallIds = reservations.stream()
                 .map(Reservation::getStallId)
                 .collect(Collectors.toList());
@@ -150,16 +136,36 @@ public class ReservationService {
                 .map(ReservationConfirmationDto.StallInfo::getPrice)
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
 
-        reservations.forEach(r -> r.setTotalAmount(totalAmount));
+        // Update all reservations with status, confirmed time, and total amount
+        LocalDateTime confirmedAt = LocalDateTime.now();
+        reservations.forEach(reservation -> {
+            reservation.setStatus(ReservationStatus.CONFIRMED);
+            reservation.setConfirmedAt(confirmedAt);
+            reservation.setTotalAmount(totalAmount);
+
+            // **UPDATE STALL STATUS TO RESERVED**
+            try {
+                stallServiceClient.updateStallStatus(reservation.getStallId(), "RESERVED");
+            } catch (Exception e) {
+                log.error("Failed to update stall status for stall: {}", reservation.getStallId(), e);
+            }
+        });
+
+        // Save all reservations at once
+        reservationRepository.saveAll(reservations);
+        log.info("✅ All reservations saved with CONFIRMED status");
+
+        // Get the main reservation ID for event publishing
+        Long mainReservationId = reservations.get(0).getId();
 
         // 🎯 PUBLISH EVENT TO RABBITMQ (instead of direct processing)
         try {
             log.info("📤 Publishing reservation confirmed event to RabbitMQ");
 
             eventPublisher.publishReservationConfirmed(
-                    mainReservation.getId(),
-                    mainReservation.getUserId(),
-                    request.getUserEmail() != null ? request.getUserEmail() : mainReservation.getUserEmail(),
+                    mainReservationId,
+                    request.getUserId(),
+                    request.getUserEmail() != null ? request.getUserEmail() : reservations.get(0).getUserEmail(),
                     stallIds);
 
             log.info("✅ Reservation event published to RabbitMQ - async processing started");
@@ -168,10 +174,14 @@ public class ReservationService {
             log.error("⚠️ Failed to publish event to RabbitMQ, falling back to direct processing", e);
 
             // FALLBACK: Direct processing if RabbitMQ fails
-            processReservationDirectly(mainReservation, request, stallInfos, totalAmount);
+            processReservationDirectly(reservations.get(0), request, stallInfos, totalAmount);
         }
 
-        // Return response immediately (email and QR will be processed async)
+        // Reload the main reservation to get the persisted state
+        Reservation mainReservation = reservationRepository.findById(mainReservationId)
+                .orElseThrow(() -> new ResourceNotFoundException("Reservation not found"));
+
+        // Build and return response
         ReservationResponse response = mapToResponse(mainReservation);
         response.setStalls(stallInfos.stream()
                 .map(s -> ReservationResponse.StallSummary.builder()
@@ -185,7 +195,8 @@ public class ReservationService {
         response.setTotalAmount(totalAmount);
         response.setQrCodeUrl("Processing..."); // Will be updated async
 
-        log.info("✅ Reservation confirmed successfully: ID={}", mainReservation.getId());
+        log.info("✅ Reservation confirmed successfully: ID={}, Status={}",
+                mainReservation.getId(), mainReservation.getStatus());
         log.info("📧 Email and QR code will be processed asynchronously");
 
         return response;
@@ -254,12 +265,6 @@ public class ReservationService {
         return response;
     }
 
-    // public List<ReservationResponse> getReservationsByUserId(Long userId) {
-    // return reservationRepository.findByUserIdOrderByCreatedAtDesc(userId)
-    // .stream()
-    // .map(reservation -> mapToResponse(reservation))
-    // .collect(Collectors.toList());
-    // }
     public List<ReservationResponse> getReservationsByUserId(Long userId) {
         log.info("========== FETCHING RESERVATIONS FOR USER: {} ==========", userId);
 
@@ -342,7 +347,7 @@ public class ReservationService {
 
         reservation.setStatus(ReservationStatus.CANCELLED);
         reservation.setCancelledAt(LocalDateTime.now());
-        reservation.setCancelledBy(userId.toString()); // Convert Long to String
+        reservation.setCancelledBy(userId.toString());
         reservation.setQrCodeUrl(null);
 
         reservationRepository.save(reservation);
@@ -384,7 +389,7 @@ public class ReservationService {
 
     private List<ReservationConfirmationDto.StallInfo> getStallsInfoByIds(List<Long> stallIds) {
         try {
-            // FIX: Convert List<Long> to comma-separated String for Feign client
+            // Convert List<Long> to comma-separated String for Feign client
             String commaSeparatedIds = stallIds.stream()
                     .map(Object::toString)
                     .collect(Collectors.joining(","));

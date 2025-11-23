@@ -306,7 +306,7 @@ public class UserManagementServiceImpl implements UserManagementService {
      */
     private boolean hasActiveReservations(Long userId) {
         try {
-            String url = reservationServiceUrl + "/api/admin/reservations/user/" + userId;
+            String url = reservationServiceUrl + "/api/admin/reservations/reservations/user/" + userId;
 
             @SuppressWarnings("unchecked")
             List<Map<String, Object>> reservations = restTemplate.getForObject(url, List.class);
