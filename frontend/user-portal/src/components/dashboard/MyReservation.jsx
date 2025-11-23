@@ -792,6 +792,79 @@ const MyReservationsPage = () => {
         </div>
       )}
 
+      {/* QR Modal */}
+      {showQRModal && qrModalData && (
+        <div 
+          className="modal d-block" 
+          style={{ backgroundColor: 'rgba(0,0,0,0.8)' }} 
+          onClick={handleModalClose}
+        >
+          <div 
+            className="modal-dialog modal-dialog-centered modal-lg" 
+            onClick={e => e.stopPropagation()}
+          >
+            <div className="modal-content border-0 shadow-lg">
+              <div className="modal-header border-0" style={{ backgroundColor: '#f8fafc' }}>
+                <div>
+                  <h5 className="modal-title fw-bold mb-1">QR Code - {qrModalData.stallName}</h5>
+                  <p className="text-muted small mb-0">
+                    <code>{qrModalData.reservationCode}</code>
+                  </p>
+                </div>
+                <button 
+                  type="button" 
+                  className="btn-close" 
+                  onClick={handleModalClose}
+                ></button>
+              </div>
+              
+              <div className="modal-body p-5 text-center">
+                <div className="mb-4">
+                  <img
+                    src={qrModalData.qrCodeUrl}
+                    alt="Full Size QR Code"
+                    className="img-fluid rounded shadow-lg"
+                    style={{ maxWidth: '400px', width: '100%' }}
+                  />
+                </div>
+                
+                <div className="alert alert-info border-0 mb-4">
+                  <div className="d-flex align-items-start">
+                    <AlertCircle size={20} className="me-2 mt-1 flex-shrink-0" />
+                    <div className="text-start">
+                      <strong className="d-block mb-1">How to use this QR Code:</strong>
+                      <small>
+                        Present this QR code at the venue entrance for verification. 
+                        You can download it for offline access or screenshot it for convenience.
+                      </small>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="d-grid gap-2">
+                  <button 
+                    className="btn btn-primary btn-lg" 
+                    onClick={() => downloadQRCodeDirect(
+                      qrModalData.qrCodeUrl,
+                      `reservation-${qrModalData.reservationCode}-qrcode.png`
+                    )}
+                  >
+                    <Download size={20} className="me-2" />
+                    Download QR Code
+                  </button>
+                  <button 
+                    className="btn btn-outline-secondary" 
+                    onClick={handleModalClose}
+                  >
+                    Close
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       <style>{`
         /* Card Animations */
         .reservation-card {
