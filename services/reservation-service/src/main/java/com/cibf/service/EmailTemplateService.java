@@ -13,6 +13,11 @@ public class EmailTemplateService {
      * Generate HTML email for confirmed reservation with QR code
      */
     public String generateConfirmationEmailWithQR(Reservation reservation, String qrCodeUrl, List<Long> stallIds) {
+        String businessName = reservation.getBusinessName() != null ? reservation.getBusinessName() : "Valued Customer";
+        String stallIdsStr = stallIds != null && !stallIds.isEmpty()
+                ? stallIds.stream().map(String::valueOf).collect(Collectors.joining(", "))
+                : "N/A";
+
         return String.format(
                 """
                         <!DOCTYPE html>
@@ -155,7 +160,7 @@ public class EmailTemplateService {
                                                         Thank you for choosing CIBF!
                                                     </p>
                                                     <p style="margin: 0 0 16px 0; color: #718096; font-size: 13px;">
-                                                        Questions? Contact us at support@cibf.com
+                                                        Questions? Contact us at info.cibf@gmail.com
                                                     </p>
                                                     <p style="margin: 0; color: #a0aec0; font-size: 12px;">
                                                         © 2024 CIBF Reservation System. All rights reserved.
@@ -169,23 +174,29 @@ public class EmailTemplateService {
                         </body>
                         </html>
                         """,
-                reservation.getBusinessName(),
-                reservation.getId(),
-                reservation.getBusinessName(),
-                stallIds.stream().map(String::valueOf).collect(Collectors.joining(", ")),
-                reservation.getTotalAmount(),
+                businessName, // Greeting
+                reservation.getId(), // Reservation ID
+                businessName, // Business Name in table
+                stallIdsStr, // Stall IDs
+                reservation.getTotalAmount(), // Total Amount
                 qrCodeUrl, // QR code image src
-                qrCodeUrl, // Download link in button inside gradient box
-                reservation.getId(),
+                qrCodeUrl, // Download link in button
+                reservation.getId(), // Filename suffix
                 qrCodeUrl, // View QR Code button
                 qrCodeUrl, // Save QR Code button
-                reservation.getId());
+                reservation.getId() // Filename suffix
+        );
     }
 
     /**
      * Generate HTML email for confirmed reservation without QR code (fallback)
      */
     public String generateConfirmationEmailWithoutQR(Reservation reservation, List<Long> stallIds) {
+        String businessName = reservation.getBusinessName() != null ? reservation.getBusinessName() : "Valued Customer";
+        String stallIdsStr = stallIds != null && !stallIds.isEmpty()
+                ? stallIds.stream().map(String::valueOf).collect(Collectors.joining(", "))
+                : "N/A";
+
         return String.format(
                 """
                         <!DOCTYPE html>
@@ -277,7 +288,7 @@ public class EmailTemplateService {
                                                         Thank you for choosing CIBF!
                                                     </p>
                                                     <p style="margin: 0 0 16px 0; color: #718096; font-size: 13px;">
-                                                        Questions? Contact us at support@cibf.com
+                                                        Questions? Contact us at info.cibf@gmail.com
                                                     </p>
                                                     <p style="margin: 0; color: #a0aec0; font-size: 12px;">
                                                         © 2024 CIBF Reservation System. All rights reserved.
@@ -291,10 +302,10 @@ public class EmailTemplateService {
                         </body>
                         </html>
                         """,
-                reservation.getBusinessName(),
+                businessName,
                 reservation.getId(),
-                reservation.getBusinessName(),
-                stallIds.stream().map(String::valueOf).collect(Collectors.joining(", ")),
+                businessName,
+                stallIdsStr,
                 reservation.getTotalAmount());
     }
 
@@ -302,6 +313,8 @@ public class EmailTemplateService {
      * Generate HTML email for cancelled reservation
      */
     public String generateCancellationEmail(Reservation reservation) {
+        String businessName = reservation.getBusinessName() != null ? reservation.getBusinessName() : "Valued Customer";
+
         return String.format(
                 """
                         <!DOCTYPE html>
@@ -360,7 +373,7 @@ public class EmailTemplateService {
                                                         <tr>
                                                             <td style="padding: 16px 20px;">
                                                                 <p style="margin: 0; color: #92400e; font-size: 13px; line-height: 1.5;">
-                                                                    ⚠️ If you did not request this cancellation, please contact our support team immediately at support@cibf.com
+                                                                    ⚠️ If you did not request this cancellation, please contact our support team immediately at info.cibf@gmail.com
                                                                 </p>
                                                             </td>
                                                         </tr>
@@ -375,7 +388,7 @@ public class EmailTemplateService {
                                                         CIBF Reservation System
                                                     </p>
                                                     <p style="margin: 0 0 16px 0; color: #718096; font-size: 13px;">
-                                                        Need help? Contact us at support@cibf.com
+                                                        Need help? Contact us at info.cibf@gmail.com
                                                     </p>
                                                     <p style="margin: 0; color: #a0aec0; font-size: 12px;">
                                                         © 2024 CIBF Reservation System. All rights reserved.
@@ -390,8 +403,8 @@ public class EmailTemplateService {
                         </html>
                         """,
                 reservation.getId(),
-                reservation.getBusinessName(),
+                businessName,
                 reservation.getId(),
-                reservation.getBusinessName());
+                businessName);
     }
 }
