@@ -1,7 +1,8 @@
+
 $BASE_URL = "http://34.213.51.153"
 $ADMIN_USERNAME = "admin@cibf.lk"
 $ADMIN_PASSWORD = "admin123"
-$USER_ID = 11
+$USER_ID = 26
 
 [System.Net.ServicePointManager]::ServerCertificateValidationCallback = {$true}
 [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
@@ -47,25 +48,11 @@ try {
     Write-Host ""
 }
 
-# Test 2: Try the endpoint WITHOUT authentication
-Write-Host "[3] Testing: Same endpoint WITHOUT auth (how backend calls it)" -ForegroundColor Yellow
-
-try {
-    $result2 = Invoke-RestMethod -Uri $url1 -Method Get
-    Write-Host "SUCCESS: Works without auth" -ForegroundColor Green
-    Write-Host ""
-} catch {
-    Write-Host "FAILED: Requires authentication" -ForegroundColor Red
-    Write-Host "THIS IS THE PROBLEM - RestTemplate needs auth headers!" -ForegroundColor Yellow
-    Write-Host ""
-}
-
-# Test 3: Check alternative endpoints
+# Test 2: Check alternative endpoints
 Write-Host "[4] Checking for alternative public endpoints..." -ForegroundColor Yellow
 
 $publicUrls = @(
-    "$BASE_URL/api/reservations/user/$USER_ID",
-    "$BASE_URL/api/admin/reservations/user/$USER_ID"
+    "$BASE_URL/api/reservations/user/$USER_ID"
 )
 
 foreach ($url in $publicUrls) {
@@ -76,6 +63,46 @@ foreach ($url in $publicUrls) {
     } catch {
         Write-Host "FAILED" -ForegroundColor Red
     }
+}
+
+# Step 3: Delete user
+Write-Host "[2/2] Deleting user ID: $USER_ID..." -ForegroundColor Yellow
+
+$deleteUrl = "$BASE_URL/api/admin/users/$USER_ID"
+$headers = @{
+    "Authorization" = "Bearer $token"
+    "Content-Type" = "application/json"
+}
+
+try {
+    $deleteResult = Invoke-RestMethod -Uri $deleteUrl -Method Delete -Headers $headers
+    
+    Write-Host ""
+    Write-Host "SUCCESS: User deleted successfully!" -ForegroundColor Green
+    Write-Host ""
+    Write-Host "Response:" -ForegroundColor Cyan
+    Write-Host ($deleteResult | ConvertTo-Json -Depth 5)
+    Write-Host ""
+    
+} catch {
+    Write-Host ""
+    Write-Host "ERROR: Failed to delete user" -ForegroundColor Red
+    Write-Host ""
+    
+    $statusCode = $_.Exception.Response.StatusCode.value__
+    Write-Host "HTTP Status: $statusCode" -ForegroundColor Yellow
+    
+    if ($_.Exception.Response) {
+        $reader = New-Object System.IO.StreamReader($_.Exception.Response.GetResponseStream())
+        $errorBody = $reader.ReadToEnd()
+        $reader.Close()
+        
+        Write-Host "Server Response:" -ForegroundColor Yellow
+        Write-Host $errorBody -ForegroundColor White
+    }
+    
+    Write-Host ""
+    exit 1
 }
 
 Write-Host ""
