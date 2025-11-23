@@ -12,9 +12,9 @@ import Dashboard from './components/dashboard/Dashboard';
 import GenreSelection from './components/dashboard/GenreSelection';
 import ProtectedRoute from './components/auth/ProtectedRoute';
 import Footer from './components/layout/Footer';
-import StallReservationSystem from './components/dashboard/StallReservationSystem';
+import StallReservationSystem from './components/dashboard/stalls/StallReservationSystem';
 import MyReservationsPage from './components/dashboard/MyReservation';
-
+import BookFairLanding from './components/Home/Home';
 function App() {
   return (
     <AuthProvider>
@@ -25,6 +25,7 @@ function App() {
           <div className="full-page-overlay">
             <Navbar />
             <Routes>
+              <Route path="/" element={<BookFairLanding />} />
               <Route path="/login" element={<Login />} />
               <Route path="/register" element={<Register />} />
               <Route 
