@@ -14,6 +14,8 @@ const MyReservationsPage = () => {
   const [selectedReservation, setSelectedReservation] = useState(null);
   const [showDetailModal, setShowDetailModal] = useState(false);
   const [showUpdateModal, setShowUpdateModal] = useState(false);
+  const [showQRModal, setShowQRModal] = useState(false);
+  const [qrModalData, setQRModalData] = useState(null);
   const [notification, setNotification] = useState(null);
   const [cancelling, setCancelling] = useState(false);
   const [updating, setUpdating] = useState(false);
@@ -128,30 +130,27 @@ const MyReservationsPage = () => {
     return size.charAt(0).toUpperCase() + size.slice(1).toLowerCase();
   };
 
-  const downloadQRCode = async (reservation) => {
-    const qrUrl = reservation.qrCodeUrl;
-    if (!qrUrl) {
-      showNotification('QR Code not available', 'error');
-      return;
-    }
+  const openQRModal = (reservation) => {
+    setQRModalData(reservation);
+    setShowQRModal(true);
+  };
 
+  const downloadQRCodeDirect = (qrUrl, filename) => {
     try {
-      const response = await fetch(qrUrl);
-      const blob = await response.blob();
-      const url = window.URL.createObjectURL(blob);
-      
       const link = document.createElement('a');
-      link.href = url;
-      link.download = `QR_${reservation.reservationCode}.png`;
+      link.href = qrUrl;
+      link.download = filename;
+      link.target = '_blank';
+      link.rel = 'noopener noreferrer';
+      
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
-      window.URL.revokeObjectURL(url);
-
-      showNotification('QR Code downloaded successfully', 'success');
+      
+      showNotification('QR Code download started - check your downloads folder', 'success');
     } catch (error) {
-      console.error(error);
-      showNotification('Failed to download QR code', 'error');
+      console.error('Download failed:', error);
+      showNotification('Please right-click the QR code and select "Save Image As"', 'info');
     }
   };
 
@@ -173,7 +172,6 @@ const MyReservationsPage = () => {
   const handleUpdateReservation = async () => {
     if (!selectedReservation) return;
     
-    // If status is being changed to CANCELLED, call the delete API
     if (updateForm.status === 'CANCELLED') {
       showConfirmDialog(
         'Are you sure you want to cancel this reservation? This action cannot be undone.',
@@ -201,7 +199,6 @@ const MyReservationsPage = () => {
       return;
     }
     
-    // Otherwise, do a normal update
     setUpdating(true);
     showNotification('Updating reservation...', 'info');
     
@@ -269,7 +266,9 @@ const MyReservationsPage = () => {
     if (cancelling || updating) return;
     setShowDetailModal(false);
     setShowUpdateModal(false);
+    setShowQRModal(false);
     setSelectedReservation(null);
+    setQRModalData(null);
   };
 
   if (loading)  {
@@ -495,9 +494,9 @@ const MyReservationsPage = () => {
                           {reservation.qrCodeUrl && (
                             <button 
                               className="btn btn-primary btn-sm flex-fill" 
-                              onClick={() => downloadQRCode(reservation)}
+                              onClick={() => openQRModal(reservation)}
                             >
-                              <Download size={16} className="me-1" />QR
+                              <QrCode size={16} className="me-1" />QR
                             </button>
                           )}
                           <button 
@@ -560,7 +559,6 @@ const MyReservationsPage = () => {
             onClick={e => e.stopPropagation()}
           >
             <div className="modal-content border-0 shadow-lg">
-              {/* Modal Header */}
               <div className="modal-header border-0 pb-0" style={{ backgroundColor: '#f8fafc' }}>
                 <div>
                   <h5 className="modal-title fw-bold mb-1">Reservation Details</h5>
@@ -574,12 +572,9 @@ const MyReservationsPage = () => {
                 ></button>
               </div>
 
-              {/* Modal Body */}
               <div className="modal-body p-4">
                 <div className="row g-4">
-                  {/* Left Column */}
                   <div className="col-md-7">
-                    {/* Status Badge */}
                     <div className={`alert alert-${getStatusBadge(selectedReservation.status).color} border-0 mb-4`}>
                       <div className="d-flex align-items-center justify-content-between">
                         <div>
@@ -594,7 +589,6 @@ const MyReservationsPage = () => {
                       </div>
                     </div>
 
-                    {/* Stall Information */}
                     <div className="mb-4">
                       <h6 className="fw-bold mb-3 d-flex align-items-center" style={{ color: '#1e293b' }}>
                         <MapPin size={20} className="me-2 text-primary" />
@@ -628,7 +622,6 @@ const MyReservationsPage = () => {
                       </div>
                     </div>
 
-                    {/* Business Information */}
                     <div>
                       <h6 className="fw-bold mb-3 d-flex align-items-center" style={{ color: '#1e293b' }}>
                         <Building size={20} className="me-2 text-primary" />
@@ -659,7 +652,6 @@ const MyReservationsPage = () => {
                     </div>
                   </div>
 
-                  {/* Right Column - QR Code */}
                   <div className="col-md-5">
                     <div className="text-center sticky-top" style={{ top: '1rem' }}>
                       <h6 className="fw-bold mb-3">Access QR Code</h6>
@@ -671,13 +663,24 @@ const MyReservationsPage = () => {
                                 src={selectedReservation.qrCodeUrl}
                                 alt="Reservation QR Code"
                                 className="img-fluid rounded"
-                                style={{ maxWidth: '250px' }}
+                                style={{ maxWidth: '250px', cursor: 'pointer' }}
+                                onClick={() => openQRModal(selectedReservation)}
                               />
                             </div>
                           </div>
                           <button 
-                            className="btn btn-primary w-100" 
-                            onClick={() => downloadQRCode(selectedReservation)}
+                            className="btn btn-primary w-100 mb-2" 
+                            onClick={() => openQRModal(selectedReservation)}
+                          >
+                            <QrCode size={18} className="me-2" />
+                            View Full Size
+                          </button>
+                          <button 
+                            className="btn btn-outline-primary w-100" 
+                            onClick={() => downloadQRCodeDirect(
+                              selectedReservation.qrCodeUrl,
+                              `reservation-${selectedReservation.reservationCode}-qrcode.png`
+                            )}
                           >
                             <Download size={18} className="me-2" />
                             Download QR Code
@@ -703,7 +706,7 @@ const MyReservationsPage = () => {
         </div>
       )}
 
-      {/* Update Modal - Only Notes and Status */}
+      {/* Update Modal */}
       {showUpdateModal && selectedReservation && (
         <div 
           className="modal d-block" 
@@ -733,7 +736,7 @@ const MyReservationsPage = () => {
                     Reservation Status
                   </label>
                   <select
-                    className="form-select form-select-lg "
+                    className="form-select form-select-lg"
                     value={updateForm.status}
                     onChange={e => setUpdateForm({...updateForm, status: e.target.value})}
                   >
@@ -790,24 +793,296 @@ const MyReservationsPage = () => {
       )}
 
       <style>{`
+        /* Card Animations */
         .reservation-card {
-          transition: all 0.3s ease;
+          transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+          border: 1px solid transparent;
         }
+        
         .reservation-card:hover {
-          transform: translateY(-4px);
-          box-shadow: 0 0.5rem 1.5rem rgba(0,0,0,0.15) !important;
+          transform: translateY(-8px);
+          box-shadow: 0 20px 40px rgba(0,0,0,0.12) !important;
+          border-color: rgba(102, 126, 234, 0.1);
         }
+
+        /* Modal Backdrop */
         .modal {
-          backdrop-filter: blur(4px);
+          backdrop-filter: blur(8px);
+          animation: fadeIn 0.2s ease-in-out;
         }
+
+        @keyframes fadeIn {
+          from {
+            opacity: 0;
+          }
+          to {
+            opacity: 1;
+          }
+        }
+
+        .modal-dialog {
+          animation: slideUp 0.3s ease-out;
+        }
+
+        @keyframes slideUp {
+          from {
+            transform: translateY(20px);
+            opacity: 0;
+          }
+          to {
+            transform: translateY(0);
+            opacity: 1;
+          }
+        }
+
+        /* Button Enhancements */
+        .btn {
+          transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+          position: relative;
+          overflow: hidden;
+        }
+        
+        .btn:hover:not(:disabled) {
+          transform: translateY(-2px);
+          box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        }
+
+        .btn:active:not(:disabled) {
+          transform: translateY(0);
+          box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        .btn-primary {
+          background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+          border: none;
+        }
+
+        .btn-primary:hover:not(:disabled) {
+          background: linear-gradient(135deg, #5568d3 0%, #63408a 100%);
+          box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4);
+        }
+
+        /* Code Tags */
         code {
           font-size: 0.875rem;
+          font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+          padding: 0.25rem 0.5rem;
+          border-radius: 0.25rem;
+          background-color: #f1f5f9;
+          color: #475569;
+          font-weight: 500;
         }
-        .btn {
+
+        /* Badge Animations */
+        .badge {
           transition: all 0.2s ease;
         }
-        .btn:hover:not(:disabled) {
+
+        .badge:hover {
+          transform: scale(1.05);
+        }
+
+        /* Input Focus States */
+        .form-control:focus,
+        .form-select:focus {
+          border-color: #667eea;
+          box-shadow: 0 0 0 0.2rem rgba(102, 126, 234, 0.15);
+        }
+
+        /* Card Hover Effects for Stats */
+        .card {
+          transition: all 0.3s ease;
+        }
+
+        .card:hover {
+          transform: translateY(-2px);
+        }
+
+        /* QR Code Image Hover */
+        img[alt="Reservation QR Code"] {
+          transition: transform 0.3s ease;
+        }
+
+        img[alt="Reservation QR Code"]:hover {
+          transform: scale(1.02);
+        }
+
+        /* Alert Animations */
+        .alert {
+          animation: slideInRight 0.4s ease-out;
+        }
+
+        @keyframes slideInRight {
+          from {
+            transform: translateX(100%);
+            opacity: 0;
+          }
+          to {
+            transform: translateX(0);
+            opacity: 1;
+          }
+        }
+
+        /* Spinner Animation Enhancement */
+        .spinner-border {
+          animation: spinner 0.6s linear infinite;
+        }
+
+        @keyframes spinner {
+          to {
+            transform: rotate(360deg);
+          }
+        }
+
+        /* Scrollbar Styling */
+        .modal-body::-webkit-scrollbar {
+          width: 8px;
+        }
+
+        .modal-body::-webkit-scrollbar-track {
+          background: #f1f5f9;
+          border-radius: 4px;
+        }
+
+        .modal-body::-webkit-scrollbar-thumb {
+          background: #cbd5e1;
+          border-radius: 4px;
+        }
+
+        .modal-body::-webkit-scrollbar-thumb:hover {
+          background: #94a3b8;
+        }
+
+        /* Search Input Animation */
+        .input-group {
+          transition: all 0.3s ease;
+        }
+
+        .input-group:focus-within {
           transform: translateY(-1px);
+          box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+        }
+
+        /* Loading Shimmer Effect */
+        @keyframes shimmer {
+          0% {
+            background-position: -1000px 0;
+          }
+          100% {
+            background-position: 1000px 0;
+          }
+        }
+
+        /* Empty State Animation */
+        .text-muted.opacity-50 {
+          animation: pulse 2s ease-in-out infinite;
+        }
+
+        @keyframes pulse {
+          0%, 100% {
+            opacity: 0.5;
+          }
+          50% {
+            opacity: 0.3;
+          }
+        }
+
+        /* Responsive Improvements */
+        @media (max-width: 768px) {
+          .reservation-card:hover {
+            transform: translateY(-4px);
+          }
+
+          .btn:hover:not(:disabled) {
+            transform: translateY(-1px);
+          }
+        }
+
+        /* Accessibility - Focus Visible */
+        *:focus-visible {
+          outline: 2px solid #667eea;
+          outline-offset: 2px;
+        }
+
+        /* Status Badge Colors */
+        .badge.bg-success {
+          background: linear-gradient(135deg, #10b981 0%, #059669 100%) !important;
+        }
+
+        .badge.bg-danger {
+          background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%) !important;
+        }
+
+        /* Gradient Text */
+        .h2.fw-bold {
+          background: linear-gradient(135deg, #1e293b 0%, #475569 100%);
+          -webkit-background-clip: text;
+          -webkit-text-fill-color: transparent;
+          background-clip: text;
+        }
+
+        /* Card Border Glow on Hover */
+        .reservation-card:hover::before {
+          content: '';
+          position: absolute;
+          top: -2px;
+          left: -2px;
+          right: -2px;
+          bottom: -2px;
+          background: linear-gradient(135deg, #667eea, #764ba2);
+          border-radius: inherit;
+          z-index: -1;
+          opacity: 0.5;
+          filter: blur(10px);
+          transition: opacity 0.3s ease;
+        }
+
+        .reservation-card {
+          position: relative;
+          z-index: 1;
+        }
+
+        /* Button Ripple Effect */
+        .btn::after {
+          content: '';
+          position: absolute;
+          top: 50%;
+          left: 50%;
+          width: 0;
+          height: 0;
+          border-radius: 50%;
+          background: rgba(255, 255, 255, 0.5);
+          transform: translate(-50%, -50%);
+          transition: width 0.6s, height 0.6s;
+        }
+
+        .btn:active::after {
+          width: 300px;
+          height: 300px;
+        }
+
+        /* Smooth Color Transitions */
+        * {
+          transition-property: background-color, border-color, color, fill, stroke;
+          transition-duration: 0.2s;
+          transition-timing-function: ease-in-out;
+        }
+
+        /* Prevent transition on specific elements */
+        .spinner-border,
+        .modal-dialog,
+        .alert,
+        img {
+          transition: none;
+        }
+
+        /* Re-enable specific transitions */
+        img[alt="Reservation QR Code"] {
+          transition: transform 0.3s ease;
+        }
+
+        .modal-dialog {
+          animation: slideUp 0.3s ease-out;
         }
       `}</style>
     </div>
