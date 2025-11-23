@@ -30,7 +30,6 @@ import java.util.stream.Collectors;
 @RequestMapping("/api/admin/stalls")
 @RequiredArgsConstructor
 @Slf4j
-@CrossOrigin(origins = "*")
 public class StallAdminController {
 
     private final StallService stallService;

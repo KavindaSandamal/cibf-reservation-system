@@ -1,6 +1,7 @@
 package com.cibf.repository;
 
 import com.cibf.entity.Employee;
+import com.cibf.entity.User;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
@@ -26,4 +27,6 @@ public interface EmployeeRepository extends JpaRepository<Employee, Long> {
      * Check if employee ID exists
      */
     boolean existsByEmployeeId(String employeeId);
+
+    Optional<Employee> findByUser(User user);
 }
