@@ -53,9 +53,32 @@ public class ReservationAdminService {
         }
 
         if (search != null && !search.isEmpty()) {
-            spec = spec.and((root, query, cb) -> cb.or(
-                    cb.like(cb.lower(root.get("userEmail")), "%" + search.toLowerCase() + "%"),
-                    cb.like(cb.lower(root.get("businessName")), "%" + search.toLowerCase() + "%")));
+            // Remove # prefix if present (users might type #1, #25, etc.)
+            String searchTerm = search.trim();
+            if (searchTerm.startsWith("#")) {
+                searchTerm = searchTerm.substring(1);
+            }
+            
+            final String finalSearchTerm = searchTerm;
+            
+            spec = spec.and((root, query, cb) -> {
+                // Try to parse as Long for ID search
+                try {
+                    Long searchId = Long.parseLong(finalSearchTerm);
+                    // Search by ID (exact match) OR email/business name (partial match)
+                    return cb.or(
+                            cb.equal(root.get("id"), searchId),
+                            cb.like(cb.lower(root.get("userEmail")), "%" + finalSearchTerm.toLowerCase() + "%"),
+                            cb.like(cb.lower(root.get("businessName")), "%" + finalSearchTerm.toLowerCase() + "%")
+                    );
+                } catch (NumberFormatException e) {
+                    // Not a number, search only by email and business name
+                    return cb.or(
+                            cb.like(cb.lower(root.get("userEmail")), "%" + finalSearchTerm.toLowerCase() + "%"),
+                            cb.like(cb.lower(root.get("businessName")), "%" + finalSearchTerm.toLowerCase() + "%")
+                    );
+                }
+            });
         }
 
         if (startDate != null) {
