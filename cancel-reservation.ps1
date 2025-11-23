@@ -1,7 +1,7 @@
 $BASE_URL = "http://34.213.51.153"
 $ADMIN_USERNAME = "admin@cibf.lk"
 $ADMIN_PASSWORD = "admin123"
-$RESERVATION_ID = 34
+$RESERVATION_ID = 40
 $CANCELLATION_REASON = "Cancelled by admin - duplicate booking"
 
 [System.Net.ServicePointManager]::ServerCertificateValidationCallback = {$true}
