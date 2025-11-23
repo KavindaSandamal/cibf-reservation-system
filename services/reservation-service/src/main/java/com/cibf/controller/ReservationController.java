@@ -17,7 +17,10 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import jakarta.validation.Valid;
+
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/api/reservations")
@@ -27,90 +30,126 @@ import java.util.List;
 @SecurityRequirement(name = "bearer-jwt")
 public class ReservationController {
 
-    private final ReservationService reservationService;
+        private final ReservationService reservationService;
 
-    @PostMapping("/hold")
-    @PreAuthorize("hasRole('VENDOR')")
-    @Operation(summary = "Hold stalls temporarily", description = "Hold 1-3 stalls for 5 minutes")
-    @ApiResponses(value = {
-            @ApiResponse(responseCode = "200", description = "Stalls held successfully"),
-            @ApiResponse(responseCode = "400", description = "Invalid request or stall limit exceeded"),
-            @ApiResponse(responseCode = "409", description = "Stall not available")
-    })
-    public ResponseEntity<HoldStallResponse> holdStalls(
-            @Valid @RequestBody HoldStallRequest request) {
-        log.info("Hold stalls request received for user: {}", request.getUserId());
-        HoldStallResponse response = reservationService.holdStalls(request);
-        return ResponseEntity.ok(response);
-    }
+        @PostMapping("/hold")
+        @PreAuthorize("hasRole('VENDOR')")
+        @Operation(summary = "Hold stalls temporarily", description = "Hold 1-3 stalls for 5 minutes")
+        @ApiResponses(value = {
+                        @ApiResponse(responseCode = "200", description = "Stalls held successfully"),
+                        @ApiResponse(responseCode = "400", description = "Invalid request or stall limit exceeded"),
+                        @ApiResponse(responseCode = "409", description = "Stall not available")
+        })
+        public ResponseEntity<HoldStallResponse> holdStalls(
+                        @Valid @RequestBody HoldStallRequest request) {
+                log.info("Hold stalls request received for user: {}", request.getUserId());
+                HoldStallResponse response = reservationService.holdStalls(request);
+                return ResponseEntity.ok(response);
+        }
 
-    @PostMapping("/confirm")
-    @PreAuthorize("hasRole('VENDOR')")
-    @Operation(summary = "Confirm reservation", description = "Confirm reservation with hold token")
-    @ApiResponses(value = {
-            @ApiResponse(responseCode = "201", description = "Reservation confirmed successfully"),
-            @ApiResponse(responseCode = "400", description = "Invalid or expired hold token"),
-            @ApiResponse(responseCode = "404", description = "Hold token not found")
-    })
-    public ResponseEntity<ReservationResponse> confirmReservation(
-            @Valid @RequestBody ConfirmReservationRequest request) {
-        log.info("Confirm reservation request for user: {}", request.getUserId());
-        ReservationResponse response = reservationService.confirmReservation(request);
-        return ResponseEntity.status(HttpStatus.CREATED).body(response);
-    }
+        @PostMapping("/confirm")
+        @PreAuthorize("hasRole('VENDOR')")
+        @Operation(summary = "Confirm reservation", description = "Confirm reservation with hold token")
+        @ApiResponses(value = {
+                        @ApiResponse(responseCode = "201", description = "Reservation confirmed successfully"),
+                        @ApiResponse(responseCode = "400", description = "Invalid or expired hold token"),
+                        @ApiResponse(responseCode = "404", description = "Hold token not found")
+        })
+        public ResponseEntity<ReservationResponse> confirmReservation(
+                        @Valid @RequestBody ConfirmReservationRequest request) {
+                log.info("Confirm reservation request for user: {}", request.getUserId());
+                ReservationResponse response = reservationService.confirmReservation(request);
+                return ResponseEntity.status(HttpStatus.CREATED).body(response);
+        }
 
-    @GetMapping("/{id}")
-    @PreAuthorize("hasAnyRole('VENDOR', 'EMPLOYEE')")
-    @Operation(summary = "Get reservation by ID", description = "Retrieve reservation details")
-    @ApiResponses(value = {
-            @ApiResponse(responseCode = "200", description = "Reservation found"),
-            @ApiResponse(responseCode = "404", description = "Reservation not found")
-    })
-    public ResponseEntity<ReservationResponse> getReservationById(
-            @Parameter(description = "Reservation ID") @PathVariable Long id) {
-        log.info("Get reservation by ID: {}", id);
-        ReservationResponse response = reservationService.getReservationById(id);
-        return ResponseEntity.ok(response);
-    }
+        @GetMapping("/{id}")
+        @PreAuthorize("hasAnyRole('VENDOR', 'EMPLOYEE')")
+        @Operation(summary = "Get reservation by ID", description = "Retrieve reservation details")
+        @ApiResponses(value = {
+                        @ApiResponse(responseCode = "200", description = "Reservation found"),
+                        @ApiResponse(responseCode = "404", description = "Reservation not found")
+        })
+        public ResponseEntity<ReservationResponse> getReservationById(
+                        @Parameter(description = "Reservation ID") @PathVariable Long id) {
+                log.info("Get reservation by ID: {}", id);
+                ReservationResponse response = reservationService.getReservationById(id);
+                return ResponseEntity.ok(response);
+        }
 
-    @GetMapping("/user/{userId}")
-    @PreAuthorize("hasAnyRole('VENDOR', 'EMPLOYEE')")
-    @Operation(summary = "Get user reservations", description = "Get all reservations for a user")
-    @ApiResponse(responseCode = "200", description = "Reservations retrieved successfully")
-    public ResponseEntity<List<ReservationResponse>> getReservationsByUserId(
-            @Parameter(description = "User ID") @PathVariable Long userId) {
-        log.info("Get reservations for user: {}", userId);
-        List<ReservationResponse> responses = reservationService.getReservationsByUserId(userId);
-        return ResponseEntity.ok(responses);
-    }
+        @GetMapping("/user/{userId}")
+        @PreAuthorize("hasAnyRole('VENDOR', 'EMPLOYEE')")
+        @Operation(summary = "Get user reservations", description = "Get all reservations for a user")
+        @ApiResponse(responseCode = "200", description = "Reservations retrieved successfully")
+        public ResponseEntity<List<ReservationResponse>> getReservationsByUserId(
+                        @Parameter(description = "User ID") @PathVariable Long userId) {
+                log.info("Get reservations for user: {}", userId);
+                List<ReservationResponse> responses = reservationService.getReservationsByUserId(userId);
+                return ResponseEntity.ok(responses);
+        }
 
-    @PutMapping("/{id}")
-    @PreAuthorize("hasRole('VENDOR')")
-    @Operation(summary = "Update reservation", description = "Update reservation details")
-    @ApiResponses(value = {
-            @ApiResponse(responseCode = "200", description = "Reservation updated"),
-            @ApiResponse(responseCode = "404", description = "Reservation not found")
-    })
-    public ResponseEntity<ReservationResponse> updateReservation(
-            @Parameter(description = "Reservation ID") @PathVariable Long id,
-            @Valid @RequestBody UpdateReservationRequest request) {
-        log.info("Update reservation: {}", id);
-        ReservationResponse response = reservationService.updateReservation(id, request);
-        return ResponseEntity.ok(response);
-    }
+        @PutMapping("/{id}")
+        @PreAuthorize("hasRole('VENDOR')")
+        @Operation(summary = "Update reservation", description = "Update reservation details")
+        @ApiResponses(value = {
+                        @ApiResponse(responseCode = "200", description = "Reservation updated"),
+                        @ApiResponse(responseCode = "404", description = "Reservation not found")
+        })
+        public ResponseEntity<ReservationResponse> updateReservation(
+                        @Parameter(description = "Reservation ID") @PathVariable Long id,
+                        @Valid @RequestBody UpdateReservationRequest request) {
+                log.info("Update reservation: {}", id);
+                ReservationResponse response = reservationService.updateReservation(id, request);
+                return ResponseEntity.ok(response);
+        }
 
-    @DeleteMapping("/{id}")
-    @PreAuthorize("hasRole('VENDOR')")
-    @Operation(summary = "Cancel reservation", description = "Cancel an existing reservation")
-    @ApiResponses(value = {
-            @ApiResponse(responseCode = "204", description = "Reservation cancelled"),
-            @ApiResponse(responseCode = "404", description = "Reservation not found")
-    })
-    public ResponseEntity<Void> cancelReservation(
-            @Parameter(description = "Reservation ID") @PathVariable Long id,
-            @RequestParam Long userId) {
-        log.info("Cancel reservation: {} by user: {}", id, userId);
-        reservationService.cancelReservation(id, userId);
-        return ResponseEntity.noContent().build();
-    }
+        @DeleteMapping("/{id}")
+        @PreAuthorize("hasRole('VENDOR')")
+        @Operation(summary = "Cancel reservation", description = "Cancel an existing reservation")
+        @ApiResponses(value = {
+                        @ApiResponse(responseCode = "204", description = "Reservation cancelled"),
+                        @ApiResponse(responseCode = "404", description = "Reservation not found")
+        })
+        public ResponseEntity<Void> cancelReservation(
+                        @Parameter(description = "Reservation ID") @PathVariable Long id,
+                        @RequestParam Long userId) {
+                log.info("Cancel reservation: {} by user: {}", id, userId);
+                reservationService.cancelReservation(id, userId);
+                return ResponseEntity.noContent().build();
+        }
+
+        @GetMapping("/internal/user/{userId}")
+        @Operation(summary = "Get user reservations (Internal)", description = "Internal endpoint for service-to-service calls")
+        @ApiResponse(responseCode = "200", description = "Reservations retrieved successfully")
+        public ResponseEntity<List<ReservationResponse>> getReservationsByUserIdInternal(
+                        @Parameter(description = "User ID") @PathVariable Long userId) {
+                log.info("Internal service call: Get reservations for user: {}", userId);
+                List<ReservationResponse> responses = reservationService.getReservationsByUserId(userId);
+                return ResponseEntity.ok(responses);
+        }
+
+        /**
+         * INTERNAL endpoint to check if user has active reservations
+         * Used by auth-service before allowing user deletion
+         */
+        @GetMapping("/internal/user/{userId}/has-active")
+        @Operation(summary = "Check active reservations (Internal)", description = "Internal endpoint to check if user has active reservations")
+        public ResponseEntity<Map<String, Object>> checkActiveReservations(
+                        @Parameter(description = "User ID") @PathVariable Long userId) {
+                log.info("Internal service call: Checking active reservations for user: {}", userId);
+
+                List<ReservationResponse> responses = reservationService.getReservationsByUserId(userId);
+
+                long activeCount = responses.stream()
+                                .filter(r -> "CONFIRMED".equals(r.getStatus()) || "PENDING".equals(r.getStatus()))
+                                .count();
+
+                Map<String, Object> result = new HashMap<>();
+                result.put("userId", userId);
+                result.put("hasActiveReservations", activeCount > 0);
+                result.put("activeCount", activeCount);
+                result.put("totalReservations", responses.size());
+
+                return ResponseEntity.ok(result);
+
+        }
 }
