@@ -151,9 +151,10 @@ public class ReservationService {
             }
         });
 
-        // Save all reservations at once
+        // Save all reservations at once and FLUSH to database immediately
         reservationRepository.saveAll(reservations);
-        log.info("✅ All reservations saved with CONFIRMED status");
+        reservationRepository.flush(); // 🔥 CRITICAL: Force write to database NOW
+        log.info("✅ All reservations saved with CONFIRMED status and flushed to DB");
 
         // Get the main reservation ID for event publishing
         Long mainReservationId = reservations.get(0).getId();
@@ -177,9 +178,8 @@ public class ReservationService {
             processReservationDirectly(reservations.get(0), request, stallInfos, totalAmount);
         }
 
-        // Reload the main reservation to get the persisted state
-        Reservation mainReservation = reservationRepository.findById(mainReservationId)
-                .orElseThrow(() -> new ResourceNotFoundException("Reservation not found"));
+        // Use the already-updated reservation from memory (no need to reload)
+        Reservation mainReservation = reservations.get(0);
 
         // Build and return response
         ReservationResponse response = mapToResponse(mainReservation);
