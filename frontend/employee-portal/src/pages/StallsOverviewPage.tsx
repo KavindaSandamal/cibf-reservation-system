@@ -29,10 +29,18 @@ const StallsOverviewPage: React.FC = () => {
         filters.size = sizeFilter;
       }
       const data = await stallService.getAllStalls(filters);
-      setStalls(data);
+      
+      // Ensure data is always an array
+      if (Array.isArray(data)) {
+        setStalls(data);
+      } else {
+        console.error('Expected array, got:', typeof data);
+        setStalls([]);
+      }
     } catch (error: any) {
       toast.error('Failed to load stalls');
       console.error('Error loading stalls:', error);
+      setStalls([]);
     } finally {
       setLoading(false);
     }
@@ -51,12 +59,16 @@ const StallsOverviewPage: React.FC = () => {
 
   // Filter stalls by search query (client-side for now, since backend filtering is by status/size)
   const filteredStalls = useMemo(() => {
+    if (!Array.isArray(stalls)) {
+      return [];
+    }
+    
     return stalls.filter((stall) => {
       const matchesSearch =
         searchQuery === '' ||
-        stall.stallNumber.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        stall.stallName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        stall.location.toLowerCase().includes(searchQuery.toLowerCase());
+        (stall.stallNumber?.toLowerCase().includes(searchQuery.toLowerCase()) ?? false) ||
+        (stall.stallName?.toLowerCase().includes(searchQuery.toLowerCase()) ?? false) ||
+        (stall.location?.toLowerCase().includes(searchQuery.toLowerCase()) ?? false);
       return matchesSearch;
     });
   }, [stalls, searchQuery]);
@@ -209,8 +221,8 @@ const StallsOverviewPage: React.FC = () => {
               >
                 <div className="flex items-center justify-between mb-4">
                   <div>
-                    <h3 className="text-xl font-bold text-white">{stall.stallNumber}</h3>
-                    <p className="text-sm text-slate-400">{stall.stallName}</p>
+                    <h3 className="text-xl font-bold text-white">{stall.stallNumber || 'N/A'}</h3>
+                    <p className="text-sm text-slate-400">{stall.stallName || 'Unnamed'}</p>
                   </div>
                   <span
                     className={`px-3 py-1 rounded-full text-xs font-semibold border ${
@@ -225,17 +237,19 @@ const StallsOverviewPage: React.FC = () => {
                 <div className="space-y-2">
                   <div className="flex items-center justify-between">
                     <span className="text-sm text-slate-400">Location</span>
-                    <span className="text-sm font-medium text-white">{stall.location}</span>
+                    <span className="text-sm font-medium text-white">{stall.location || 'N/A'}</span>
                   </div>
                   <div className="flex items-center justify-between">
                     <span className="text-sm text-slate-400">Size</span>
-                    <span className={`px-2 py-1 rounded text-xs font-semibold border ${sizeColors[stall.size]}`}>
-                      {stall.size}
+                    <span className={`px-2 py-1 rounded text-xs font-semibold border ${sizeColors[stall.size] || 'bg-slate-700/20 text-slate-300 border-slate-700/30'}`}>
+                      {stall.size || 'N/A'}
                     </span>
                   </div>
                   <div className="flex items-center justify-between">
                     <span className="text-sm text-slate-400">Price</span>
-                    <span className="text-sm font-bold text-white">${stall.price.toLocaleString()}</span>
+                    <span className="text-sm font-bold text-white">
+                      ${stall.price != null ? stall.price.toLocaleString() : '0'}
+                    </span>
                   </div>
                   {stall.description && (
                     <div className="pt-2 border-t border-slate-700">
