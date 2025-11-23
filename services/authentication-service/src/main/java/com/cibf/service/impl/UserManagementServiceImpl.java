@@ -303,29 +303,42 @@ public class UserManagementServiceImpl implements UserManagementService {
 
     /**
      * Helper method to check if user has active reservations
+     * Uses internal service endpoint to avoid authentication issues
      */
     private boolean hasActiveReservations(Long userId) {
         try {
-            String url = reservationServiceUrl + "/api/reservations/user/" + userId;
+            // Use the internal endpoint that doesn't require authentication
+            String url = reservationServiceUrl + "/api/reservations/internal/user/" + userId + "/has-active";
+            log.info("Checking active reservations at: {}", url);
 
             @SuppressWarnings("unchecked")
-            List<Map<String, Object>> reservations = restTemplate.getForObject(url, List.class);
+            Map<String, Object> response = restTemplate.getForObject(url, Map.class);
 
-            if (reservations == null || reservations.isEmpty()) {
-                return false;
+            if (response == null) {
+                log.warn("No response from reservation service for user {}", userId);
+                return true; // Be safe and prevent deletion
             }
 
-            // Check if any reservations are CONFIRMED or PENDING
-            return reservations.stream()
-                    .anyMatch(r -> {
-                        String status = (String) r.get("status");
-                        return "CONFIRMED".equals(status) || "PENDING".equals(status);
-                    });
+            Boolean hasActive = (Boolean) response.get("hasActiveReservations");
+            Integer activeCount = (Integer) response.get("activeCount");
+            Integer totalCount = (Integer) response.get("totalReservations");
 
-        } catch (Exception e) {
-            log.warn("Could not check reservations for user {}: {}", userId, e.getMessage());
-            // If we can't check, be safe and prevent deletion
+            log.info("User {} has {} active reservations out of {} total",
+                    userId, activeCount, totalCount);
+
+            return hasActive != null && hasActive;
+
+        } catch (org.springframework.web.client.ResourceAccessException e) {
+            log.error("Network error accessing reservation service for user {}: {}", userId, e.getMessage());
+            log.error("Reservation service URL: {}", reservationServiceUrl);
+            return true; // If we can't reach the service, be safe and prevent deletion
+        } catch (org.springframework.web.client.HttpClientErrorException e) {
+            log.error("HTTP {} error checking reservations for user {}: {}",
+                    e.getStatusCode(), userId, e.getResponseBodyAsString());
             return true;
+        } catch (Exception e) {
+            log.error("Unexpected error checking reservations for user {}: {}", userId, e.getMessage(), e);
+            return true; // If we can't check, be safe and prevent deletion
         }
     }
 }
