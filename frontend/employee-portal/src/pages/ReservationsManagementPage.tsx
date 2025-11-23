@@ -17,7 +17,6 @@ const ReservationsManagementPage: React.FC = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage] = useState(10);
 
-
   // Load reservations on mount and when filters change
   useEffect(() => {
     const loadData = async () => {
@@ -57,11 +56,10 @@ const ReservationsManagementPage: React.FC = () => {
 
   // Reset to first page when filters change
   useEffect(() => {
-    // Only reset if we're not already on page 1 to avoid unnecessary state updates
     if (currentPage !== 1) {
       setCurrentPage(1);
     }
-  }, [statusFilter, searchQuery, startDate, endDate]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [statusFilter, searchQuery, startDate, endDate]);
 
   const reloadReservations = async () => {
     try {
@@ -133,12 +131,11 @@ const ReservationsManagementPage: React.FC = () => {
     setIsModalOpen(true);
   };
 
-  // Use reservations directly since filtering is done on the backend
-  // If backend returns paginated response, use it; otherwise, paginate client-side
-  const paginatedReservations = reservations;
+  // Calculate pagination based on all reservations
   const pageCount = Math.max(1, Math.ceil(reservations.length / itemsPerPage));
   const startIndex = (currentPage - 1) * itemsPerPage;
   const endIndex = startIndex + itemsPerPage;
+  const paginatedReservations = reservations.slice(startIndex, endIndex);
 
   const statusColors = {
     [ReservationStatus.PENDING]: 'bg-amber-500/20 text-amber-300 border-amber-500/30',
@@ -279,7 +276,7 @@ const ReservationsManagementPage: React.FC = () => {
                     </td>
                   </tr>
                 ) : (
-                  paginatedReservations.slice(startIndex, endIndex).map((reservation) => (
+                  paginatedReservations.map((reservation) => (
                     <tr key={reservation.id} className="hover:bg-slate-800/40 transition-colors">
                       <td className="px-6 py-4 whitespace-nowrap">
                         <span className="font-mono text-sm text-white">#{reservation.id}</span>
@@ -309,10 +306,18 @@ const ReservationsManagementPage: React.FC = () => {
                         </div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
-                        <span className="text-sm text-slate-300">{new Date(reservation.reservationDate).toLocaleDateString()}</span>
+                        <span className="text-sm text-slate-300">
+                          {reservation.reservationDate 
+                            ? new Date(reservation.reservationDate).toLocaleDateString() 
+                            : 'N/A'}
+                        </span>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
-                        <span className="font-semibold text-white">${reservation.totalAmount.toLocaleString()}</span>
+                        <span className="font-semibold text-white">
+                          ${reservation.totalAmount != null 
+                            ? reservation.totalAmount.toLocaleString() 
+                            : '0.00'}
+                        </span>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         <span className={`px-3 py-1 rounded-full text-xs font-semibold border ${statusColors[reservation.status]}`}>
@@ -365,7 +370,7 @@ const ReservationsManagementPage: React.FC = () => {
           {pageCount > 1 && (
             <div className="px-6 py-4 border-t border-slate-700 flex items-center justify-between">
               <div className="text-sm text-slate-400">
-                Showing {startIndex + 1} to {Math.min(endIndex, reservations.length)} of {reservations.length} reservations
+                Showing {reservations.length === 0 ? 0 : startIndex + 1} to {Math.min(endIndex, reservations.length)} of {reservations.length} reservations
               </div>
               <div className="flex items-center gap-2">
                 <button
