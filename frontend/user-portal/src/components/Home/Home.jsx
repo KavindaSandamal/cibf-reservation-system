@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { BookOpen, Calendar, Users, CheckCircle, Award, TrendingUp } from 'lucide-react';
+import { BookOpen, Calendar, Users, Award, TrendingUp } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
 export default function BookFairLanding() {
@@ -99,7 +99,7 @@ export default function BookFairLanding() {
             {/* Established Badge */}
             <div className="inline-flex items-center gap-3 bg-white/10 backdrop-blur-md rounded-full px-6 py-3 border border-white/20">
               <Award className="w-6 h-6 text-yellow-400" />
-              <span className="text-white font-medium">Trusted Since 1997</span>
+              <span className="text-white font-medium">Trusted Since 2005</span>
             </div>
           </div>
         </div>
