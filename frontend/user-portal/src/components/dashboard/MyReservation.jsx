@@ -3,6 +3,7 @@ import { Download, Calendar, MapPin, DollarSign, Check, XCircle, Search, QrCode,
 import { useAuth } from '../../context/AuthContext';
 import reservationApi from '../../services/reservationApi';
 import LoadingSpinner from '../common/LoadingSpinner';
+import '../../css/reservation.module.css';
 
 const MyReservationsPage = () => {
   const { user } = useAuth();
@@ -427,70 +428,77 @@ const MyReservationsPage = () => {
           </div>
         </div>
 
-        {/* Reservations List */}
-        <div className="row g-4">
-          {filteredReservations.map(reservation => {
-            const statusInfo = getStatusBadge(reservation.status);
-            const StatusIcon = statusInfo.icon;
+       
+        {/* Confirmed Reservations - Cards */}
+        {filteredReservations.filter(r => r.status === 'CONFIRMED').length > 0 && (
+          <>
+            <div className="mb-3">
+              <h4 className="fw-bold" style={{ color: '#1e293b' }}>
+                <Check size={24} className="me-2 text-success" />
+                Active Reservations
+              </h4>
+            </div>
+            <div className="row g-4 mb-5">
+              {filteredReservations.filter(r => r.status === 'CONFIRMED').map(reservation => {
+                const statusInfo = getStatusBadge(reservation.status);
+                const StatusIcon = statusInfo.icon;
 
-            return (
-              <div key={reservation.id} className="col-12 col-md-6 col-xl-4">
-                <div className="card shadow-sm h-100 border-0 reservation-card">
-                  <div className="card-body p-4">
-                    {/* Header */}
-                    <div className="d-flex justify-content-between align-items-start mb-3">
-                      <div className="flex-grow-1">
-                        <h5 className="fw-bold mb-1" style={{ color: '#1e293b' }}>
-                          {reservation.stallName}
-                        </h5>
-                        <p className="text-muted small mb-0">
-                          <code className="bg-light px-2 py-1 rounded">{reservation.reservationCode}</code>
-                        </p>
-                      </div>
-                      <span className={`badge bg-${statusInfo.color} d-flex align-items-center gap-1 ms-2`}>
-                        <StatusIcon size={14} />{statusInfo.label}
-                      </span>
-                    </div>
+                return (
+                  <div key={reservation.id} className="col-12 col-md-6 col-xl-4">
+                    <div className="card shadow-sm h-100 border-0 reservation-card">
+                      <div className="card-body p-4">
+                        {/* Header */}
+                        <div className="d-flex justify-content-between align-items-start mb-3">
+                          <div className="flex-grow-1">
+                            <h5 className="fw-bold mb-1" style={{ color: '#1e293b' }}>
+                              {reservation.stallName}
+                            </h5>
+                            <p className="text-muted small mb-0">
+                              <code className="bg-light px-2 py-1 rounded">{reservation.reservationCode}</code>
+                            </p>
+                          </div>
+                          <span className={`badge bg-${statusInfo.color} d-flex align-items-center gap-1 ms-2`}>
+                            <StatusIcon size={14} />{statusInfo.label}
+                          </span>
+                        </div>
 
-                    {/* Details */}
-                    <div className="mb-3">
-                      <div className="d-flex align-items-start mb-2">
-                        <MapPin size={18} className="text-primary me-2 mt-1 flex-shrink-0" />
-                        <span className="small">
-                          <strong>{reservation.dimension}</strong> • {getSizeLabel(reservation.size)}
-                        </span>
-                      </div>
-                      <div className="d-flex align-items-start mb-2">
-                        <Calendar size={18} className="text-primary me-2 mt-1 flex-shrink-0" />
-                        <span className="small">{formatDate(reservation.reservationDate)}</span>
-                      </div>
-                      <div className="d-flex align-items-start">
-                        <DollarSign size={18} className="text-primary me-2 mt-1 flex-shrink-0" />
-                        <span className="fw-bold fs-5" style={{ color: '#10b981' }}>
-                          ${reservation.price}
-                        </span>
-                      </div>
-                    </div>
+                        {/* Details */}
+                        <div className="mb-3">
+                          <div className="d-flex align-items-start mb-2">
+                            <MapPin size={18} className="text-primary me-2 mt-1 flex-shrink-0" />
+                            <span className="small">
+                              <strong>{reservation.dimension}</strong> • {getSizeLabel(reservation.size)}
+                            </span>
+                          </div>
+                          <div className="d-flex align-items-start mb-2">
+                            <Calendar size={18} className="text-primary me-2 mt-1 flex-shrink-0" />
+                            <span className="small">{formatDate(reservation.reservationDate)}</span>
+                          </div>
+                          <div className="d-flex align-items-start">
+                            <DollarSign size={18} className="text-primary me-2 mt-1 flex-shrink-0" />
+                            <span className="fw-bold fs-5" style={{ color: '#10b981' }}>
+                              ${reservation.price}
+                            </span>
+                          </div>
+                        </div>
 
-                    {/* Company Info */}
-                    <div className="mb-3 p-3 rounded" style={{ backgroundColor: '#f1f5f9' }}>
-                      <div className="d-flex align-items-center mb-2">
-                        <Building size={16} className="text-muted me-2" />
-                        <span className="small text-muted fw-semibold">COMPANY</span>
-                      </div>
-                      <p className="mb-0 fw-medium">{reservation.companyName}</p>
-                    </div>
+                        {/* Company Info */}
+                        <div className="mb-3 p-3 rounded" style={{ backgroundColor: '#f1f5f9' }}>
+                          <div className="d-flex align-items-center mb-2">
+                            <Building size={16} className="text-muted me-2" />
+                            <span className="small text-muted fw-semibold">COMPANY</span>
+                          </div>
+                          <p className="mb-0 fw-medium">{reservation.companyName}</p>
+                        </div>
 
-                    {/* Actions */}
-                    <div className="d-flex gap-2 flex-wrap">
-                      <button 
-                        className="btn btn-outline-primary btn-sm flex-fill" 
-                        onClick={() => viewDetails(reservation)}
-                      >
-                        <Eye size={16} className="me-1" />View
-                      </button>
-                      {reservation.status === 'CONFIRMED' && (
-                        <>
+                        {/* Actions */}
+                        <div className="d-flex gap-2 flex-wrap">
+                          <button 
+                            className="btn btn-outline-primary btn-sm flex-fill" 
+                            onClick={() => viewDetails(reservation)}
+                          >
+                            <Eye size={16} className="me-1" />View
+                          </button>
                           {reservation.qrCodeUrl && (
                             <button 
                               className="btn btn-primary btn-sm flex-fill" 
@@ -514,36 +522,88 @@ const MyReservationsPage = () => {
                           >
                             <Trash2 size={16} />
                           </button>
-                        </>
-                      )}
+                        </div>
+                      </div>
                     </div>
                   </div>
+                );
+              })}
+            </div>
+          </>
+        )}
+
+        {/* Other Reservations - Table */}
+        {filteredReservations.filter(r => r.status !== 'CONFIRMED').length > 0 && (
+          <>
+            <div className="mb-3">
+              <h4 className="fw-bold" style={{ color: '#1e293b' }}>
+                <FileText size={24} className="me-2 text-muted" />
+                Other Reservations
+              </h4>
+            </div>
+            <div className="card shadow-sm border-0">
+              <div className="card-body p-0">
+                <div className="table-responsive">
+                  <table className="table table-hover mb-0">
+                    <thead style={{ backgroundColor: '#f8fafc' }}>
+                      <tr>
+                        <th className="px-4 py-3 fw-semibold">Stall Name</th>
+                        <th className="px-4 py-3 fw-semibold">Code</th>
+                        <th className="px-4 py-3 fw-semibold">Company</th>
+                        <th className="px-4 py-3 fw-semibold">Date</th>
+                        <th className="px-4 py-3 fw-semibold">Price</th>
+                        <th className="px-4 py-3 fw-semibold">Status</th>
+                        <th className="px-4 py-3 fw-semibold text-end">Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {filteredReservations.filter(r => r.status !== 'CONFIRMED').map(reservation => {
+                        const statusInfo = getStatusBadge(reservation.status);
+                        const StatusIcon = statusInfo.icon;
+                        
+                        return (
+                          <tr key={reservation.id}>
+                            <td className="px-4 py-3">
+                              <div className="fw-semibold">{reservation.stallName}</div>
+                              <div className="small text-muted">{reservation.dimension}</div>
+                            </td>
+                            <td className="px-4 py-3">
+                              <code className="bg-light px-2 py-1 rounded">{reservation.reservationCode}</code>
+                            </td>
+                            <td className="px-4 py-3">{reservation.companyName}</td>
+                            <td className="px-4 py-3">
+                              <div className="small">{formatDate(reservation.reservationDate)}</div>
+                            </td>
+                            <td className="px-4 py-3">
+                              <span className="fw-bold" style={{ color: '#10b981' }}>
+                                ${reservation.price}
+                              </span>
+                            </td>
+                            <td className="px-4 py-3">
+                              <span className={`badge bg-${statusInfo.color} d-flex align-items-center gap-1`} style={{ width: 'fit-content' }}>
+                                <StatusIcon size={14} />{statusInfo.label}
+                              </span>
+                            </td>
+                            <td className="px-4 py-3">
+                              <div className="d-flex gap-2 justify-content-end">
+                                <button 
+                                  className="btn btn-sm btn-outline-primary" 
+                                  onClick={() => viewDetails(reservation)}
+                                  title="View Details"
+                                >
+                                  <Eye size={16} />
+                                </button>
+                              </div>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
                 </div>
               </div>
-            );
-          })}
-        </div>
-
-        {filteredReservations.length === 0 && !loading && (
-          <div className="card shadow-sm border-0">
-            <div className="card-body text-center py-5">
-              <QrCode size={64} className="text-muted mb-3 opacity-50" />
-              <h5 className="text-muted mb-2">No reservations found</h5>
-              <p className="text-muted small">
-                {searchTerm || statusFilter !== 'ALL' 
-                  ? 'Try adjusting your search or filters' 
-                  : 'You have not made any reservations yet'}
-              </p>
-              {(searchTerm || statusFilter !== 'ALL') && (
-                <button 
-                  className="btn btn-outline-primary mt-3" 
-                  onClick={() => { setSearchTerm(''); setStatusFilter('ALL'); }}
-                >
-                  Clear Filters
-                </button>
-              )}
             </div>
-          </div>
+          </>
         )}
       </div>
 
@@ -781,7 +841,7 @@ const MyReservationsPage = () => {
                     </>
                   ) : (
                     <>
-                      <Check size={18} className="me-2" />
+                      <Check size={18}  />
                       Save Changes
                     </>
                   )}
@@ -865,299 +925,7 @@ const MyReservationsPage = () => {
         </div>
       )}
 
-      <style>{`
-        /* Card Animations */
-        .reservation-card {
-          transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-          border: 1px solid transparent;
-        }
-        
-        .reservation-card:hover {
-          transform: translateY(-8px);
-          box-shadow: 0 20px 40px rgba(0,0,0,0.12) !important;
-          border-color: rgba(102, 126, 234, 0.1);
-        }
-
-        /* Modal Backdrop */
-        .modal {
-          backdrop-filter: blur(8px);
-          animation: fadeIn 0.2s ease-in-out;
-        }
-
-        @keyframes fadeIn {
-          from {
-            opacity: 0;
-          }
-          to {
-            opacity: 1;
-          }
-        }
-
-        .modal-dialog {
-          animation: slideUp 0.3s ease-out;
-        }
-
-        @keyframes slideUp {
-          from {
-            transform: translateY(20px);
-            opacity: 0;
-          }
-          to {
-            transform: translateY(0);
-            opacity: 1;
-          }
-        }
-
-        /* Button Enhancements */
-        .btn {
-          transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-          position: relative;
-          overflow: hidden;
-        }
-        
-        .btn:hover:not(:disabled) {
-          transform: translateY(-2px);
-          box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-        }
-
-        .btn:active:not(:disabled) {
-          transform: translateY(0);
-          box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-        }
-
-        .btn-primary {
-          background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-          border: none;
-        }
-
-        .btn-primary:hover:not(:disabled) {
-          background: linear-gradient(135deg, #5568d3 0%, #63408a 100%);
-          box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4);
-        }
-
-        /* Code Tags */
-        code {
-          font-size: 0.875rem;
-          font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
-          padding: 0.25rem 0.5rem;
-          border-radius: 0.25rem;
-          background-color: #f1f5f9;
-          color: #475569;
-          font-weight: 500;
-        }
-
-        /* Badge Animations */
-        .badge {
-          transition: all 0.2s ease;
-        }
-
-        .badge:hover {
-          transform: scale(1.05);
-        }
-
-        /* Input Focus States */
-        .form-control:focus,
-        .form-select:focus {
-          border-color: #667eea;
-          box-shadow: 0 0 0 0.2rem rgba(102, 126, 234, 0.15);
-        }
-
-        /* Card Hover Effects for Stats */
-        .card {
-          transition: all 0.3s ease;
-        }
-
-        .card:hover {
-          transform: translateY(-2px);
-        }
-
-        /* QR Code Image Hover */
-        img[alt="Reservation QR Code"] {
-          transition: transform 0.3s ease;
-        }
-
-        img[alt="Reservation QR Code"]:hover {
-          transform: scale(1.02);
-        }
-
-        /* Alert Animations */
-        .alert {
-          animation: slideInRight 0.4s ease-out;
-        }
-
-        @keyframes slideInRight {
-          from {
-            transform: translateX(100%);
-            opacity: 0;
-          }
-          to {
-            transform: translateX(0);
-            opacity: 1;
-          }
-        }
-
-        /* Spinner Animation Enhancement */
-        .spinner-border {
-          animation: spinner 0.6s linear infinite;
-        }
-
-        @keyframes spinner {
-          to {
-            transform: rotate(360deg);
-          }
-        }
-
-        /* Scrollbar Styling */
-        .modal-body::-webkit-scrollbar {
-          width: 8px;
-        }
-
-        .modal-body::-webkit-scrollbar-track {
-          background: #f1f5f9;
-          border-radius: 4px;
-        }
-
-        .modal-body::-webkit-scrollbar-thumb {
-          background: #cbd5e1;
-          border-radius: 4px;
-        }
-
-        .modal-body::-webkit-scrollbar-thumb:hover {
-          background: #94a3b8;
-        }
-
-        /* Search Input Animation */
-        .input-group {
-          transition: all 0.3s ease;
-        }
-
-        .input-group:focus-within {
-          transform: translateY(-1px);
-          box-shadow: 0 4px 12px rgba(0,0,0,0.08);
-        }
-
-        /* Loading Shimmer Effect */
-        @keyframes shimmer {
-          0% {
-            background-position: -1000px 0;
-          }
-          100% {
-            background-position: 1000px 0;
-          }
-        }
-
-        /* Empty State Animation */
-        .text-muted.opacity-50 {
-          animation: pulse 2s ease-in-out infinite;
-        }
-
-        @keyframes pulse {
-          0%, 100% {
-            opacity: 0.5;
-          }
-          50% {
-            opacity: 0.3;
-          }
-        }
-
-        /* Responsive Improvements */
-        @media (max-width: 768px) {
-          .reservation-card:hover {
-            transform: translateY(-4px);
-          }
-
-          .btn:hover:not(:disabled) {
-            transform: translateY(-1px);
-          }
-        }
-
-        /* Accessibility - Focus Visible */
-        *:focus-visible {
-          outline: 2px solid #667eea;
-          outline-offset: 2px;
-        }
-
-        /* Status Badge Colors */
-        .badge.bg-success {
-          background: linear-gradient(135deg, #10b981 0%, #059669 100%) !important;
-        }
-
-        .badge.bg-danger {
-          background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%) !important;
-        }
-
-        /* Gradient Text */
-        .h2.fw-bold {
-          background: linear-gradient(135deg, #1e293b 0%, #475569 100%);
-          -webkit-background-clip: text;
-          -webkit-text-fill-color: transparent;
-          background-clip: text;
-        }
-
-        /* Card Border Glow on Hover */
-        .reservation-card:hover::before {
-          content: '';
-          position: absolute;
-          top: -2px;
-          left: -2px;
-          right: -2px;
-          bottom: -2px;
-          background: linear-gradient(135deg, #667eea, #764ba2);
-          border-radius: inherit;
-          z-index: -1;
-          opacity: 0.5;
-          filter: blur(10px);
-          transition: opacity 0.3s ease;
-        }
-
-        .reservation-card {
-          position: relative;
-          z-index: 1;
-        }
-
-        /* Button Ripple Effect */
-        .btn::after {
-          content: '';
-          position: absolute;
-          top: 50%;
-          left: 50%;
-          width: 0;
-          height: 0;
-          border-radius: 50%;
-          background: rgba(255, 255, 255, 0.5);
-          transform: translate(-50%, -50%);
-          transition: width 0.6s, height 0.6s;
-        }
-
-        .btn:active::after {
-          width: 300px;
-          height: 300px;
-        }
-
-        /* Smooth Color Transitions */
-        * {
-          transition-property: background-color, border-color, color, fill, stroke;
-          transition-duration: 0.2s;
-          transition-timing-function: ease-in-out;
-        }
-
-        /* Prevent transition on specific elements */
-        .spinner-border,
-        .modal-dialog,
-        .alert,
-        img {
-          transition: none;
-        }
-
-        /* Re-enable specific transitions */
-        img[alt="Reservation QR Code"] {
-          transition: transform 0.3s ease;
-        }
-
-        .modal-dialog {
-          animation: slideUp 0.3s ease-out;
-        }
-      `}</style>
+    
     </div>
   );
 };
