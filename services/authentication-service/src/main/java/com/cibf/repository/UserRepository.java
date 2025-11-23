@@ -115,4 +115,8 @@ public interface UserRepository extends JpaRepository<User, Long> {
      */
     @Query("SELECT COUNT(u) FROM User u WHERE u.role IN ('EMPLOYEE', 'ADMIN')")
     Long countEmployees();
+
+    // For search functionality
+    Page<User> findByUsernameContainingIgnoreCaseOrBusinessNameContainingIgnoreCase(
+            String username, String businessName, Pageable pageable);
 }

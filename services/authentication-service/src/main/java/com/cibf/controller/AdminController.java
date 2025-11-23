@@ -33,7 +33,6 @@ import java.nio.charset.StandardCharsets;
  */
 @RestController
 @RequestMapping("/api/admin")
-@CrossOrigin(origins = "*")
 @Slf4j
 public class AdminController {
 
@@ -209,5 +208,76 @@ public class AdminController {
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<String> getSettings() {
         return new ResponseEntity<>("Admin Settings - Access Granted", HttpStatus.OK);
+    }
+
+    // ==================== DELETE OPERATIONS ====================
+
+    /**
+     * Delete a user/vendor account (Admin only)
+     * DELETE /api/admin/users/{id}
+     */
+    @DeleteMapping("/users/{id}")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<Map<String, String>> deleteUser(@PathVariable Long id) {
+        log.info("Admin attempting to delete user with ID: {}", id);
+
+        try {
+            userManagementService.deleteUser(id);
+
+            Map<String, String> response = new HashMap<>();
+            response.put("message", "User deleted successfully");
+            response.put("userId", id.toString());
+            response.put("timestamp", String.valueOf(System.currentTimeMillis()));
+
+            return ResponseEntity.ok(response);
+        } catch (Exception e) {
+            log.error("Failed to delete user {}: {}", id, e.getMessage());
+            Map<String, String> errorResponse = new HashMap<>();
+            errorResponse.put("error", e.getMessage());
+            errorResponse.put("userId", id.toString());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(errorResponse);
+        }
+    }
+
+    /**
+     * Delete an employee account (Admin only)
+     * DELETE /api/admin/employees/{id}
+     */
+    @DeleteMapping("/employees/{id}")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<Map<String, String>> deleteEmployee(@PathVariable Long id) {
+        log.info("Admin attempting to delete employee with ID: {}", id);
+
+        try {
+            userManagementService.deleteEmployee(id);
+
+            Map<String, String> response = new HashMap<>();
+            response.put("message", "Employee deleted successfully");
+            response.put("employeeId", id.toString());
+            response.put("timestamp", String.valueOf(System.currentTimeMillis()));
+
+            return ResponseEntity.ok(response);
+        } catch (Exception e) {
+            log.error("Failed to delete employee {}: {}", id, e.getMessage());
+            Map<String, String> errorResponse = new HashMap<>();
+            errorResponse.put("error", e.getMessage());
+            errorResponse.put("employeeId", id.toString());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(errorResponse);
+        }
+    }
+
+    /**
+     * Bulk delete users (Admin only)
+     * DELETE /api/admin/users/bulk
+     * Body: { "userIds": [1, 2, 3] }
+     */
+    @DeleteMapping("/users/bulk")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<Map<String, Object>> bulkDeleteUsers(@RequestBody Map<String, List<Long>> request) {
+        List<Long> userIds = request.get("userIds");
+        log.info("Admin attempting to bulk delete {} users", userIds.size());
+
+        Map<String, Object> result = userManagementService.bulkDeleteUsers(userIds);
+        return ResponseEntity.ok(result);
     }
 }
