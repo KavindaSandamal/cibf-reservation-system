@@ -30,7 +30,6 @@ import java.util.stream.Collectors;
 @RequestMapping("/api/admin/reservations")
 @RequiredArgsConstructor
 @Slf4j
-@CrossOrigin(origins = "*") // Configure properly in production
 public class ReservationAdminController {
 
     private final ReservationService reservationService;
