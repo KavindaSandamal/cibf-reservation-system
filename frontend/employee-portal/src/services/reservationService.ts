@@ -3,24 +3,36 @@ import { Reservation, ReservationResponse, ReservationStatus } from '../types';
 import { generateMockReservations, generateMockStalls, generateMockUsers } from '../utils/mockData';
 
 type PaginatedResponse<T> = {
-  content: T[];
+  content?: T[];           // Spring's default format
+  reservations?: T[];      // Your custom backend format
   totalElements?: number;
+  totalItems?: number;     // Your custom backend format
   totalPages?: number;
   size?: number;
+  pageSize?: number;       // Your custom backend format
   number?: number;
+  currentPage?: number;    // Your custom backend format
 };
 
 type ReservationListResponse = ReservationResponse[] | PaginatedResponse<ReservationResponse>;
 
 const normalizeReservationsResponse = (data: ReservationListResponse): Reservation[] => {
+  // Direct array response
   if (Array.isArray(data)) {
     return data as Reservation[];
   }
 
+  // Spring's default Page format (content property)
   if (Array.isArray(data.content)) {
     return data.content as Reservation[];
   }
 
+  // Your custom backend format (reservations property)
+  if (Array.isArray(data.reservations)) {
+    return data.reservations as Reservation[];
+  }
+
+  console.warn('Unexpected reservation response format:', data);
   return [];
 };
 
@@ -52,10 +64,21 @@ export const reservationService = {
       if (filters?.search) params.search = filters.search;
       if (filters?.startDate) params.startDate = filters.startDate;
       if (filters?.endDate) params.endDate = filters.endDate;
-      if (filters?.page) params.page = filters.page;
+      if (filters?.page !== undefined) params.page = filters.page;
       if (filters?.size) params.size = filters.size;
       
-      const response = await apiClient.get<ReservationListResponse>('/api/admin/reservations', { params });
+      // Using /reservations/reservations to match your backend endpoint
+      const response = await apiClient.get<ReservationListResponse>('/api/admin/reservations/reservations', { params });
+      
+      // Debug logging to see what we're getting
+      console.log('Reservation API Response:', {
+        hasData: !!response.data,
+        isArray: Array.isArray(response.data),
+        hasReservations: !!(response.data as any)?.reservations,
+        hasContent: !!(response.data as any)?.content,
+        keys: response.data ? Object.keys(response.data) : []
+      });
+      
       return normalizeReservationsResponse(response.data);
     } catch (error: any) {
       const isNetworkError =
@@ -81,7 +104,7 @@ export const reservationService = {
   // Get reservation by ID
   getReservationById: async (id: number): Promise<Reservation> => {
     try {
-      const response = await apiClient.get<ReservationResponse>(`/api/admin/reservations/${id}`);
+      const response = await apiClient.get<ReservationResponse>(`/api/admin/reservations/reservations/${id}`);
       return response.data;
     } catch (error: any) {
       if (error.code === 'ERR_NETWORK' || error.message?.includes('Network Error')) {
@@ -94,7 +117,7 @@ export const reservationService = {
   // Confirm a reservation
   confirmReservation: async (id: number): Promise<Reservation> => {
     try {
-      const response = await apiClient.put<ReservationResponse>(`/api/admin/reservations/${id}/confirm`);
+      const response = await apiClient.put<ReservationResponse>(`/api/admin/reservations/reservations/${id}/confirm`);
       return response.data;
     } catch (error: any) {
       if (error.code === 'ERR_NETWORK' || error.message?.includes('Network Error')) {
@@ -107,7 +130,7 @@ export const reservationService = {
   // Cancel a reservation
   cancelReservation: async (id: number): Promise<void> => {
     try {
-      await apiClient.delete(`/api/admin/reservations/${id}`);
+      await apiClient.delete(`/api/admin/reservations/reservations/${id}`);
     } catch (error: any) {
       if (error.code === 'ERR_NETWORK' || error.message?.includes('Network Error')) {
         throw new Error('Backend service unavailable. Please start the reservation service.');
@@ -119,7 +142,7 @@ export const reservationService = {
   // Resend confirmation email
   resendConfirmationEmail: async (id: number): Promise<void> => {
     try {
-      await apiClient.post(`/api/admin/reservations/${id}/resend-email`);
+      await apiClient.post(`/api/admin/reservations/reservations/${id}/resend-email`);
     } catch (error: any) {
       if (error.code === 'ERR_NETWORK' || error.message?.includes('Network Error')) {
         throw new Error('Backend service unavailable. Please start the reservation service.');
@@ -131,7 +154,7 @@ export const reservationService = {
   // Get reservations by user ID
   getReservationsByUserId: async (userId: number): Promise<Reservation[]> => {
     try {
-      const response = await apiClient.get<ReservationListResponse>(`/api/admin/reservations/user/${userId}`);
+      const response = await apiClient.get<ReservationListResponse>(`/api/admin/reservations/reservations/user/${userId}`);
       return normalizeReservationsResponse(response.data);
     } catch (error: any) {
       if (error.code === 'ERR_NETWORK' || error.message?.includes('Network Error')) {
@@ -144,7 +167,7 @@ export const reservationService = {
   // Get reservations by status
   getReservationsByStatus: async (status: ReservationStatus): Promise<Reservation[]> => {
     try {
-      const response = await apiClient.get<ReservationListResponse>(`/api/admin/reservations`, {
+      const response = await apiClient.get<ReservationListResponse>(`/api/admin/reservations/reservations`, {
         params: { status },
       });
       return normalizeReservationsResponse(response.data);
@@ -163,4 +186,3 @@ export const reservationService = {
     }
   },
 };
-
