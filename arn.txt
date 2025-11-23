@@ -85,12 +85,12 @@ try {
 
 # Replace with employee details
 $employeeBody = @{
-    username       = "employee1@cibf.com"
+    username       = "employee4@cibf.com"
     password       = "test123"   # Replace with actual password
-    name           = "Test Employee 1"
-    email          = "Testemployee1@cibf.com"
-    employeeId     = "CIBF-002"
-    contactNumber  = "555-900-8002"
+    name           = "Test Employee 4"
+    email          = "employee4@cibf.com"
+    employeeId     = "CIBF-4"
+    contactNumber  = "555-900-8006"
     department     = "Finance"
 } | ConvertTo-Json
 
@@ -130,11 +130,11 @@ $baseUrl = "http://34.213.51.153/api/stalls"
 
 # Stall data
 $stallBody = @{
-    stallName  = "C7"
+    stallName  = "C8"
     size       = "LARGE"
     dimension  = "20x20"
     locationX  = 950
-    locationY  = 400
+    locationY  = 450
     price      = 25000
     status     = "AVAILABLE"
 } | ConvertTo-Json
@@ -188,5 +188,79 @@ public class CorsConfig {
                         .maxAge(3600);
             }
         };
+    }
+}
+
+
+.....................
+
+# -------------------------------------------
+# PowerShell - Bulk Create Stalls (A to F)
+# -------------------------------------------
+
+$token = "eyJhbGciOiJIUzUxMiJ9.eyJzdWIiOiJlbXBsb3llZTFAY2liZi5jb20iLCJpYXQiOjE3NjM4MDMzMzAsImV4cCI6MTc2Mzg4OTczMH0.mrnIAAj5pUkJ0gc-kx0xmwUOl0cu-mXu7n78_fyJt8C3QIV6Ne27R_0rpfffDtDsos1tc3Aqm0jma2O2jXcgSw"
+$baseUrl = "http://34.213.51.153/api/stalls"
+
+# UI Grid Spacing
+$stallSpacingX = 100
+$stallSpacingY = 100
+
+# Blocks Config
+$stallBlocks = @(
+    @{ block='A'; x=50;  y=50;  rows=3; cols=3 },
+    @{ block='B'; x=350; y=50;  rows=3; cols=3 },
+    @{ block='C'; x=50;  y=280; rows=2; cols=4 },
+    @{ block='D'; x=650; y=280; rows=2; cols=3 },
+    @{ block='E'; x=50;  y=480; rows=2; cols=3 },
+    @{ block='F'; x=350; y=480; rows=2; cols=4 }
+)
+
+$headers = @{
+    "Authorization" = "Bearer $token"
+    "Content-Type" = "application/json"
+}
+
+foreach ($block in $stallBlocks) {
+    $blockName = $block.block
+    $startX = $block.x
+    $startY = $block.y
+    $rows = $block.rows
+    $cols = $block.cols
+    
+    Write-Host "`n=== Creating Stalls for Block $blockName ===" -ForegroundColor Cyan
+    
+    for ($r = 0; $r -lt $rows; $r++) {
+        for ($c = 0; $c -lt $cols; $c++) {
+            
+            # Stall Number (A1, A2, ...)
+            $stallNumber = "$blockName$($r * $cols + $c + 1)"
+            
+            # Position
+            $posX = $startX + ($c * $stallSpacingX)
+            $posY = $startY + ($r * $stallSpacingY)
+            
+            # Stall Payload
+            $stallBody = @{
+                stallName  = $stallNumber
+                size       = "MEDIUM"
+                dimension  = "10x10"
+                locationX  = $posX
+                locationY  = $posY
+                price      = 10000
+                status     = "AVAILABLE"
+            } | ConvertTo-Json
+            
+            try {
+                $resp = Invoke-RestMethod -Uri $baseUrl `
+                                          -Method Post `
+                                          -Headers $headers `
+                                          -Body $stallBody
+                
+                Write-Host "✔ Created Stall $stallNumber at ($posX, $posY)" -ForegroundColor Green
+            }
+            catch {
+                Write-Host "❌ Failed $stallNumber → $($_.Exception.Message)" -ForegroundColor Red
+            }
+        }
     }
 }
