@@ -54,10 +54,16 @@ public class ReservationService {
         }
 
         long currentCount = reservationRepository.countActiveReservationsByUserId(userId);
+        log.info("🔍 Current active reservations for user {}: {}", userId, currentCount);
+        log.info("🔍 Attempting to add {} more stalls", stallIds.size());
+        log.info("🔍 Total would be: {} (MAX: {})", currentCount + stallIds.size(), MAX_STALLS_PER_USER);
+
         if (currentCount + stallIds.size() > MAX_STALLS_PER_USER) {
-            throw new BadRequestException(String.format(
+            String errorMsg = String.format(
                     "You can only reserve up to %d stalls. You currently have %d active reservations.",
-                    MAX_STALLS_PER_USER, currentCount));
+                    MAX_STALLS_PER_USER, currentCount);
+            log.warn("❌ Reservation limit exceeded for user {}: {}", userId, errorMsg);
+            throw new BadRequestException(errorMsg);
         }
 
         List<Long> acquiredLocks = stallIds.stream()
