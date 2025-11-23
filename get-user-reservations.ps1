@@ -1,7 +1,7 @@
 $BASE_URL = "http://34.213.51.153"
 $ADMIN_USERNAME = "admin@cibf.lk"
 $ADMIN_PASSWORD = "admin123"
-$USER_ID = 11
+$USER_ID = 26
 
 [System.Net.ServicePointManager]::ServerCertificateValidationCallback = {$true}
 [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
