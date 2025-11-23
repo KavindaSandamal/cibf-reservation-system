@@ -3,12 +3,12 @@ import { Spinner, Container } from 'react-bootstrap';
 
 function LoadingSpinner({ message = 'Loading...' }) {
   return (
-    <Container className="d-flex flex-column justify-content-center align-items-center" style={{ minHeight: '60vh' }}>
-      <Spinner animation="border" role="status" variant="primary">
-        <span className="visually-hidden">Loading...</span>
-      </Spinner>
-      <p className="mt-3 text-muted">{message}</p>
-    </Container>
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-16 w-16 border-b-4 border-indigo-600 mx-auto mb-4"></div>
+          <h5 className="text-slate-600 font-semibold">{message}..</h5>
+        </div>
+      </div>
   );
 }
 

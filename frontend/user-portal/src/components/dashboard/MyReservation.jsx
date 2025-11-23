@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { Download, Calendar, MapPin, DollarSign, Check, Clock, XCircle, Search, QrCode, Eye, Trash2, AlertCircle } from 'lucide-react';
+import { Download, Calendar, MapPin, DollarSign, Check, XCircle, Search, QrCode, Eye, Trash2, AlertCircle, Edit, Building, FileText } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import reservationApi from '../../services/reservationApi';
+import LoadingSpinner from '../common/LoadingSpinner';
 
 const MyReservationsPage = () => {
   const { user } = useAuth();
@@ -12,15 +13,21 @@ const MyReservationsPage = () => {
   const [loading, setLoading] = useState(true);
   const [selectedReservation, setSelectedReservation] = useState(null);
   const [showDetailModal, setShowDetailModal] = useState(false);
+  const [showUpdateModal, setShowUpdateModal] = useState(false);
   const [notification, setNotification] = useState(null);
   const [cancelling, setCancelling] = useState(false);
+  const [updating, setUpdating] = useState(false);
+  const [confirmDialog, setConfirmDialog] = useState(null);
 
-  const [qrCodes, setQrCodes] = useState({});
-  const [loadingQR, setLoadingQR] = useState({});
+  const [updateForm, setUpdateForm] = useState({
+    notes: '',
+    status: ''
+  });
 
   useEffect(() => {
     if (user?.id) fetchReservations();
-  }, [user]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user?.id]);
 
   const fetchReservations = async () => {
     if (!user?.id) {
@@ -32,8 +39,33 @@ const MyReservationsPage = () => {
     try {
       setLoading(true);
       const response = await reservationApi.get(`/api/reservations/user/${user.id}`);
-      setReservations(response.data);
-      setFilteredReservations(response.data);
+      
+      if (!Array.isArray(response.data)) {
+        console.error('Response data is not an array:', response.data);
+        showNotification('Invalid response format from server', 'error');
+        setReservations([]);
+        setFilteredReservations([]);
+        return;
+      }
+      
+      const transformedData = response.data.map((reservation) => {
+        return {
+          ...reservation,
+          stallName: reservation.stalls?.[0]?.stallName || 'N/A',
+          dimension: reservation.stalls?.[0]?.dimension || 'N/A',
+          size: reservation.stalls?.[0]?.size || 'N/A',
+          price: reservation.stalls?.[0]?.price || reservation.totalAmount || 0,
+          reservationCode: `RES-${reservation.id}`,
+          reservationDate: reservation.createdAt,
+          companyName: reservation.businessName || 'N/A',
+          vendorEmail: reservation.userEmail || 'N/A',
+          vendorName: reservation.businessName || 'N/A',
+          notes: reservation.notes || ''
+        };
+      });
+      
+      setReservations(transformedData);
+      setFilteredReservations(transformedData);
     } catch (error) {
       console.error('Error fetching reservations:', error);
       const errorMessage = error.response?.data?.message || error.response?.data?.error || 'Failed to load reservations';
@@ -48,6 +80,23 @@ const MyReservationsPage = () => {
   const showNotification = (message, type = 'success') => {
     setNotification({ message, type });
     setTimeout(() => setNotification(null), 5000);
+  };
+
+  const showConfirmDialog = (message, onConfirm) => {
+    return new Promise((resolve) => {
+      setConfirmDialog({
+        message,
+        onConfirm: () => {
+          setConfirmDialog(null);
+          resolve(true);
+          onConfirm();
+        },
+        onCancel: () => {
+          setConfirmDialog(null);
+          resolve(false);
+        }
+      });
+    });
   };
 
   useEffect(() => {
@@ -68,46 +117,29 @@ const MyReservationsPage = () => {
 
   const getStatusBadge = (status) => {
     switch (status) {
-      case 'CONFIRMED': return { color: 'success', icon: Check };
-      case 'PENDING': return { color: 'warning', icon: Clock };
-      case 'CANCELLED': return { color: 'danger', icon: XCircle };
-      default: return { color: 'secondary', icon: Clock };
+      case 'CONFIRMED': return { color: 'success', icon: Check, label: 'Confirmed' };
+      case 'CANCELLED': return { color: 'danger', icon: XCircle, label: 'Cancelled' };
+      default: return { color: 'secondary', icon: Check, label: status };
     }
   };
 
-  const getSizeLabel = (size) => size ? size.charAt(0) + size.slice(1).toLowerCase() : 'N/A';
-
-  const fetchQRCode = async (reservationId, reservationCode) => {
-    if (qrCodes[reservationId]) return qrCodes[reservationId];
-    setLoadingQR(prev => ({ ...prev, [reservationId]: true }));
-
-    try {
-      // Trigger backend event (optional)
-      await reservationApi.post('/api/test/rabbitmq/test-qr', {
-        reservationId,
-        qrData: `RESERVATION:${reservationId}:USER:${user.id}`
-      });
-
-      const qrApiUrl = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(`RESERVATION:${reservationId}:${reservationCode}`)}`;
-      setQrCodes(prev => ({ ...prev, [reservationId]: qrApiUrl }));
-      return qrApiUrl;
-    } catch (error) {
-      console.error('Error generating QR code:', error);
-      showNotification('Failed to generate QR code', 'error');
-      return null;
-    } finally {
-      setLoadingQR(prev => ({ ...prev, [reservationId]: false }));
-    }
+  const getSizeLabel = (size) => {
+    if (!size) return 'N/A';
+    return size.charAt(0).toUpperCase() + size.slice(1).toLowerCase();
   };
 
   const downloadQRCode = async (reservation) => {
-    try {
-      const qrUrl = await fetchQRCode(reservation.id, reservation.reservationCode);
-      if (!qrUrl) return;
+    const qrUrl = reservation.qrCodeUrl;
+    if (!qrUrl) {
+      showNotification('QR Code not available', 'error');
+      return;
+    }
 
+    try {
       const response = await fetch(qrUrl);
       const blob = await response.blob();
       const url = window.URL.createObjectURL(blob);
+      
       const link = document.createElement('a');
       link.href = url;
       link.download = `QR_${reservation.reservationCode}.png`;
@@ -118,142 +150,278 @@ const MyReservationsPage = () => {
 
       showNotification('QR Code downloaded successfully', 'success');
     } catch (error) {
-      console.error('Error downloading QR code:', error);
+      console.error(error);
       showNotification('Failed to download QR code', 'error');
     }
   };
 
   const viewDetails = (reservation) => {
+    console.log('Viewing details for reservation:', reservation);
     setSelectedReservation(reservation);
     setShowDetailModal(true);
   };
 
-  const handleCancelReservation = async (reservationId) => {
-    if (!window.confirm('Are you sure you want to cancel this reservation? This action cannot be undone.')) return;
-    if (!user?.id) { showNotification('User not authenticated', 'error'); return; }
+  const openUpdateModal = (reservation) => {
+    setSelectedReservation(reservation);
+    setUpdateForm({
+      notes: reservation.notes || '',
+      status: reservation.status || 'CONFIRMED'
+    });
+    setShowUpdateModal(true);
+  };
 
-    setCancelling(true);
+  const handleUpdateReservation = async () => {
+    if (!selectedReservation) return;
+    
+    // If status is being changed to CANCELLED, call the delete API
+    if (updateForm.status === 'CANCELLED') {
+      showConfirmDialog(
+        'Are you sure you want to cancel this reservation? This action cannot be undone.',
+        async () => {
+          setUpdating(true);
+          showNotification('Processing cancellation...', 'info');
+          
+          try {
+            await reservationApi.delete(`/api/reservations/${selectedReservation.id}`, { 
+              params: { userId: user.id } 
+            });
+            showNotification('✓ Reservation cancelled successfully!', 'success');
+            setShowUpdateModal(false);
+            setSelectedReservation(null);
+            await fetchReservations();
+          } catch (error) {
+            console.error('Error cancelling reservation:', error);
+            const errorMessage = error.response?.data?.message || error.response?.data?.error || 'Failed to cancel reservation';
+            showNotification(`✗ ${errorMessage}`, 'error');
+          } finally {
+            setUpdating(false);
+          }
+        }
+      );
+      return;
+    }
+    
+    // Otherwise, do a normal update
+    setUpdating(true);
+    showNotification('Updating reservation...', 'info');
+    
     try {
-      await reservationApi.delete(`/api/reservations/${reservationId}`, { params: { userId: user.id } });
-      showNotification('Reservation cancelled successfully', 'success');
-      if (showDetailModal && selectedReservation?.id === reservationId) {
-        setShowDetailModal(false);
-        setSelectedReservation(null);
-      }
+      await reservationApi.put(`/api/reservations/${selectedReservation.id}`, updateForm);
+      showNotification('✓ Reservation updated successfully!', 'success');
+      setShowUpdateModal(false);
+      setSelectedReservation(null);
       await fetchReservations();
     } catch (error) {
-      console.error('Error cancelling reservation:', error);
-      const errorMessage = error.response?.data?.message || error.response?.data?.error || 'Failed to cancel reservation';
-      showNotification(errorMessage, 'error');
+      console.error('Error updating reservation:', error);
+      const errorMessage = error.response?.data?.message || error.response?.data?.error || 'Failed to update reservation';
+      showNotification(`✗ ${errorMessage}`, 'error');
     } finally {
-      setCancelling(false);
+      setUpdating(false);
     }
+  };
+
+  const handleCancelReservation = async (reservationId) => {
+    showConfirmDialog(
+      'Are you sure you want to cancel this reservation? This action cannot be undone.',
+      async () => {
+        if (!user?.id) { 
+          showNotification('✗ User not authenticated', 'error'); 
+          return; 
+        }
+
+        setCancelling(true);
+        showNotification('Processing cancellation...', 'info');
+        
+        try {
+          await reservationApi.delete(`/api/reservations/${reservationId}`, { params: { userId: user.id } });
+          showNotification('✓ Reservation cancelled successfully!', 'success');
+          if (showDetailModal && selectedReservation?.id === reservationId) {
+            setShowDetailModal(false);
+            setSelectedReservation(null);
+          }
+          await fetchReservations();
+        } catch (error) {
+          console.error('Error cancelling reservation:', error);
+          const errorMessage = error.response?.data?.message || error.response?.data?.error || 'Failed to cancel reservation';
+          showNotification(`✗ ${errorMessage}`, 'error');
+        } finally {
+          setCancelling(false);
+        }
+      }
+    );
   };
 
   const formatDate = (dateString) => {
     if (!dateString) return 'N/A';
-    try { return new Date(dateString).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' }); }
+    try { 
+      return new Date(dateString).toLocaleDateString('en-US', { 
+        year: 'numeric', 
+        month: 'long', 
+        day: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit'
+      }); 
+    }
     catch { return 'Invalid Date'; }
   };
 
   const handleModalClose = () => {
-    if (cancelling) return;
+    if (cancelling || updating) return;
     setShowDetailModal(false);
+    setShowUpdateModal(false);
     setSelectedReservation(null);
   };
 
-  if (loading) return (
-    <div className="d-flex justify-content-center align-items-center" style={{ minHeight: '100vh' }}>
-      <div className="text-center">
-        <div className="spinner-border text-primary mb-3" role="status" style={{ width: '3rem', height: '3rem' }}>
-          <span className="visually-hidden">Loading...</span>
-        </div>
-        <h5 className="text-secondary">Loading reservations...</h5>
-      </div>
-    </div>
-  );
+  if (loading)  {
+    return <LoadingSpinner message='loading reservations'/>
+  };
 
   return (
-    <div className="bg-light" style={{ minHeight: '100vh', padding: '2rem 0' }}>
+    <div style={{ minHeight: '100vh', padding: '2rem 0', backgroundColor: '#f8f9fa' }}>
       <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet" />
 
-      {/* Notification Toast */}
       {notification && (
         <div className="position-fixed top-0 end-0 p-3" style={{ zIndex: 9999 }}>
-          <div className={`alert alert-${notification.type === 'success' ? 'success' : 'danger'} alert-dismissible fade show d-flex align-items-center`} role="alert">
-            {notification.type === 'success' ? <Check size={20} className="me-2" /> : <AlertCircle size={20} className="me-2" />}
-            <div>{notification.message}</div>
+          <div className={`alert alert-${
+            notification.type === 'success' ? 'success' : 
+            notification.type === 'info' ? 'info' : 
+            'danger'
+          } alert-dismissible fade show d-flex align-items-center shadow-lg border-0`} role="alert">
+            {notification.type === 'success' ? <Check size={20} className="me-2" /> : 
+             notification.type === 'info' ? <AlertCircle size={20} className="me-2" /> :
+             <AlertCircle size={20} className="me-2" />}
+            <div><strong>{notification.message}</strong></div>
             <button type="button" className="btn-close" onClick={() => setNotification(null)}></button>
+          </div>
+        </div>
+      )}
+
+      {/* Confirmation Dialog */}
+      {confirmDialog && (
+        <div 
+          className="modal d-block text-black" 
+          style={{ backgroundColor: 'rgba(0,0,0,0.7)', zIndex: 10000 }}
+        >
+          <div className="modal-dialog modal-dialog-centered">
+            <div className="modal-content border-0 shadow-lg">
+              <div className="modal-header border-0 pb-2">
+                <h5 className="modal-title fw-bold d-flex align-items-center">
+                  <AlertCircle size={24} className="me-2 text-warning" />
+                  Confirm Action
+                </h5>
+              </div>
+              <div className="modal-body pb-2">
+                <p className="mb-0">{confirmDialog.message}</p>
+              </div>
+              <div className="modal-footer border-0 pt-2">
+                <button 
+                  type="button" 
+                  className="btn btn-light px-4" 
+                  onClick={confirmDialog.onCancel}
+                >
+                  Cancel
+                </button>
+                <button 
+                  type="button" 
+                  className="btn btn-danger px-4" 
+                  onClick={confirmDialog.onConfirm}
+                >
+                  <Trash2 size={16} className="me-2" />
+                  Confirm
+                </button>
+              </div>
+            </div>
           </div>
         </div>
       )}
 
       <div className="container-fluid px-4">
         {/* Header */}
-        <div className="card shadow-sm mb-4">
-          <div className="card-body d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center">
-            <div>
-              <h1 className="h2 fw-bold mb-2">My Reservations</h1>
-              <p className="text-muted mb-0">View and manage your stall reservations</p>
-            </div>
-            <div className="mt-3 mt-md-0">
-              <span className="badge bg-primary fs-6 px-3 py-2">{filteredReservations.length} Reservation{filteredReservations.length !== 1 ? 's' : ''}</span>
+        <div className="card shadow-sm mb-4 border-0">
+          <div className="card-body p-4">
+            <div className="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center">
+              <div>
+                <h1 className="h2 fw-bold mb-2" style={{ color: '#1e293b' }}>My Reservations</h1>
+                <p className="text-muted mb-0">Manage and track all your stall bookings</p>
+              </div>
+              <div className="mt-3 mt-md-0">
+                <span className="badge bg-primary fs-5 px-4 py-2 rounded-pill">
+                  {filteredReservations.length} Total
+                </span>
+              </div>
             </div>
           </div>
         </div>
 
         {/* Statistics Cards */}
-        <div className="row g-3 mb-4">
-          <div className="col-6 col-md-3">
-            <div className="card shadow-sm border-start border-5 border-secondary h-100">
-              <div className="card-body">
-                <h6 className="text-muted small mb-1">Total</h6>
-                <h2 className="fw-bold mb-0">{reservations.length}</h2>
+        <div className="row g-4 mb-4">
+          <div className="col-md-6">
+            <div className="card shadow-sm border-0 h-100" style={{ borderLeft: '4px solid #10b981' }}>
+              <div className="card-body p-4">
+                <div className="d-flex justify-content-between align-items-center">
+                  <div>
+                    <p className="text-muted mb-1 text-uppercase small fw-semibold">Active Bookings</p>
+                    <h2 className="fw-bold mb-0" style={{ color: '#10b981' }}>
+                      {reservations.filter(r => r.status === 'CONFIRMED').length}
+                    </h2>
+                  </div>
+                  <div className="rounded-circle p-3" style={{ backgroundColor: '#d1fae5' }}>
+                    <Check size={32} style={{ color: '#10b981' }} />
+                  </div>
+                </div>
               </div>
             </div>
           </div>
-          <div className="col-6 col-md-3">
-            <div className="card shadow-sm border-start border-5 border-success h-100">
-              <div className="card-body">
-                <h6 className="text-muted small mb-1">Confirmed</h6>
-                <h2 className="fw-bold text-success mb-0">{reservations.filter(r => r.status === 'CONFIRMED').length}</h2>
-              </div>
-            </div>
-          </div>
-          <div className="col-6 col-md-3">
-            <div className="card shadow-sm border-start border-5 border-warning h-100">
-              <div className="card-body">
-                <h6 className="text-muted small mb-1">Pending</h6>
-                <h2 className="fw-bold text-warning mb-0">{reservations.filter(r => r.status === 'PENDING').length}</h2>
-              </div>
-            </div>
-          </div>
-          <div className="col-6 col-md-3">
-            <div className="card shadow-sm border-start border-5 border-danger h-100">
-              <div className="card-body">
-                <h6 className="text-muted small mb-1">Cancelled</h6>
-                <h2 className="fw-bold text-danger mb-0">{reservations.filter(r => r.status === 'CANCELLED').length}</h2>
+          <div className="col-md-6">
+            <div className="card shadow-sm border-0 h-100" style={{ borderLeft: '4px solid #ef4444' }}>
+              <div className="card-body p-4">
+                <div className="d-flex justify-content-between align-items-center">
+                  <div>
+                    <p className="text-muted mb-1 text-uppercase small fw-semibold">Cancelled</p>
+                    <h2 className="fw-bold mb-0" style={{ color: '#ef4444' }}>
+                      {reservations.filter(r => r.status === 'CANCELLED').length}
+                    </h2>
+                  </div>
+                  <div className="rounded-circle p-3" style={{ backgroundColor: '#fee2e2' }}>
+                    <XCircle size={32} style={{ color: '#ef4444' }} />
+                  </div>
+                </div>
               </div>
             </div>
           </div>
         </div>
 
         {/* Filters */}
-        <div className="card shadow-sm mb-4">
-          <div className="card-body">
+        <div className="card shadow-sm mb-4 border-0">
+          <div className="card-body p-4">
             <div className="row g-3 align-items-center">
               <div className="col-12 col-md-8">
-                <div className="input-group">
-                  <span className="input-group-text bg-white"><Search size={18} /></span>
-                  <input type="text" className="form-control" placeholder="Search by stall, reservation code, or company..." value={searchTerm} onChange={e => setSearchTerm(e.target.value)} />
+                <div className="input-group input-group-lg">
+                  <span className="input-group-text bg-white border-end-0">
+                    <Search size={20} className="text-muted" />
+                  </span>
+                  <input 
+                    type="text" 
+                    className="form-control border-start-0 ps-0" 
+                    placeholder="Search reservations..." 
+                    value={searchTerm} 
+                    onChange={e => setSearchTerm(e.target.value)}
+                    style={{ fontSize: '1rem' }}
+                  />
                 </div>
               </div>
               <div className="col-12 col-md-4">
-                <select className="form-select" value={statusFilter} onChange={e => setStatusFilter(e.target.value)}>
+                <select 
+                  className="form-select form-select-lg" 
+                  value={statusFilter} 
+                  onChange={e => setStatusFilter(e.target.value)}
+                  style={{ fontSize: '1rem' }}
+                >
                   <option value="ALL">All Status</option>
                   <option value="CONFIRMED">Confirmed</option>
                   <option value="PENDING">Pending</option>
                   <option value="CANCELLED">Cancelled</option>
+                  <option value="EXPIRED">Expired</option>
                 </select>
               </div>
             </div>
@@ -267,32 +435,88 @@ const MyReservationsPage = () => {
             const StatusIcon = statusInfo.icon;
 
             return (
-              <div key={reservation.id} className="col-12 col-md-6 col-lg-4">
-                <div className="card shadow-sm h-100">
-                  <div className="card-body">
+              <div key={reservation.id} className="col-12 col-md-6 col-xl-4">
+                <div className="card shadow-sm h-100 border-0 reservation-card">
+                  <div className="card-body p-4">
+                    {/* Header */}
                     <div className="d-flex justify-content-between align-items-start mb-3">
-                      <div>
-                        <h5 className="fw-bold mb-1">{reservation.stallName || 'N/A'}</h5>
-                        <p className="text-muted small mb-0">{reservation.reservationCode || 'N/A'}</p>
+                      <div className="flex-grow-1">
+                        <h5 className="fw-bold mb-1" style={{ color: '#1e293b' }}>
+                          {reservation.stallName}
+                        </h5>
+                        <p className="text-muted small mb-0">
+                          <code className="bg-light px-2 py-1 rounded">{reservation.reservationCode}</code>
+                        </p>
                       </div>
-                      <span className={`badge bg-${statusInfo.color} d-flex align-items-center gap-1`}><StatusIcon size={14} />{reservation.status}</span>
+                      <span className={`badge bg-${statusInfo.color} d-flex align-items-center gap-1 ms-2`}>
+                        <StatusIcon size={14} />{statusInfo.label}
+                      </span>
                     </div>
 
+                    {/* Details */}
                     <div className="mb-3">
-                      <div className="d-flex align-items-center mb-2"><MapPin size={16} className="text-muted me-2" /><span className="small">{reservation.dimension || 'N/A'} • {getSizeLabel(reservation.size)}</span></div>
-                      <div className="d-flex align-items-center mb-2"><Calendar size={16} className="text-muted me-2" /><span className="small">Reserved: {formatDate(reservation.reservationDate)}</span></div>
-                      <div className="d-flex align-items-center"><DollarSign size={16} className="text-muted me-2" /><span className="fw-bold">${reservation.price || 0}</span></div>
+                      <div className="d-flex align-items-start mb-2">
+                        <MapPin size={18} className="text-primary me-2 mt-1 flex-shrink-0" />
+                        <span className="small">
+                          <strong>{reservation.dimension}</strong> • {getSizeLabel(reservation.size)}
+                        </span>
+                      </div>
+                      <div className="d-flex align-items-start mb-2">
+                        <Calendar size={18} className="text-primary me-2 mt-1 flex-shrink-0" />
+                        <span className="small">{formatDate(reservation.reservationDate)}</span>
+                      </div>
+                      <div className="d-flex align-items-start">
+                        <DollarSign size={18} className="text-primary me-2 mt-1 flex-shrink-0" />
+                        <span className="fw-bold fs-5" style={{ color: '#10b981' }}>
+                          ${reservation.price}
+                        </span>
+                      </div>
                     </div>
 
-                    <div className="mb-3 p-2 bg-light rounded">
-                      <p className="small mb-1 fw-semibold">Company</p>
-                      <p className="small mb-0">{reservation.companyName || 'N/A'}</p>
+                    {/* Company Info */}
+                    <div className="mb-3 p-3 rounded" style={{ backgroundColor: '#f1f5f9' }}>
+                      <div className="d-flex align-items-center mb-2">
+                        <Building size={16} className="text-muted me-2" />
+                        <span className="small text-muted fw-semibold">COMPANY</span>
+                      </div>
+                      <p className="mb-0 fw-medium">{reservation.companyName}</p>
                     </div>
 
-                    <div className="d-flex gap-2">
-                      <button className="btn btn-outline-primary btn-sm flex-fill" onClick={() => viewDetails(reservation)}><Eye size={16} className="me-1" />Details</button>
-                      {reservation.status === 'CONFIRMED' && <button className="btn btn-primary btn-sm flex-fill" onClick={() => downloadQRCode(reservation)}><Download size={16} className="me-1" />QR</button>}
-                      {(reservation.status === 'PENDING' || reservation.status === 'CONFIRMED') && <button className="btn btn-outline-danger btn-sm" onClick={() => handleCancelReservation(reservation.id)} disabled={cancelling} title="Cancel Reservation"><Trash2 size={16} /></button>}
+                    {/* Actions */}
+                    <div className="d-flex gap-2 flex-wrap">
+                      <button 
+                        className="btn btn-outline-primary btn-sm flex-fill" 
+                        onClick={() => viewDetails(reservation)}
+                      >
+                        <Eye size={16} className="me-1" />View
+                      </button>
+                      {reservation.status === 'CONFIRMED' && (
+                        <>
+                          {reservation.qrCodeUrl && (
+                            <button 
+                              className="btn btn-primary btn-sm flex-fill" 
+                              onClick={() => downloadQRCode(reservation)}
+                            >
+                              <Download size={16} className="me-1" />QR
+                            </button>
+                          )}
+                          <button 
+                            className="btn btn-outline-secondary btn-sm" 
+                            onClick={() => openUpdateModal(reservation)} 
+                            title="Edit"
+                          >
+                            <Edit size={16} />
+                          </button>
+                          <button 
+                            className="btn btn-outline-danger btn-sm" 
+                            onClick={() => handleCancelReservation(reservation.id)} 
+                            disabled={cancelling}
+                            title="Cancel"
+                          >
+                            <Trash2 size={16} />
+                          </button>
+                        </>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -302,12 +526,23 @@ const MyReservationsPage = () => {
         </div>
 
         {filteredReservations.length === 0 && !loading && (
-          <div className="card shadow-sm">
+          <div className="card shadow-sm border-0">
             <div className="card-body text-center py-5">
-              <QrCode size={64} className="text-muted mb-3" />
-              <h5 className="text-muted">No reservations found</h5>
-              <p className="text-muted small">{searchTerm || statusFilter !== 'ALL' ? 'Try adjusting your search or filters' : 'You have not made any reservations yet'}</p>
-              {(searchTerm || statusFilter !== 'ALL') && <button className="btn btn-outline-primary mt-3" onClick={() => { setSearchTerm(''); setStatusFilter('ALL'); }}>Clear Filters</button>}
+              <QrCode size={64} className="text-muted mb-3 opacity-50" />
+              <h5 className="text-muted mb-2">No reservations found</h5>
+              <p className="text-muted small">
+                {searchTerm || statusFilter !== 'ALL' 
+                  ? 'Try adjusting your search or filters' 
+                  : 'You have not made any reservations yet'}
+              </p>
+              {(searchTerm || statusFilter !== 'ALL') && (
+                <button 
+                  className="btn btn-outline-primary mt-3" 
+                  onClick={() => { setSearchTerm(''); setStatusFilter('ALL'); }}
+                >
+                  Clear Filters
+                </button>
+              )}
             </div>
           </div>
         )}
@@ -315,55 +550,151 @@ const MyReservationsPage = () => {
 
       {/* Detail Modal */}
       {showDetailModal && selectedReservation && (
-        <div className="modal d-block" style={{ backgroundColor: 'rgba(0,0,0,0.5)' }} onClick={handleModalClose}>
-          <div className="modal-dialog modal-dialog-centered modal-dialog-scrollable modal-lg" onClick={e => e.stopPropagation()}>
-            <div className="modal-content">
-              <div className="modal-header">
-                <h5 className="modal-title fw-bold">Reservation Details</h5>
-                <button type="button" className="btn-close" onClick={handleModalClose} disabled={cancelling}></button>
+        <div 
+          className="modal d-block" 
+          style={{ backgroundColor: 'rgba(0,0,0,0.6)' }} 
+          onClick={handleModalClose}
+        >
+          <div 
+            className="modal-dialog modal-dialog-centered modal-dialog-scrollable modal-lg" 
+            onClick={e => e.stopPropagation()}
+          >
+            <div className="modal-content border-0 shadow-lg">
+              {/* Modal Header */}
+              <div className="modal-header border-0 pb-0" style={{ backgroundColor: '#f8fafc' }}>
+                <div>
+                  <h5 className="modal-title fw-bold mb-1">Reservation Details</h5>
+                  <p className="text-muted small mb-0">Complete information about your booking</p>
+                </div>
+                <button 
+                  type="button" 
+                  className="btn-close" 
+                  onClick={handleModalClose} 
+                  disabled={cancelling}
+                ></button>
               </div>
-              <div className="modal-body">
-                <div className="row">
-                  <div className="col-md-8">
-                    <div className="alert alert-primary mb-4">
-                      <h5 className="fw-bold mb-2">{selectedReservation.stallName || 'N/A'}</h5>
-                      <p className="mb-1 small"><strong>Reservation Code:</strong> {selectedReservation.reservationCode || 'N/A'}</p>
-                      <span className={`badge bg-${getStatusBadge(selectedReservation.status).color}`}>{selectedReservation.status}</span>
-                    </div>
 
-                    <div className="mb-3">
-                      <h6 className="fw-semibold mb-2">Stall Information</h6>
-                      <div className="p-3 bg-light rounded">
-                        <p className="mb-2"><strong>Dimensions:</strong> {selectedReservation.dimension || 'N/A'}</p>
-                        <p className="mb-2"><strong>Size:</strong> {getSizeLabel(selectedReservation.size)}</p>
-                        <p className="mb-0"><strong>Price:</strong> ${selectedReservation.price || 0}</p>
+              {/* Modal Body */}
+              <div className="modal-body p-4">
+                <div className="row g-4">
+                  {/* Left Column */}
+                  <div className="col-md-7">
+                    {/* Status Badge */}
+                    <div className={`alert alert-${getStatusBadge(selectedReservation.status).color} border-0 mb-4`}>
+                      <div className="d-flex align-items-center justify-content-between">
+                        <div>
+                          <h5 className="fw-bold mb-2">{selectedReservation.stallName}</h5>
+                          <p className="mb-0 small">
+                            <strong>Code:</strong> <code>{selectedReservation.reservationCode}</code>
+                          </p>
+                        </div>
+                        <span className={`badge bg-${getStatusBadge(selectedReservation.status).color} fs-6 px-3 py-2`}>
+                          {getStatusBadge(selectedReservation.status).label}
+                        </span>
                       </div>
                     </div>
 
-                    <div className="mb-3">
-                      <h6 className="fw-semibold mb-2">Vendor Information</h6>
-                      <div className="p-3 bg-light rounded">
-                        <p className="mb-2"><strong>Name:</strong> {selectedReservation.vendorName || 'N/A'}</p>
-                        <p className="mb-2"><strong>Company:</strong> {selectedReservation.companyName || 'N/A'}</p>
-                        <p className="mb-2"><strong>Email:</strong> {selectedReservation.vendorEmail || 'N/A'}</p>
-                        <p className="mb-0"><strong>Phone:</strong> {selectedReservation.vendorPhone || 'N/A'}</p>
+                    {/* Stall Information */}
+                    <div className="mb-4">
+                      <h6 className="fw-bold mb-3 d-flex align-items-center" style={{ color: '#1e293b' }}>
+                        <MapPin size={20} className="me-2 text-primary" />
+                        Stall Information
+                      </h6>
+                      <div className="card border-0 shadow-sm">
+                        <div className="card-body">
+                          <div className="row g-3">
+                            <div className="col-6">
+                              <p className="text-muted small mb-1">Dimensions</p>
+                              <p className="fw-semibold mb-0">{selectedReservation.dimension}</p>
+                            </div>
+                            <div className="col-6">
+                              <p className="text-muted small mb-1">Size Category</p>
+                              <p className="fw-semibold mb-0">{getSizeLabel(selectedReservation.size)}</p>
+                            </div>
+                            <div className="col-6">
+                              <p className="text-muted small mb-1">Total Price</p>
+                              <p className="fw-bold mb-0 fs-5" style={{ color: '#10b981' }}>
+                                ${selectedReservation.price}
+                              </p>
+                            </div>
+                            <div className="col-6">
+                              <p className="text-muted small mb-1">Booked On</p>
+                              <p className="fw-semibold mb-0 small">
+                                {formatDate(selectedReservation.reservationDate)}
+                              </p>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Business Information */}
+                    <div>
+                      <h6 className="fw-bold mb-3 d-flex align-items-center" style={{ color: '#1e293b' }}>
+                        <Building size={20} className="me-2 text-primary" />
+                        Business Details
+                      </h6>
+                      <div className="card border-0 shadow-sm">
+                        <div className="card-body">
+                          <div className="mb-3">
+                            <div className="d-flex align-items-center mb-2">
+                              <Building size={16} className="text-muted me-2" />
+                              <span className="text-muted small">Company Name</span>
+                            </div>
+                            <p className="fw-semibold mb-0 ms-4">{selectedReservation.companyName}</p>
+                          </div>
+                          {selectedReservation.notes && (
+                            <div>
+                              <div className="d-flex align-items-center mb-2">
+                                <FileText size={16} className="text-muted me-2" />
+                                <span className="text-muted small">Additional Notes</span>
+                              </div>
+                              <p className="mb-0 ms-4 small text-muted fst-italic">
+                                {selectedReservation.notes}
+                              </p>
+                            </div>
+                          )}
+                        </div>
                       </div>
                     </div>
                   </div>
-                  <div className="col-md-4 text-center">
-                    <h6 className="fw-semibold mb-2">QR Code</h6>
-                    {loadingQR[selectedReservation.id] ? (
-                      <div className="spinner-border text-primary my-4" role="status">
-                        <span className="visually-hidden">Loading...</span>
-                      </div>
-                    ) : (
-                      <img
-                        src={qrCodes[selectedReservation.id] || `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(`RESERVATION:${selectedReservation.id}:${selectedReservation.reservationCode}`)}`}
-                        alt="QR Code"
-                        className="img-fluid border rounded"
-                      />
-                    )}
-                    <button className="btn btn-primary btn-sm mt-3" onClick={() => downloadQRCode(selectedReservation)}>Download QR</button>
+
+                  {/* Right Column - QR Code */}
+                  <div className="col-md-5">
+                    <div className="text-center sticky-top" style={{ top: '1rem' }}>
+                      <h6 className="fw-bold mb-3">Access QR Code</h6>
+                      {selectedReservation.qrCodeUrl ? (
+                        <>
+                          <div className="card border-0 shadow-sm mb-3">
+                            <div className="card-body p-3">
+                              <img
+                                src={selectedReservation.qrCodeUrl}
+                                alt="Reservation QR Code"
+                                className="img-fluid rounded"
+                                style={{ maxWidth: '250px' }}
+                              />
+                            </div>
+                          </div>
+                          <button 
+                            className="btn btn-primary w-100" 
+                            onClick={() => downloadQRCode(selectedReservation)}
+                          >
+                            <Download size={18} className="me-2" />
+                            Download QR Code
+                          </button>
+                          <p className="text-muted small mt-3 mb-0">
+                            Use this QR code for entry verification
+                          </p>
+                        </>
+                      ) : (
+                        <div className="card border-0 shadow-sm">
+                          <div className="card-body text-center py-5">
+                            <QrCode size={48} className="text-muted mb-3 opacity-50" />
+                            <p className="text-muted small mb-0">QR Code not available</p>
+                          </div>
+                        </div>
+                      )}
+                    </div>
                   </div>
                 </div>
               </div>
@@ -371,6 +702,114 @@ const MyReservationsPage = () => {
           </div>
         </div>
       )}
+
+      {/* Update Modal - Only Notes and Status */}
+      {showUpdateModal && selectedReservation && (
+        <div 
+          className="modal d-block" 
+          style={{ backgroundColor: 'rgba(0,0,0,0.6)' }} 
+          onClick={handleModalClose}
+        >
+          <div 
+            className="modal-dialog modal-dialog-centered" 
+            onClick={e => e.stopPropagation()}
+          >
+            <div className="modal-content border-0 shadow-lg">
+              <div className="modal-header border-0" style={{ backgroundColor: '#f8fafc' }}>
+                <div>
+                  <h5 className="modal-title fw-bold mb-1">Update Reservation</h5>
+                  <p className="text-muted small mb-0">Modify status and notes</p>
+                </div>
+                <button 
+                  type="button" 
+                  className="btn-close" 
+                  onClick={handleModalClose} 
+                  disabled={updating}
+                ></button>
+              </div>
+              <div className="modal-body p-4">
+                <div className="mb-3">
+                  <label className="form-label fw-semibold text-black">
+                    Reservation Status
+                  </label>
+                  <select
+                    className="form-select form-select-lg "
+                    value={updateForm.status}
+                    onChange={e => setUpdateForm({...updateForm, status: e.target.value})}
+                  >
+                    <option value="CONFIRMED">Confirmed</option>
+                    <option value="CANCELLED">Cancelled</option>
+                  </select>
+                </div>
+                <div className="mb-3">
+                  <label className="form-label fw-semibold text-black">Additional Notes</label>
+                  <textarea
+                    className="form-control"
+                    rows="5"
+                    value={updateForm.notes}
+                    onChange={e => setUpdateForm({...updateForm, notes: e.target.value})}
+                    placeholder="Add any special requirements or notes..."
+                  ></textarea>
+                </div>
+                <div className="alert alert-info border-0 d-flex align-items-start">
+                  <AlertCircle size={20} className="me-2 mt-1 flex-shrink-0" />
+                  <small>Update the reservation status or add/modify notes for your booking.</small>
+                </div>
+              </div>
+              <div className="modal-footer border-0 pt-0">
+                <button 
+                  type="button" 
+                  className="btn btn-light" 
+                  onClick={handleModalClose} 
+                  disabled={updating}
+                >
+                  Cancel
+                </button>
+                <button 
+                  type="button" 
+                  className="btn btn-primary" 
+                  onClick={handleUpdateReservation} 
+                  disabled={updating}
+                >
+                  {updating ? (
+                    <>
+                      <span className="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+                      Updating...
+                    </>
+                  ) : (
+                    <>
+                      <Check size={18} className="me-2" />
+                      Save Changes
+                    </>
+                  )}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      <style>{`
+        .reservation-card {
+          transition: all 0.3s ease;
+        }
+        .reservation-card:hover {
+          transform: translateY(-4px);
+          box-shadow: 0 0.5rem 1.5rem rgba(0,0,0,0.15) !important;
+        }
+        .modal {
+          backdrop-filter: blur(4px);
+        }
+        code {
+          font-size: 0.875rem;
+        }
+        .btn {
+          transition: all 0.2s ease;
+        }
+        .btn:hover:not(:disabled) {
+          transform: translateY(-1px);
+        }
+      `}</style>
     </div>
   );
 };
