@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { motion } from 'framer-motion';
 import { reservationService } from '../services/reservationService';
 import { Reservation, ReservationStatus } from '../types';
@@ -16,21 +16,38 @@ const ReservationsManagementPage: React.FC = () => {
   const [endDate, setEndDate] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage] = useState(10);
+  const [totalItems, setTotalItems] = useState(0);
+  const [totalPages, setTotalPages] = useState(0);
+  const searchTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const prevSearchQueryRef = useRef<string>(searchQuery);
 
-  // Load reservations on mount and when filters change
+  // Load reservations with debounced search
   useEffect(() => {
     const loadData = async () => {
       try {
         setLoading(true);
-        const data = await reservationService.getAllReservations({
+        const result = await reservationService.getAllReservations({
           status: statusFilter,
-          search: searchQuery || undefined,
+          search: searchQuery.trim() || undefined, // Trim whitespace and send only if not empty
           startDate: startDate || undefined,
           endDate: endDate || undefined,
           page: currentPage,
           size: itemsPerPage,
         });
-        setReservations(data);
+        setReservations(result.reservations);
+        // Update pagination info from backend
+        if (result.pagination) {
+          setTotalItems(result.pagination.totalItems);
+          setTotalPages(result.pagination.totalPages);
+          // Sync current page if backend returned different page
+          if (result.pagination.currentPage !== currentPage) {
+            setCurrentPage(result.pagination.currentPage);
+          }
+        } else {
+          // No pagination info (fallback to array length)
+          setTotalItems(result.reservations.length);
+          setTotalPages(result.reservations.length > 0 ? 1 : 0);
+        }
       } catch (error: any) {
         const errorMessage = error.response?.status === 403 
           ? 'Access denied. Please ensure you are logged in with an employee account.'
@@ -51,20 +68,48 @@ const ReservationsManagementPage: React.FC = () => {
       }
     };
     
-    loadData();
-  }, [currentPage, statusFilter, searchQuery, startDate, endDate, itemsPerPage]);
+    // Check if search query changed
+    const searchChanged = prevSearchQueryRef.current !== searchQuery;
+    prevSearchQueryRef.current = searchQuery;
+    
+    // Clear any existing timeout
+    if (searchTimeoutRef.current) {
+      clearTimeout(searchTimeoutRef.current);
+      searchTimeoutRef.current = null;
+    }
+    
+    // If search changed and has value, debounce it; otherwise load immediately
+    if (searchChanged && searchQuery.trim().length > 0) {
+      // Debounce search queries (500ms)
+      searchTimeoutRef.current = setTimeout(() => {
+        loadData();
+        searchTimeoutRef.current = null;
+      }, 500);
+    } else {
+      // Immediate load for other filters or empty search
+      loadData();
+    }
+    
+    // Cleanup function
+    return () => {
+      if (searchTimeoutRef.current) {
+        clearTimeout(searchTimeoutRef.current);
+        searchTimeoutRef.current = null;
+      }
+    };
+  }, [currentPage, statusFilter, startDate, endDate, itemsPerPage, searchQuery]);
 
-  // Reset to first page when filters change
+  // Reset to first page when filters change (except search which is handled separately)
   useEffect(() => {
     if (currentPage !== 1) {
       setCurrentPage(1);
     }
-  }, [statusFilter, searchQuery, startDate, endDate]);
+  }, [statusFilter, startDate, endDate]);
 
   const reloadReservations = async () => {
     try {
       setLoading(true);
-      const data = await reservationService.getAllReservations({
+      const result = await reservationService.getAllReservations({
         status: statusFilter,
         search: searchQuery || undefined,
         startDate: startDate || undefined,
@@ -72,7 +117,17 @@ const ReservationsManagementPage: React.FC = () => {
         page: currentPage,
         size: itemsPerPage,
       });
-      setReservations(data);
+      setReservations(result.reservations);
+      if (result.pagination) {
+        setTotalItems(result.pagination.totalItems);
+        setTotalPages(result.pagination.totalPages);
+        if (result.pagination.currentPage !== currentPage) {
+          setCurrentPage(result.pagination.currentPage);
+        }
+      } else {
+        setTotalItems(result.reservations.length);
+        setTotalPages(result.reservations.length > 0 ? 1 : 0);
+      }
     } catch (error: any) {
       toast.error('Failed to reload reservations');
       console.error('Error reloading reservations:', error);
@@ -131,11 +186,9 @@ const ReservationsManagementPage: React.FC = () => {
     setIsModalOpen(true);
   };
 
-  // Calculate pagination based on all reservations
-  const pageCount = Math.max(1, Math.ceil(reservations.length / itemsPerPage));
-  const startIndex = (currentPage - 1) * itemsPerPage;
-  const endIndex = startIndex + itemsPerPage;
-  const paginatedReservations = reservations.slice(startIndex, endIndex);
+  // Use server-side pagination - reservations are already paginated from backend
+  // Don't slice the array, use it as-is
+  const paginatedReservations = reservations;
 
   const statusColors = {
     [ReservationStatus.PENDING]: 'bg-amber-500/20 text-amber-300 border-amber-500/30',
@@ -192,7 +245,7 @@ const ReservationsManagementPage: React.FC = () => {
                 type="text"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Search by ID, user name, email..."
+                placeholder="Search by ID, email, or business name..."
                 className="w-full rounded-xl border border-slate-600 bg-slate-800/60 px-4 py-2.5 text-white placeholder:text-slate-400 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 outline-none"
               />
             </div>
@@ -367,10 +420,10 @@ const ReservationsManagementPage: React.FC = () => {
           </div>
 
           {/* Pagination */}
-          {pageCount > 1 && (
+          {totalPages > 1 && (
             <div className="px-6 py-4 border-t border-slate-700 flex items-center justify-between">
               <div className="text-sm text-slate-400">
-                Showing {reservations.length === 0 ? 0 : startIndex + 1} to {Math.min(endIndex, reservations.length)} of {reservations.length} reservations
+                Showing {((currentPage - 1) * itemsPerPage) + 1} to {Math.min(currentPage * itemsPerPage, totalItems)} of {totalItems} reservations
               </div>
               <div className="flex items-center gap-2">
                 <button
@@ -388,18 +441,18 @@ const ReservationsManagementPage: React.FC = () => {
                   Previous
                 </button>
                 <span className="text-sm text-slate-300">
-                  Page {currentPage} of {pageCount}
+                  Page {currentPage} of {totalPages}
                 </span>
                 <button
                   onClick={() => setCurrentPage(currentPage + 1)}
-                  disabled={currentPage >= pageCount}
+                  disabled={currentPage >= totalPages}
                   className="px-3 py-1.5 bg-slate-800/60 hover:bg-slate-700 text-white text-sm font-semibold rounded-lg transition disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   Next
                 </button>
                 <button
-                  onClick={() => setCurrentPage(pageCount)}
-                  disabled={currentPage >= pageCount}
+                  onClick={() => setCurrentPage(totalPages)}
+                  disabled={currentPage >= totalPages}
                   className="px-3 py-1.5 bg-slate-800/60 hover:bg-slate-700 text-white text-sm font-semibold rounded-lg transition disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   Last
