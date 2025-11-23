@@ -1,7 +1,6 @@
 package com.cibf.service;
 
 import com.cibf.config.RabbitMQConfig;
-import com.cibf.dto.ReservationConfirmationDto;
 import com.cibf.entity.Reservation;
 import com.cibf.repository.ReservationRepository;
 import lombok.RequiredArgsConstructor;
@@ -9,7 +8,6 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.amqp.rabbit.annotation.RabbitListener;
 import org.springframework.stereotype.Service;
 
-import java.math.BigDecimal;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -22,6 +20,7 @@ public class ReservationConsumer {
     private final EventPublisherService eventPublisher;
     private final ReservationRepository reservationRepository;
     private final QRCodeService qrCodeService;
+    private final EmailTemplateService emailTemplateService;
 
     /**
      * Main consumer: Receives reservation confirmed events and orchestrates
@@ -56,7 +55,6 @@ public class ReservationConsumer {
         Long userId = ((Number) event.get("userId")).longValue();
         String userEmail = (String) event.get("userEmail");
 
-        // FIX: Safely convert stallIds from List<Integer> or List<Long> to List<Long>
         @SuppressWarnings("unchecked")
         List<Long> stallIds = ((List<?>) event.get("stallIds")).stream()
                 .map(id -> id instanceof Long ? (Long) id : ((Number) id).longValue())
@@ -73,11 +71,6 @@ public class ReservationConsumer {
         try {
             log.info("📱 Generating QR code for reservation {}", reservationId);
 
-            String qrData = String.format("RESERVATION:%d:USER:%d:STALLS:%s",
-                    reservationId, userId, stallIds.stream()
-                            .map(String::valueOf)
-                            .collect(Collectors.joining(",")));
-
             String qrCodeUrl = qrCodeService.generateAndUploadQRCode(
                     reservationId,
                     reservation.getBusinessName(),
@@ -89,72 +82,40 @@ public class ReservationConsumer {
 
             log.info("✅ QR code generated and saved: {}", qrCodeUrl);
 
-            // 2. Send Email with QR code
+            // 2. Send HTML Email with QR code
             publishEmailWithQR(reservation, userEmail, qrCodeUrl, stallIds);
 
         } catch (Exception e) {
             log.error("❌ Failed to generate QR code for reservation {}", reservationId, e);
 
-            // Send email without QR code
+            // Send HTML email without QR code
             publishEmailWithoutQR(reservation, userEmail, stallIds);
         }
     }
 
     /**
-     * Send email with QR code
+     * Send HTML email with QR code
      */
     private void publishEmailWithQR(Reservation reservation, String userEmail,
             String qrCodeUrl, List<Long> stallIds) {
         String emailSubject = "✅ Reservation Confirmed - #" + reservation.getId();
-        String emailContent = String.format(
-                "Dear %s,\n\n" +
-                        "Your reservation has been confirmed!\n\n" +
-                        "📋 Reservation Details:\n" +
-                        "   - Reservation ID: %d\n" +
-                        "   - Business Name: %s\n" +
-                        "   - Stall IDs: %s\n" +
-                        "   - Total Amount: $%.2f\n\n" +
-                        "📱 Your QR Code: %s\n\n" +
-                        "Please present this QR code at the venue.\n\n" +
-                        "Thank you for your reservation!\n\n" +
-                        "Best regards,\n" +
-                        "CIBF Reservation Team",
-                reservation.getBusinessName(),
-                reservation.getId(),
-                reservation.getBusinessName(),
-                stallIds.stream().map(String::valueOf).collect(Collectors.joining(", ")),
-                reservation.getTotalAmount(),
-                qrCodeUrl);
+        String htmlContent = emailTemplateService.generateConfirmationEmailWithQR(
+                reservation, qrCodeUrl, stallIds);
 
-        eventPublisher.publishEmailEvent(userEmail, emailSubject, emailContent);
-        log.info("✅ Email event (with QR) published for reservation {}", reservation.getId());
+        eventPublisher.publishEmailEvent(userEmail, emailSubject, htmlContent);
+        log.info("✅ HTML email event (with QR) published for reservation {}", reservation.getId());
     }
 
     /**
-     * Send email without QR code (fallback)
+     * Send HTML email without QR code (fallback)
      */
     private void publishEmailWithoutQR(Reservation reservation, String userEmail, List<Long> stallIds) {
         String emailSubject = "✅ Reservation Confirmed - #" + reservation.getId();
-        String emailContent = String.format(
-                "Dear %s,\n\n" +
-                        "Your reservation has been confirmed!\n\n" +
-                        "📋 Reservation Details:\n" +
-                        "   - Reservation ID: %d\n" +
-                        "   - Business Name: %s\n" +
-                        "   - Stall IDs: %s\n" +
-                        "   - Total Amount: $%.2f\n\n" +
-                        "⚠️ Your QR code is being generated and will be sent separately.\n\n" +
-                        "Thank you for your reservation!\n\n" +
-                        "Best regards,\n" +
-                        "CIBF Reservation Team",
-                reservation.getBusinessName(),
-                reservation.getId(),
-                reservation.getBusinessName(),
-                stallIds.stream().map(String::valueOf).collect(Collectors.joining(", ")),
-                reservation.getTotalAmount());
+        String htmlContent = emailTemplateService.generateConfirmationEmailWithoutQR(
+                reservation, stallIds);
 
-        eventPublisher.publishEmailEvent(userEmail, emailSubject, emailContent);
-        log.info("✅ Email event (without QR) published for reservation {}", reservation.getId());
+        eventPublisher.publishEmailEvent(userEmail, emailSubject, htmlContent);
+        log.info("✅ HTML email event (without QR) published for reservation {}", reservation.getId());
     }
 
     /**
@@ -162,7 +123,6 @@ public class ReservationConsumer {
      */
     private void processReservationCancelled(Map<String, Object> event) {
         Long reservationId = ((Number) event.get("reservationId")).longValue();
-        Long userId = ((Number) event.get("userId")).longValue();
 
         log.info("Processing reservation cancellation: reservationId={}", reservationId);
 
@@ -170,18 +130,11 @@ public class ReservationConsumer {
                 .orElseThrow(() -> new RuntimeException("Reservation not found: " + reservationId));
 
         String emailSubject = "❌ Reservation Cancelled - #" + reservationId;
-        String emailContent = String.format(
-                "Dear %s,\n\n" +
-                        "Your reservation (ID: %d) has been cancelled.\n\n" +
-                        "If you did not request this cancellation, please contact support.\n\n" +
-                        "Best regards,\n" +
-                        "CIBF Reservation Team",
-                reservation.getBusinessName(),
-                reservationId);
+        String htmlContent = emailTemplateService.generateCancellationEmail(reservation);
 
         if (reservation.getUserEmail() != null) {
-            eventPublisher.publishEmailEvent(reservation.getUserEmail(), emailSubject, emailContent);
-            log.info("✅ Cancellation email event published for reservation {}", reservationId);
+            eventPublisher.publishEmailEvent(reservation.getUserEmail(), emailSubject, htmlContent);
+            log.info("✅ HTML cancellation email event published for reservation {}", reservationId);
         }
     }
 }
