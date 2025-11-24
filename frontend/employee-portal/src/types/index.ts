@@ -97,18 +97,26 @@ export interface DashboardStats {
   }[];
 }
 
-// Reservation Response
+// Reservation Response - matches backend ReservationResponse DTO
 export interface ReservationResponse {
   id: number;
-  userId: number;
-  reservationDate: string;
-  status: ReservationStatus;
+  userId?: number;
+  stallId?: number;
+  userEmail?: string;
+  businessName?: string;
+  status: string; // Backend returns String from ReservationStatus.name()
+  totalAmount: number | string; // Backend returns BigDecimal
+  notes?: string;
+  createdAt: string | Date; // Backend returns LocalDateTime
+  confirmedAt?: string | Date; // Backend returns LocalDateTime
   qrCodeUrl?: string;
-  createdAt: string;
-  confirmedAt?: string;
-  cancelledAt?: string;
-  totalAmount: number;
-  stalls: Stall[];
+  stalls?: Array<{
+    id: number;
+    stallName: string;
+    size: string;
+    dimension?: string;
+    price: number | string;
+  }>;
   user?: {
     id: number;
     email: string;
@@ -131,12 +139,14 @@ export interface StallResponse {
 }
 
 // User Response
+// Backend UserResponse DTO - matches com.cibf.dto.UserResponse
 export interface UserResponse {
   id: number;
   email: string;
-  firstName: string;
-  lastName: string;
   businessName?: string;
-  createdAt: string;
+  contactNumber?: string;
+  address?: string;
+  role?: string;
+  createdAt: string | Date; // Backend returns LocalDateTime
 }
 
