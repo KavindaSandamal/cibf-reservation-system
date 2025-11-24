@@ -31,20 +31,26 @@ const UserDetailModal: React.FC<UserDetailModalProps> = ({
     try {
       setLoading(true);
       
-      // Load user profile
+      // Load user profile (if endpoint exists)
       try {
         const profile = await userService.getUserProfile(user.id);
         setUserProfile(profile);
-      } catch (error) {
-        console.warn('User profile not available');
+      } catch (error: any) {
+        // Silently handle 404 - endpoint may not exist
+        if (error.response?.status !== 404) {
+          console.warn('User profile not available:', error.message);
+        }
       }
       
-      // Load user genres
+      // Load user genres (if endpoint exists)
       try {
         const genres = await userService.getUserGenres(user.id);
         setUserGenres(genres);
-      } catch (error) {
-        console.warn('User genres not available');
+      } catch (error: any) {
+        // Silently handle 404 - endpoint may not exist
+        if (error.response?.status !== 404) {
+          console.warn('User genres not available:', error.message);
+        }
       }
       
       // Load user reservations
@@ -114,7 +120,9 @@ const UserDetailModal: React.FC<UserDetailModalProps> = ({
                     <div>
                       <label className="block text-sm font-medium text-slate-400 mb-1">Name</label>
                       <p className="text-white">
-                        {user.firstName} {user.lastName}
+                        {user.firstName && user.lastName 
+                          ? `${user.firstName} ${user.lastName}`
+                          : user.businessName || user.email || 'N/A'}
                       </p>
                     </div>
                     <div>
@@ -129,7 +137,18 @@ const UserDetailModal: React.FC<UserDetailModalProps> = ({
                     )}
                     <div>
                       <label className="block text-sm font-medium text-slate-400 mb-1">Joined Date</label>
-                      <p className="text-white">{new Date(user.createdAt).toLocaleDateString()}</p>
+                      <p className="text-white">
+                        {user.createdAt 
+                          ? (() => {
+                              try {
+                                const date = new Date(user.createdAt);
+                                return isNaN(date.getTime()) ? 'N/A' : date.toLocaleDateString();
+                              } catch (e) {
+                                return 'N/A';
+                              }
+                            })()
+                          : 'N/A'}
+                      </p>
                     </div>
                   </div>
                 </div>
@@ -179,21 +198,42 @@ const UserDetailModal: React.FC<UserDetailModalProps> = ({
                               </span>
                             </div>
                             <span className="text-sm font-bold text-white">
-                              ${reservation.totalAmount.toLocaleString()}
+                              ${reservation.totalAmount != null && reservation.totalAmount !== undefined
+                                ? Number(reservation.totalAmount).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+                                : '0.00'}
                             </span>
                           </div>
                           <div className="text-sm text-slate-400">
-                            Date: {new Date(reservation.reservationDate).toLocaleDateString()}
+                            Date: {(() => {
+                              // Try reservationDate first, then createdAt, then show N/A
+                              const dateStr = reservation.reservationDate || reservation.createdAt;
+                              if (!dateStr) return 'N/A';
+                              
+                              try {
+                                const date = new Date(dateStr);
+                                // Check if date is valid
+                                if (isNaN(date.getTime())) {
+                                  return 'N/A';
+                                }
+                                return date.toLocaleDateString();
+                              } catch (e) {
+                                return 'N/A';
+                              }
+                            })()}
                           </div>
                           <div className="mt-2 flex flex-wrap gap-2">
-                            {reservation.stalls.map((stall) => (
-                              <span
-                                key={stall.id}
-                                className="px-2 py-1 bg-indigo-500/20 text-indigo-300 rounded text-xs"
-                              >
-                                {stall.stallNumber}
-                              </span>
-                            ))}
+                            {reservation.stalls && reservation.stalls.length > 0 ? (
+                              reservation.stalls.map((stall) => (
+                                <span
+                                  key={stall.id}
+                                  className="px-2 py-1 bg-indigo-500/20 text-indigo-300 rounded text-xs"
+                                >
+                                  {stall.stallNumber || stall.stallName || `Stall ${stall.id}`}
+                                </span>
+                              ))
+                            ) : (
+                              <span className="text-xs text-slate-500">No stalls assigned</span>
+                            )}
                           </div>
                         </div>
                       ))}
