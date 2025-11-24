@@ -136,113 +136,113 @@ const MyReservationsPage = () => {
     setShowQRModal(true);
   };
 
-  const downloadQRCodeDirect = async (qrUrl, filename) => {
-    try {
-      // Check if qrUrl is a base64 data URL
-      if (qrUrl.startsWith('data:')) {
-        // Base64 image - create a link and download directly
-        const link = document.createElement('a');
-        link.href = qrUrl;
-        link.download = filename;
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-        showNotification('QR Code download started', 'success');
-        return;
-      }
-
-      // For remote URLs, try multiple approaches
-      try {
-        // Method 1: Try fetch with no-cors mode first (for CORS-enabled resources)
-        const response = await fetch(qrUrl, { 
-          mode: 'cors',
-          credentials: 'omit',
-          cache: 'no-cache'
-        });
-        
-        if (!response.ok) {
-          throw new Error('Fetch failed');
-        }
-
-        const blob = await response.blob();
-        const url = window.URL.createObjectURL(blob);
-
-        const link = document.createElement('a');
-        link.href = url;
-        link.download = filename;
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-
-        // Release memory
-        setTimeout(() => window.URL.revokeObjectURL(url), 100);
-
-        showNotification('QR Code download started', 'success');
-      } catch (fetchError) {
-        console.warn('Direct fetch failed, trying alternative method:', fetchError);
-        
-        // Method 2: Use a proxy approach through an image element
-        const img = new Image();
-        img.crossOrigin = 'anonymous';
-        
-        await new Promise((resolve, reject) => {
-          img.onload = () => {
-            try {
-              // Create a canvas to convert the image
-              const canvas = document.createElement('canvas');
-              canvas.width = img.width;
-              canvas.height = img.height;
-              
-              const ctx = canvas.getContext('2d');
-              ctx.drawImage(img, 0, 0);
-              
-              // Convert canvas to blob and download
-              canvas.toBlob((blob) => {
-                if (blob) {
-                  const url = window.URL.createObjectURL(blob);
-                  const link = document.createElement('a');
-                  link.href = url;
-                  link.download = filename;
-                  document.body.appendChild(link);
-                  link.click();
-                  document.body.removeChild(link);
-                  
-                  setTimeout(() => window.URL.revokeObjectURL(url), 100);
-                  showNotification('QR Code download started', 'success');
-                  resolve();
-                } else {
-                  reject(new Error('Canvas to blob conversion failed'));
-                }
-              }, 'image/png');
-            } catch (canvasError) {
-              reject(canvasError);
-            }
-          };
-          
-          img.onerror = () => {
-            reject(new Error('Image load failed'));
-          };
-          
-          // Add timestamp to bypass cache
-          const urlWithTimestamp = qrUrl.includes('?') 
-            ? `${qrUrl}&t=${Date.now()}` 
-            : `${qrUrl}?t=${Date.now()}`;
-          img.src = urlWithTimestamp;
-        });
-      }
-    } catch (error) {
-      console.error('All download methods failed:', error);
-      
-      // Fallback: Open in new tab or show instructions
-      showNotification(
-        'Direct download not available. Right-click the QR code and select "Save Image As" to download.',
-        'info'
-      );
-      
-      // Optional: Open in new tab as fallback
-      // window.open(qrUrl, '_blank');
+ const downloadQRCodeDirect = async (qrUrl, filename) => {
+  try {
+    // Check if qrUrl is a base64 data URL
+    if (qrUrl.startsWith('data:')) {
+      // Base64 image - create a link and download directly
+      const link = document.createElement('a');
+      link.href = qrUrl;
+      link.download = filename;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      showNotification('QR Code download started', 'success');
+      return;
     }
-  };
+
+    // For remote URLs, try multiple approaches
+    try {
+      // Method 1: Try fetch with no-cors mode first (for CORS-enabled resources)
+      const response = await fetch(qrUrl, { 
+        mode: 'cors',
+        credentials: 'omit',
+        cache: 'no-cache'
+      });
+      
+      if (!response.ok) {
+        throw new Error('Fetch failed');
+      }
+
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = filename;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+
+      // Release memory
+      setTimeout(() => window.URL.revokeObjectURL(url), 100);
+
+      showNotification('QR Code download started', 'success');
+    } catch (fetchError) {
+      console.warn('Direct fetch failed, trying alternative method:', fetchError);
+      
+      // Method 2: Use a proxy approach through an image element
+      const img = new Image();
+      img.crossOrigin = 'anonymous';
+      
+      await new Promise((resolve, reject) => {
+        img.onload = () => {
+          try {
+            // Create a canvas to convert the image
+            const canvas = document.createElement('canvas');
+            canvas.width = img.width;
+            canvas.height = img.height;
+            
+            const ctx = canvas.getContext('2d');
+            ctx.drawImage(img, 0, 0);
+            
+            // Convert canvas to blob and download
+            canvas.toBlob((blob) => {
+              if (blob) {
+                const url = window.URL.createObjectURL(blob);
+                const link = document.createElement('a');
+                link.href = url;
+                link.download = filename;
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+                
+                setTimeout(() => window.URL.revokeObjectURL(url), 100);
+                showNotification('QR Code download started', 'success');
+                resolve();
+              } else {
+                reject(new Error('Canvas to blob conversion failed'));
+              }
+            }, 'image/png');
+          } catch (canvasError) {
+            reject(canvasError);
+          }
+        };
+        
+        img.onerror = () => {
+          reject(new Error('Image load failed'));
+        };
+        
+        // Add timestamp to bypass cache
+        const urlWithTimestamp = qrUrl.includes('?') 
+          ? `${qrUrl}&t=${Date.now()}`
+          : `${qrUrl}?t=${Date.now()}`;
+        img.src = urlWithTimestamp;
+      });
+    }
+  } catch (error) {
+    console.error('All download methods failed:', error);
+    
+    // Fallback: Open in new tab or show instructions
+    showNotification(
+      'Direct download not available. Right-click the QR code and select "Save Image As" to download.',
+      'info'
+    );
+    
+    // Optional: Open in new tab as fallback
+    // window.open(qrUrl, '_blank');
+  }
+};
 
   const viewDetails = (reservation) => {
     console.log('Viewing details for reservation:', reservation);
