@@ -16,20 +16,85 @@ type PaginatedResponse<T> = {
 
 type ReservationListResponse = ReservationResponse[] | PaginatedResponse<ReservationResponse>;
 
+// Helper function to safely convert date to ISO string
+const convertToISOString = (dateValue: string | Date | undefined | null): string => {
+  if (!dateValue) return '';
+  
+  try {
+    if (typeof dateValue === 'string') {
+      // If it's already a valid ISO string, return it
+      if (dateValue.includes('T') || dateValue.includes('Z') || /^\d{4}-\d{2}-\d{2}/.test(dateValue)) {
+        const date = new Date(dateValue);
+        if (!isNaN(date.getTime())) {
+          return date.toISOString();
+        }
+      }
+      // Try parsing as-is
+      const date = new Date(dateValue);
+      if (!isNaN(date.getTime())) {
+        return date.toISOString();
+      }
+      return '';
+    } else if (dateValue instanceof Date) {
+      if (!isNaN(dateValue.getTime())) {
+        return dateValue.toISOString();
+      }
+      return '';
+    }
+    return '';
+  } catch (e) {
+    console.warn('Error converting date:', dateValue, e);
+    return '';
+  }
+};
+
+// Map backend ReservationResponse to frontend Reservation
+const mapReservationToFrontend = (response: ReservationResponse): Reservation => {
+  // Convert createdAt to ISO string for both reservationDate and createdAt
+  const createdAtISO = convertToISOString(response.createdAt);
+  const confirmedAtISO = response.confirmedAt ? convertToISOString(response.confirmedAt) : undefined;
+  
+  return {
+    id: response.id,
+    userId: response.userId || 0,
+    user: response.user, // May not be populated
+    reservationDate: createdAtISO, // Use createdAt as reservationDate since backend doesn't have reservationDate
+    status: (response.status as any) || 'PENDING',
+    qrCodeUrl: response.qrCodeUrl,
+    createdAt: createdAtISO,
+    confirmedAt: confirmedAtISO,
+    totalAmount: typeof response.totalAmount === 'number' 
+      ? response.totalAmount 
+      : (typeof response.totalAmount === 'string' ? parseFloat(response.totalAmount) || 0 : 0),
+    stalls: (response.stalls || []).map(stall => ({
+      id: stall.id,
+      stallNumber: stall.stallName || `Stall ${stall.id}`, // Backend returns stallName, not stallNumber
+      stallName: stall.stallName || `Stall ${stall.id}`,
+      size: (stall.size as any) || 'MEDIUM',
+      location: '', // Not provided by backend
+      description: stall.dimension || '',
+      isAvailable: false, // Not provided by backend
+      price: typeof stall.price === 'number' 
+        ? stall.price 
+        : (typeof stall.price === 'string' ? parseFloat(stall.price) || 0 : 0),
+    })),
+  };
+};
+
 const normalizeReservationsResponse = (data: ReservationListResponse): Reservation[] => {
   // Direct array response
   if (Array.isArray(data)) {
-    return data as Reservation[];
+    return data.map(mapReservationToFrontend);
   }
 
   // Spring's default Page format (content property)
   if (Array.isArray(data.content)) {
-    return data.content as Reservation[];
+    return data.content.map(mapReservationToFrontend);
   }
 
   // Your custom backend format (reservations property)
   if (Array.isArray(data.reservations)) {
-    return data.reservations as Reservation[];
+    return data.reservations.map(mapReservationToFrontend);
   }
 
   console.warn('Unexpected reservation response format:', data);
