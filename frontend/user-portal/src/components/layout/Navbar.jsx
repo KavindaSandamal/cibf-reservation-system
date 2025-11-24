@@ -67,7 +67,7 @@ function Navbar() {
             style={{ fontWeight: 700, fontSize: '1.25rem', color: '#ffffff' }}
           >
             <BookOpen size={28} className="me-2" style={{ color: '#ffffff' }} />
-            <span className="d-none d-sm-inline">Colombo Book Fair</span>
+            <span className="d-none d-sm-inline">Colombo Book Fair Reserve Hub</span>
             <span className="d-inline d-sm-none">CBF</span>
           </BSNavbar.Brand>
 
