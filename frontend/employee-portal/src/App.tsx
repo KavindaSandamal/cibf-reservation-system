@@ -11,6 +11,7 @@ const EmployeeDashboardPage = React.lazy(() => import('./pages/EmployeeDashboard
 const ReservationsManagementPage = React.lazy(() => import('./pages/ReservationsManagementPage'));
 const UsersManagementPage = React.lazy(() => import('./pages/UsersManagementPage'));
 const StallsOverviewPage = React.lazy(() => import('./pages/StallsOverviewPage'));
+const AdminSettingsPage = React.lazy(() => import('./pages/AdminSettingsPage'));
 
 const App: React.FC = () => {
   return (
@@ -64,6 +65,18 @@ const App: React.FC = () => {
             <Layout>
               <React.Suspense fallback={<div className="flex items-center justify-center min-h-screen text-white">Loading...</div>}>
                 <StallsOverviewPage />
+              </React.Suspense>
+            </Layout>
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/employee/settings"
+        element={
+          <ProtectedRoute>
+            <Layout>
+              <React.Suspense fallback={<div className="flex items-center justify-center min-h-screen text-white">Loading...</div>}>
+                <AdminSettingsPage />
               </React.Suspense>
             </Layout>
           </ProtectedRoute>

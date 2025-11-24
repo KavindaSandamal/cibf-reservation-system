@@ -21,10 +21,11 @@ const ReservationDetailsModal: React.FC<ReservationDetailsModalProps> = ({
 }) => {
   if (!isOpen) return null;
 
-  const statusColors = {
+  const statusColors: Record<string, string> = {
     [ReservationStatus.PENDING]: 'bg-amber-500/20 text-amber-300 border-amber-500/30',
     [ReservationStatus.CONFIRMED]: 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30',
     [ReservationStatus.CANCELLED]: 'bg-red-500/20 text-red-300 border-red-500/30',
+    EXPIRED: 'bg-gray-500/20 text-gray-300 border-gray-500/30',
   };
 
   return (
@@ -68,7 +69,7 @@ const ReservationDetailsModal: React.FC<ReservationDetailsModalProps> = ({
               {/* Status */}
               <div>
                 <label className="block text-sm font-medium text-slate-400 mb-2">Status</label>
-                <span className={`inline-block px-4 py-2 rounded-full text-sm font-semibold border ${statusColors[reservation.status]}`}>
+                <span className={`inline-block px-4 py-2 rounded-full text-sm font-semibold border ${statusColors[reservation.status] || 'bg-slate-500/20 text-slate-300 border-slate-500/30'}`}>
                   {reservation.status}
                 </span>
               </div>
@@ -77,20 +78,32 @@ const ReservationDetailsModal: React.FC<ReservationDetailsModalProps> = ({
               <div>
                 <h3 className="text-lg font-semibold text-white mb-4">User Information</h3>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-slate-400 mb-1">Name</label>
-                    <p className="text-white">
-                      {reservation.user?.firstName} {reservation.user?.lastName}
-                    </p>
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-slate-400 mb-1">Email</label>
-                    <p className="text-white">{reservation.user?.email}</p>
-                  </div>
-                  {reservation.user?.businessName && (
+                  {(reservation.user?.firstName || reservation.user?.lastName) ? (
+                    <div>
+                      <label className="block text-sm font-medium text-slate-400 mb-1">Name</label>
+                      <p className="text-white">
+                        {reservation.user?.firstName || ''} {reservation.user?.lastName || ''}
+                      </p>
+                    </div>
+                  ) : (reservation.userEmail || reservation.businessName) ? (
                     <div>
                       <label className="block text-sm font-medium text-slate-400 mb-1">Business Name</label>
-                      <p className="text-white">{reservation.user.businessName}</p>
+                      <p className="text-white">{reservation.businessName || 'N/A'}</p>
+                    </div>
+                  ) : (
+                    <div>
+                      <label className="block text-sm font-medium text-slate-400 mb-1">Name</label>
+                      <p className="text-white">N/A</p>
+                    </div>
+                  )}
+                  <div>
+                    <label className="block text-sm font-medium text-slate-400 mb-1">Email</label>
+                    <p className="text-white">{reservation.user?.email || reservation.userEmail || 'N/A'}</p>
+                  </div>
+                  {(reservation.user?.businessName || reservation.businessName) && (
+                    <div>
+                      <label className="block text-sm font-medium text-slate-400 mb-1">Business Name</label>
+                      <p className="text-white">{reservation.user?.businessName || reservation.businessName}</p>
                     </div>
                   )}
                 </div>
@@ -102,15 +115,29 @@ const ReservationDetailsModal: React.FC<ReservationDetailsModalProps> = ({
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
                     <label className="block text-sm font-medium text-slate-400 mb-1">Reservation Date</label>
-                    <p className="text-white">{new Date(reservation.reservationDate).toLocaleDateString()}</p>
+                    <p className="text-white">
+                      {reservation.reservationDate 
+                        ? new Date(reservation.reservationDate).toLocaleDateString() 
+                        : reservation.createdAt 
+                        ? new Date(reservation.createdAt).toLocaleDateString() 
+                        : 'N/A'}
+                    </p>
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-slate-400 mb-1">Total Amount</label>
-                    <p className="text-white text-xl font-bold">${reservation.totalAmount.toLocaleString()}</p>
+                    <p className="text-white text-xl font-bold">
+                      ${reservation.totalAmount != null && reservation.totalAmount !== undefined 
+                        ? Number(reservation.totalAmount).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+                        : '0.00'}
+                    </p>
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-slate-400 mb-1">Created At</label>
-                    <p className="text-white">{new Date(reservation.createdAt).toLocaleString()}</p>
+                    <p className="text-white">
+                      {reservation.createdAt 
+                        ? new Date(reservation.createdAt).toLocaleString() 
+                        : 'N/A'}
+                    </p>
                   </div>
                   {reservation.confirmedAt && (
                     <div>
@@ -129,24 +156,36 @@ const ReservationDetailsModal: React.FC<ReservationDetailsModalProps> = ({
 
               {/* Stalls */}
               <div>
-                <h3 className="text-lg font-semibold text-white mb-4">Reserved Stalls ({reservation.stalls.length})</h3>
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                  {reservation.stalls.map((stall) => (
-                    <div
-                      key={stall.id}
-                      className="rounded-xl border border-slate-700 bg-slate-800/60 p-4"
-                    >
-                      <div className="flex items-center justify-between mb-2">
-                        <span className="font-semibold text-white">{stall.stallNumber}</span>
-                        <span className="px-2 py-1 bg-indigo-500/20 text-indigo-300 rounded text-xs">
-                          {stall.size}
-                        </span>
+                <h3 className="text-lg font-semibold text-white mb-4">
+                  Reserved Stalls ({reservation.stalls?.length || 0})
+                </h3>
+                {reservation.stalls && reservation.stalls.length > 0 ? (
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    {reservation.stalls.map((stall) => (
+                      <div
+                        key={stall.id}
+                        className="rounded-xl border border-slate-700 bg-slate-800/60 p-4"
+                      >
+                        <div className="flex items-center justify-between mb-2">
+                          <span className="font-semibold text-white">{stall.stallNumber || stall.stallName || `Stall ${stall.id}`}</span>
+                          <span className="px-2 py-1 bg-indigo-500/20 text-indigo-300 rounded text-xs">
+                            {stall.size || 'N/A'}
+                          </span>
+                        </div>
+                        {stall.location && (
+                          <p className="text-sm text-slate-400 mb-1">{stall.location}</p>
+                        )}
+                        <p className="text-sm font-semibold text-white">
+                          ${stall.price != null && stall.price !== undefined 
+                            ? Number(stall.price).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+                            : '0.00'}
+                        </p>
                       </div>
-                      <p className="text-sm text-slate-400 mb-1">{stall.location}</p>
-                      <p className="text-sm font-semibold text-white">${stall.price.toLocaleString()}</p>
-                    </div>
-                  ))}
-                </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-slate-400">No stalls assigned to this reservation.</p>
+                )}
               </div>
             </div>
 
