@@ -4,6 +4,7 @@ import { userService } from '../services/userService';
 import { User } from '../types';
 import { toast } from 'react-toastify';
 import UserDetailModal from '../components/UserDetailModal';
+import { useAdmin } from '../hooks/useAdmin';
 
 const UsersManagementPage: React.FC = () => {
   const [users, setUsers] = useState<User[]>([]);
@@ -13,6 +14,8 @@ const UsersManagementPage: React.FC = () => {
   const [itemsPerPage] = useState(10);
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [selectedUserIds, setSelectedUserIds] = useState<Set<number>>(new Set());
+  const isAdmin = useAdmin();
 
   useEffect(() => {
     loadUsers();
@@ -47,6 +50,127 @@ const UsersManagementPage: React.FC = () => {
   const handleViewUser = (user: User) => {
     setSelectedUser(user);
     setIsModalOpen(true);
+  };
+
+  // Admin-only: Delete user
+  const handleDeleteUser = async (userId: number, event: React.MouseEvent) => {
+    event.stopPropagation(); // Prevent row click
+    if (!isAdmin) {
+      toast.error('Access denied. Admin role required.');
+      return;
+    }
+
+    // Check if this is an employee account (email contains @cibf.com or business name suggests employee)
+    const user = users.find(u => u.id === userId);
+    const isEmployeeAccount = user?.email?.includes('@cibf.com') || 
+                              user?.email?.toLowerCase().includes('emp_') ||
+                              user?.businessName?.toLowerCase().includes('employee') ||
+                              user?.businessName?.toLowerCase().includes('cibf employee');
+
+    if (!window.confirm(`Are you sure you want to delete ${isEmployeeAccount ? 'employee' : 'user'} #${userId}? This action cannot be undone.`)) {
+      return;
+    }
+
+    try {
+      // If it's clearly an employee account, use employee deletion endpoint directly
+      if (isEmployeeAccount) {
+        const { employeeService } = await import('../services/employeeService');
+        await employeeService.deleteEmployee(userId);
+        toast.success('Employee deleted successfully');
+        loadUsers(); // Reload users list
+        return;
+      }
+
+      // Try to delete as regular user first
+      await userService.deleteUser(userId);
+      toast.success('User deleted successfully');
+      loadUsers(); // Reload users list
+    } catch (error: any) {
+      // If error suggests it's an employee, try employee deletion endpoint
+      if (error.message?.includes('employee') || error.message?.includes('Employee') || 
+          error.response?.data?.message?.includes('employee') || 
+          error.response?.data?.message?.includes('Employee')) {
+        try {
+          const { employeeService } = await import('../services/employeeService');
+          await employeeService.deleteEmployee(userId);
+          toast.success('Employee deleted successfully');
+          loadUsers(); // Reload users list
+        } catch (employeeError: any) {
+          const errorMessage = employeeError.message || 
+                              employeeError.response?.data?.message || 
+                              employeeError.response?.data?.error || 
+                              'Failed to delete employee';
+          toast.error(errorMessage);
+          console.error('Error deleting employee:', employeeError);
+        }
+      } else {
+        // Show the actual error message from backend
+        const errorMessage = error.message || 
+                           error.response?.data?.message || 
+                           error.response?.data?.error || 
+                           'Failed to delete user. Please check if user has active reservations or database constraints.';
+        toast.error(errorMessage);
+        console.error('Error deleting user:', {
+          error,
+          response: error.response?.data,
+          status: error.response?.status
+        });
+      }
+    }
+  };
+
+  // Admin-only: Bulk delete users
+  const handleBulkDelete = async () => {
+    if (!isAdmin) {
+      toast.error('Access denied. Admin role required.');
+      return;
+    }
+
+    if (selectedUserIds.size === 0) {
+      toast.warn('Please select at least one user to delete');
+      return;
+    }
+
+    if (!window.confirm(`Are you sure you want to delete ${selectedUserIds.size} user(s)? This action cannot be undone.`)) {
+      return;
+    }
+
+    try {
+      const userIds = Array.from(selectedUserIds);
+      const result = await userService.bulkDeleteUsers(userIds);
+      toast.success(`Successfully deleted ${result.deleted} user(s)`);
+      if (result.failed > 0) {
+        toast.warn(`${result.failed} user(s) could not be deleted`);
+      }
+      setSelectedUserIds(new Set());
+      loadUsers(); // Reload users list
+    } catch (error: any) {
+      toast.error(error.message || 'Failed to delete users');
+      console.error('Error bulk deleting users:', error);
+    }
+  };
+
+  // Toggle user selection for bulk operations
+  const handleToggleUserSelection = (userId: number, event: React.MouseEvent) => {
+    event.stopPropagation(); // Prevent row click
+    if (!isAdmin) return;
+
+    const newSelection = new Set(selectedUserIds);
+    if (newSelection.has(userId)) {
+      newSelection.delete(userId);
+    } else {
+      newSelection.add(userId);
+    }
+    setSelectedUserIds(newSelection);
+  };
+
+  const handleSelectAll = () => {
+    if (!isAdmin) return;
+    if (selectedUserIds.size === paginatedUsers.length) {
+      setSelectedUserIds(new Set());
+    } else {
+      setSelectedUserIds(new Set(paginatedUsers.map(u => u.id)));
+    }
   };
 
   // Use users directly since search is done on the backend
@@ -87,10 +211,22 @@ const UsersManagementPage: React.FC = () => {
           animate={{ opacity: 1, y: 0 }}
           className="mb-8"
         >
-          <h1 className="text-4xl font-extrabold tracking-tight text-white mb-2">
-            Users Management
-          </h1>
-          <p className="text-slate-400">View and manage all registered users</p>
+          <div className="flex items-center justify-between">
+            <div>
+              <h1 className="text-4xl font-extrabold tracking-tight text-white mb-2">
+                Users Management
+              </h1>
+              <p className="text-slate-400">View and manage all registered users</p>
+            </div>
+            {isAdmin && selectedUserIds.size > 0 && (
+              <button
+                onClick={handleBulkDelete}
+                className="px-4 py-2 bg-red-600/80 hover:bg-red-600 text-white font-semibold rounded-lg transition"
+              >
+                Delete Selected ({selectedUserIds.size})
+              </button>
+            )}
+          </div>
         </motion.div>
 
         {/* Search */}
@@ -121,18 +257,31 @@ const UsersManagementPage: React.FC = () => {
             <table className="w-full">
               <thead className="bg-slate-800/60 border-b border-slate-700">
                 <tr>
+                  {isAdmin && (
+                    <th className="px-6 py-4 text-left text-xs font-semibold text-slate-300 uppercase tracking-wider">
+                      <input
+                        type="checkbox"
+                        checked={selectedUserIds.size === paginatedUsers.length && paginatedUsers.length > 0}
+                        onChange={handleSelectAll}
+                        className="rounded border-slate-600 bg-slate-700 text-indigo-600 focus:ring-indigo-500"
+                      />
+                    </th>
+                  )}
                   <th className="px-6 py-4 text-left text-xs font-semibold text-slate-300 uppercase tracking-wider">ID</th>
                   <th className="px-6 py-4 text-left text-xs font-semibold text-slate-300 uppercase tracking-wider">Name</th>
                   <th className="px-6 py-4 text-left text-xs font-semibold text-slate-300 uppercase tracking-wider">Email</th>
                   <th className="px-6 py-4 text-left text-xs font-semibold text-slate-300 uppercase tracking-wider">Business</th>
                   <th className="px-6 py-4 text-left text-xs font-semibold text-slate-300 uppercase tracking-wider">Reservations</th>
                   <th className="px-6 py-4 text-left text-xs font-semibold text-slate-300 uppercase tracking-wider">Joined Date</th>
+                  {isAdmin && (
+                    <th className="px-6 py-4 text-left text-xs font-semibold text-slate-300 uppercase tracking-wider">Actions</th>
+                  )}
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-700/50">
                 {paginatedUsers.length === 0 ? (
                   <tr>
-                    <td colSpan={6} className="px-6 py-12 text-center text-slate-400">
+                    <td colSpan={isAdmin ? 8 : 6} className="px-6 py-12 text-center text-slate-400">
                       No users found
                     </td>
                   </tr>
@@ -140,9 +289,20 @@ const UsersManagementPage: React.FC = () => {
                   paginatedUsers.map((user) => (
                     <tr
                       key={user.id}
-                      className="hover:bg-slate-800/40 transition-colors cursor-pointer"
-                      onClick={() => handleViewUser(user)}
+                      className={`hover:bg-slate-800/40 transition-colors ${isAdmin ? '' : 'cursor-pointer'}`}
+                      onClick={() => !isAdmin && handleViewUser(user)}
                     >
+                      {isAdmin && (
+                        <td className="px-6 py-4 whitespace-nowrap" onClick={(e) => handleToggleUserSelection(user.id, e)}>
+                          <input
+                            type="checkbox"
+                            checked={selectedUserIds.has(user.id)}
+                            onChange={() => {}} // Handled by onClick on td
+                            onClick={(e) => e.stopPropagation()}
+                            className="rounded border-slate-600 bg-slate-700 text-indigo-600 focus:ring-indigo-500 cursor-pointer"
+                          />
+                        </td>
+                      )}
                       <td className="px-6 py-4 whitespace-nowrap">
                         <span className="font-mono text-sm text-white">#{user.id}</span>
                       </td>
@@ -169,6 +329,27 @@ const UsersManagementPage: React.FC = () => {
                           {new Date(user.createdAt).toLocaleDateString()}
                         </span>
                       </td>
+                      {isAdmin && (
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="flex items-center gap-2">
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleViewUser(user);
+                              }}
+                              className="px-3 py-1.5 bg-indigo-600/80 hover:bg-indigo-600 text-white text-xs font-semibold rounded-lg transition"
+                            >
+                              View
+                            </button>
+                            <button
+                              onClick={(e) => handleDeleteUser(user.id, e)}
+                              className="px-3 py-1.5 bg-red-600/80 hover:bg-red-600 text-white text-xs font-semibold rounded-lg transition"
+                            >
+                              Delete
+                            </button>
+                          </div>
+                        </td>
+                      )}
                     </tr>
                   ))
                 )}

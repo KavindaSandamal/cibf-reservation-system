@@ -85,10 +85,17 @@ class ApiClient {
         // Suppress console errors for endpoints that are handled gracefully
         // These errors are expected when services are unavailable
         const isHandledEndpoint = url.includes('/api/admin/stalls/statistics');
+        const isUserProfileEndpoint = url.includes('/api/admin/users/') && (url.includes('/profile') || url.includes('/genres'));
         
         if (isHandledEndpoint && status >= 500) {
           // Mark error as handled to prevent console spam
           error.isHandled = true;
+        }
+        
+        // Suppress 404 errors for user profile/genres endpoints (may not exist in backend)
+        if (isUserProfileEndpoint && status === 404) {
+          error.isHandled = true;
+          error.suppressError = true;
         }
         
         return Promise.reject(error);

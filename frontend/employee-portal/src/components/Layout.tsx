@@ -1,6 +1,8 @@
 import { ReactNode } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useEmployeeAuth } from '../contexts/EmployeeAuthContext';
+import { useAdmin } from '../hooks/useAdmin';
+import AdminOnly from './AdminOnly';
 
 interface LayoutProps {
   children: ReactNode;
@@ -10,14 +12,15 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
   const { employee, logout } = useEmployeeAuth();
   const navigate = useNavigate();
   const location = useLocation();
+  const isAdmin = useAdmin();
 
   const handleLogout = () => {
     logout();
     navigate('/employee/login');
   };
 
-  // Check if we're on a dark-themed page (dashboard, reservations, users, stalls)
-  const isDarkPage = ['/employee/dashboard', '/employee/reservations', '/employee/users', '/employee/stalls'].includes(location.pathname);
+  // Check if we're on a dark-themed page (dashboard, reservations, users, stalls, settings)
+  const isDarkPage = ['/employee/dashboard', '/employee/reservations', '/employee/users', '/employee/stalls', '/employee/settings'].includes(location.pathname);
 
   return (
     <div className={isDarkPage ? 'min-h-screen bg-slate-950' : 'min-h-screen bg-gray-50'}>
@@ -75,6 +78,17 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
                 >
                   Stalls
                 </Link>
+                <AdminOnly>
+                  <Link
+                    to="/employee/settings"
+                    className={isDarkPage
+                      ? 'text-slate-300 hover:text-indigo-400 px-3 py-2 rounded-md text-sm font-medium transition-colors border border-indigo-500/30 rounded-lg'
+                      : 'text-gray-700 hover:text-primary-600 px-3 py-2 rounded-md text-sm font-medium border border-primary-200 rounded-lg'
+                    }
+                  >
+                    ⚙️ Settings
+                  </Link>
+                </AdminOnly>
               </nav>
             </div>
             <div className="flex items-center space-x-4">
