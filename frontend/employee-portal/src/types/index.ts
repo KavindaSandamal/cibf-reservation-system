@@ -16,6 +16,7 @@ export interface User {
   businessName?: string;
   createdAt?: string;
   reservationCount?: number;
+  role?: string; // User role: VENDOR, EMPLOYEE, ADMIN
 }
 
 // Reservation Types
@@ -149,4 +150,3 @@ export interface UserResponse {
   role?: string;
   createdAt: string | Date; // Backend returns LocalDateTime
 }
-
