@@ -53,7 +53,6 @@ public class ReservationAdminService {
         }
 
         if (search != null && !search.isEmpty()) {
-            // Remove # prefix if present (users might type #1, #25, etc.)
             String searchTerm = search.trim();
             if (searchTerm.startsWith("#")) {
                 searchTerm = searchTerm.substring(1);
@@ -62,17 +61,14 @@ public class ReservationAdminService {
             final String finalSearchTerm = searchTerm;
             
             spec = spec.and((root, query, cb) -> {
-                // Try to parse as Long for ID search
                 try {
                     Long searchId = Long.parseLong(finalSearchTerm);
-                    // Search by ID (exact match) OR email/business name (partial match)
                     return cb.or(
                             cb.equal(root.get("id"), searchId),
                             cb.like(cb.lower(root.get("userEmail")), "%" + finalSearchTerm.toLowerCase() + "%"),
                             cb.like(cb.lower(root.get("businessName")), "%" + finalSearchTerm.toLowerCase() + "%")
                     );
                 } catch (NumberFormatException e) {
-                    // Not a number, search only by email and business name
                     return cb.or(
                             cb.like(cb.lower(root.get("userEmail")), "%" + finalSearchTerm.toLowerCase() + "%"),
                             cb.like(cb.lower(root.get("businessName")), "%" + finalSearchTerm.toLowerCase() + "%")
@@ -179,7 +175,6 @@ public class ReservationAdminService {
             throw new IllegalStateException("Cannot resend email for non-confirmed reservation");
         }
 
-        // Fetch stall details - FIX: Convert Long to String for Feign client
         String stallIdString = String.valueOf(reservation.getStallId());
         ResponseEntity<List<StallResponse>> stallResponseEntity = stallServiceClient.getStallsByIds(stallIdString);
         List<StallResponse> stallDetails = stallResponseEntity.getBody();
@@ -301,13 +296,13 @@ public class ReservationAdminService {
 
         switch (period.toLowerCase()) {
             case "weekly":
-                startDate = now.minusWeeks(4); // Last 4 weeks
+                startDate = now.minusWeeks(4); 
                 break;
             case "monthly":
-                startDate = now.minusMonths(6); // Last 6 months
+                startDate = now.minusMonths(6); 
                 break;
             case "yearly":
-                startDate = now.minusYears(2); // Last 2 years
+                startDate = now.minusYears(2); 
                 break;
             default:
                 startDate = now.minusWeeks(4);
@@ -437,7 +432,6 @@ public class ReservationAdminService {
      * Map Reservation entity to ReservationResponse DTO
      */
     private ReservationResponse mapToReservationResponse(Reservation reservation) {
-        // Fetch stall details - FIX: Convert Long to String for Feign client
         List<StallResponse> stallDetails = new ArrayList<>();
         try {
             String stallIdString = String.valueOf(reservation.getStallId());

@@ -290,13 +290,6 @@ public class UserManagementServiceImpl implements UserManagementService {
         userRepository.findById(userId)
                 .orElseThrow(() -> new ResourceNotFoundException("User not found with ID: " + userId));
 
-        // TODO: Implement soft delete if you add 'active' or 'deletedAt' fields to User
-        // entity
-        // Example implementation:
-        // user.setActive(false);
-        // user.setDeletedAt(LocalDateTime.now());
-        // userRepository.save(user);
-
         log.warn("Soft delete not fully implemented. Add 'active' field to User entity.");
         throw new UnsupportedOperationException("Soft delete feature requires User entity modifications");
     }
@@ -316,7 +309,7 @@ public class UserManagementServiceImpl implements UserManagementService {
 
             if (response == null) {
                 log.warn("No response from reservation service for user {}", userId);
-                return true; // Be safe and prevent deletion
+                return true;
             }
 
             Boolean hasActive = (Boolean) response.get("hasActiveReservations");
@@ -331,14 +324,14 @@ public class UserManagementServiceImpl implements UserManagementService {
         } catch (org.springframework.web.client.ResourceAccessException e) {
             log.error("Network error accessing reservation service for user {}: {}", userId, e.getMessage());
             log.error("Reservation service URL: {}", reservationServiceUrl);
-            return true; // If we can't reach the service, be safe and prevent deletion
+            return true;
         } catch (org.springframework.web.client.HttpClientErrorException e) {
             log.error("HTTP {} error checking reservations for user {}: {}",
                     e.getStatusCode(), userId, e.getResponseBodyAsString());
             return true;
         } catch (Exception e) {
             log.error("Unexpected error checking reservations for user {}: {}", userId, e.getMessage(), e);
-            return true; // If we can't check, be safe and prevent deletion
+            return true;
         }
     }
 }

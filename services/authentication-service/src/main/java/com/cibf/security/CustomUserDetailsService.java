@@ -33,7 +33,7 @@ public class CustomUserDetailsService implements UserDetailsService {
 
         log.info("User found: {}, Role: {}", user.getUsername(), user.getRole());
 
-        // CRITICAL FIX: getRole() returns String, not Role enum
+        // getRole() returns String, not Role enum
         Collection<GrantedAuthority> authorities = getAuthorities(user.getRole());
 
         log.info("User authorities: {}", authorities);
@@ -49,9 +49,7 @@ public class CustomUserDetailsService implements UserDetailsService {
                 .build();
     }
 
-    /**
-     * CRITICAL FIX: Convert role string to GrantedAuthority with ROLE_ prefix
-     */
+    // Convert role string to GrantedAuthority with ROLE_ prefix
     private Collection<GrantedAuthority> getAuthorities(String role) {
         if (role == null || role.isEmpty()) {
             log.warn("User has no role assigned");

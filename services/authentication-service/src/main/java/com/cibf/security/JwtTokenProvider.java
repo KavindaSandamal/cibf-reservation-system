@@ -31,7 +31,7 @@ public class JwtTokenProvider {
         Date currentDate = new Date();
         Date expireDate = new Date(currentDate.getTime() + jwtExpirationMs);
 
-        // CRITICAL FIX: Extract roles from authentication and add ROLE_ prefix
+        // Extract roles from authentication and add ROLE_ prefix
         String roles = authentication.getAuthorities().stream()
                 .map(GrantedAuthority::getAuthority)
                 .map(role -> role.startsWith("ROLE_") ? role : "ROLE_" + role)
@@ -41,7 +41,7 @@ public class JwtTokenProvider {
 
         return Jwts.builder()
                 .setSubject(username)
-                .claim("roles", roles) // Add roles as a claim
+                .claim("roles", roles)
                 .setIssuedAt(currentDate)
                 .setExpiration(expireDate)
                 .signWith(key(), SignatureAlgorithm.HS512)
@@ -68,7 +68,7 @@ public class JwtTokenProvider {
     }
 
     /**
-     * CRITICAL FIX: Extract roles from JWT token
+     * Extract roles from JWT token
      */
     public String getRoles(String token) {
         Claims claims = Jwts.parserBuilder()

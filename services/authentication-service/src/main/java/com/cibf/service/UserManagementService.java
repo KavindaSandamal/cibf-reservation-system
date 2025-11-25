@@ -57,10 +57,9 @@ public interface UserManagementService {
     /**
      * Delete a user/vendor account
      * 
-     * @param userId User ID to delete
-     * @throws ResourceNotFoundException if user not found
-     * @throws IllegalStateException     if trying to delete employee through this
-     *                                   method
+     * @param userId
+     * @throws ResourceNotFoundException
+     * @throws IllegalStateException
      */
     void deleteUser(Long userId);
 
@@ -68,25 +67,25 @@ public interface UserManagementService {
      * Delete an employee account
      * Deletes both Employee record and associated User record
      * 
-     * @param userId User ID of the employee to delete
-     * @throws ResourceNotFoundException if user not found
-     * @throws IllegalStateException     if user is not an employee
+     * @param userId
+     * @throws ResourceNotFoundException
+     * @throws IllegalStateException
      */
     void deleteEmployee(Long userId);
 
     /**
      * Bulk delete users
      * 
-     * @param userIds List of user IDs to delete
-     * @return Summary map with successful and failed deletions
+     * @param userIds
+     * @return
      */
     Map<String, Object> bulkDeleteUsers(List<Long> userIds);
 
     /**
      * Soft delete user (marks as inactive instead of deleting)
      * 
-     * @param userId User ID to soft delete
-     * @throws ResourceNotFoundException if user not found
+     * @param userId
+     * @throws ResourceNotFoundException
      */
     void softDeleteUser(Long userId);
 }

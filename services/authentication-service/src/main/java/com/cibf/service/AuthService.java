@@ -64,7 +64,7 @@ public class AuthService implements IAuthService {
                 registrationRequest.getUsername(),
                 passwordEncoder.encode(registrationRequest.getPassword()),
                 registrationRequest.getBusinessName(),
-                registrationRequest.getUsername(), // email same as username
+                registrationRequest.getUsername(),
                 registrationRequest.getContactNumber(),
                 registrationRequest.getAddress(),
                 Role.VENDOR);
@@ -77,7 +77,7 @@ public class AuthService implements IAuthService {
                 registrationRequest.getUsername(),
                 registrationRequest.getPassword());
 
-        // CRITICAL FIX: Generate token with authentication (includes roles)
+        // Generate token with authentication (includes roles)
         String token = tokenProvider.generateToken(authentication);
 
         return new AuthResponse(token, user.getRole(), user.getBusinessName());
@@ -92,7 +92,7 @@ public class AuthService implements IAuthService {
 
         User user = findUserByUsername(authRequest.getUsername());
 
-        // CRITICAL FIX: Generate token with authentication (includes roles)
+        // Generate token with authentication (includes roles)
         String token = tokenProvider.generateToken(authentication);
 
         logger.info("User authenticated: {} with role: {}", user.getUsername(), user.getRole());
@@ -115,7 +115,7 @@ public class AuthService implements IAuthService {
             throw new BadCredentialsException("Access denied. Employee credentials required.");
         }
 
-        // CRITICAL FIX: Generate token with authentication (includes roles)
+        // Generate token with authentication (includes roles)
         String token = tokenProvider.generateToken(authentication);
 
         logger.info("Employee authenticated: {} with role: {}", user.getUsername(), user.getRole());
@@ -134,11 +134,11 @@ public class AuthService implements IAuthService {
         User user = new User(
                 registrationRequest.getUsername(),
                 passwordEncoder.encode(registrationRequest.getPassword()),
-                "CIBF Employee", // businessName placeholder for employees
-                registrationRequest.getEmail(), // email for User entity
-                registrationRequest.getContactNumber(), // contactNumber for User entity
-                null, // address for User entity (null)
-                effectiveRole); // Role
+                "CIBF Employee",
+                registrationRequest.getEmail(),
+                registrationRequest.getContactNumber(),
+                null,
+                effectiveRole);
 
         userRepository.save(user);
         logger.info("Employee user created: {}", user.getUsername());
@@ -152,7 +152,7 @@ public class AuthService implements IAuthService {
                 registrationRequest.getUsername(),
                 registrationRequest.getPassword());
 
-        // CRITICAL FIX: Generate token with authentication (includes roles)
+        // Generate token with authentication (includes roles)
         String token = tokenProvider.generateToken(authentication);
 
         return new AuthResponse(token, effectiveRole.getName(), null);
@@ -169,7 +169,6 @@ public class AuthService implements IAuthService {
 
     /**
      * Private helper method to perform authentication.
-     * FIXED: Now logs more details for debugging
      */
     private Authentication performAuthentication(String username, String password) {
         try {
@@ -220,10 +219,7 @@ public class AuthService implements IAuthService {
     private Employee createEmployee(EmployeeRegistrationRequest request, User user, Role role) {
         Employee employee = new Employee();
         employee.setUser(user);
-
-        // --- FIX: Map the required 'username' field ---
         employee.setUsername(user.getUsername());
-
         employee.setName(request.getName());
         employee.setEmail(request.getEmail());
         employee.setEmployeeId(request.getEmployeeId());

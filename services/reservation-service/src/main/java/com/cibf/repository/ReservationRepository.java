@@ -98,7 +98,6 @@ public interface ReservationRepository extends JpaRepository<Reservation, Long>,
        List<Reservation> findRecentReservations(@Param("since") LocalDateTime since);
 
        /**
-        * <<<<<<< HEAD
         * Find top 10 recent reservations
         */
        List<Reservation> findTop10ByOrderByCreatedAtDesc();

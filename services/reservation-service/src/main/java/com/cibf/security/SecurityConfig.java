@@ -28,10 +28,10 @@ public class SecurityConfig {
     public SecurityFilterChain reservationSecurity(HttpSecurity http) throws Exception {
         http
                 .csrf(AbstractHttpConfigurer::disable)
-                .cors(cors -> cors.disable()) // Let WebConfig handle CORS
+                .cors(cors -> cors.disable())
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
-                        // CRITICAL: Order matters! Most specific rules first
+
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
 
                         // Internal service-to-service endpoints (NO AUTH)
@@ -44,7 +44,6 @@ public class SecurityConfig {
                         // Admin endpoints
                         .requestMatchers("/api/admin/**").hasAnyRole("EMPLOYEE", "ADMIN")
 
-                        // All other requests require authentication
                         .anyRequest().authenticated())
                 .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
 
