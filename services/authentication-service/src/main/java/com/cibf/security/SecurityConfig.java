@@ -20,12 +20,14 @@ import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 import java.util.Arrays;
 import java.util.List;
 
-//Main configuration for Spring Security (Secured Endpoints).
-//This chain runs after the PublicSecurityConfig (Order 1) and handles all authenticated routes.
-
+/**
+ * Main configuration for Spring Security (Secured Endpoints).
+ * This chain runs after the PublicSecurityConfig (Order 1) and handles all
+ * authenticated routes.
+ */
 @Configuration
 @EnableWebSecurity
-@EnableMethodSecurity
+@EnableMethodSecurity // Enables @PreAuthorize annotations
 public class SecurityConfig {
 
     private final JwtAuthenticationEntryPoint authenticationEntryPoint;
@@ -51,13 +53,10 @@ public class SecurityConfig {
         return configuration.getAuthenticationManager();
     }
 
-    // CORS configuration for cross-origin requests
-
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
 
-        // production domain and localhost origins
         configuration.setAllowedOriginPatterns(Arrays.asList(
                 "http://localhost:3000",
                 "http://localhost:5173",
@@ -88,7 +87,7 @@ public class SecurityConfig {
                 // 1. Apply CORS configuration
                 .cors(cors -> cors.configurationSource(corsConfigurationSource()))
 
-                // 2. CSRF disabled here for consistency
+                // 2. CSRF disabled for JWT-based API
                 .csrf(AbstractHttpConfigurer::disable)
 
                 // 3. Disable basic auth and form login
@@ -101,11 +100,17 @@ public class SecurityConfig {
                 // 5. Enforce stateless session policy (KEY for JWT)
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
 
-                // 6.Only apply this security chain to non-public paths
+                // 6. Only apply this security chain to non-public paths
                 .securityMatcher("/api/**")
                 .authorizeHttpRequests(authorize -> authorize
+                        // Public endpoints - no authentication required
                         .requestMatchers("/api/auth/**", "/api/public/**").permitAll()
-                        .requestMatchers("/api/admin/**").hasAnyRole("EMPLOYEE", "ADMIN")
+
+                        // Admin endpoints - let @PreAuthorize handle fine-grained control
+                        // Just require authentication here
+                        .requestMatchers("/api/admin/**").authenticated()
+
+                        // Any other request must be authenticated
                         .anyRequest().authenticated());
 
         // 7. Add JWT filter BEFORE Spring Security's authentication filter
