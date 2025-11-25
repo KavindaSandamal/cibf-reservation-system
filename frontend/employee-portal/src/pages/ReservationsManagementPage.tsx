@@ -335,14 +335,21 @@ const ReservationsManagementPage: React.FC = () => {
                         <span className="font-mono text-sm text-white">#{reservation.id}</span>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
-                        {reservation.user ? (
-                          <div>
-                            <div className="font-medium text-white">{reservation.user.firstName} {reservation.user.lastName}</div>
-                            <div className="text-sm text-slate-400">{reservation.user.email}</div>
+                        <div>
+                          <div className="font-medium text-white">
+                            {reservation.user?.businessName ||
+                              (reservation.user?.email
+                                ? reservation.user.email.split('@')[0]
+                                : reservation.user?.firstName || reservation.user?.lastName
+                                ? `${reservation.user?.firstName ?? ''} ${reservation.user?.lastName ?? ''}`.trim()
+                                : reservation.userId
+                                ? `User #${reservation.userId}`
+                                : 'Unknown')}
                           </div>
-                        ) : (
-                          <span className="text-slate-400">N/A</span>
-                        )}
+                          <div className="text-sm text-slate-400">
+                            {reservation.user?.email || reservation.user?.businessName || '—'}
+                          </div>
+                        </div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         <div className="flex flex-wrap gap-1">

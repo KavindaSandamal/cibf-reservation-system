@@ -53,11 +53,28 @@ const mapReservationToFrontend = (response: ReservationResponse): Reservation =>
   // Convert createdAt to ISO string for both reservationDate and createdAt
   const createdAtISO = convertToISOString(response.createdAt);
   const confirmedAtISO = response.confirmedAt ? convertToISOString(response.confirmedAt) : undefined;
+  const fallbackBusinessName =
+    response.businessName ||
+    response.user?.businessName ||
+    (response.userEmail ? response.userEmail.split('@')[0] : undefined);
+  const userInfo =
+    response.user ||
+    (response.userId || response.userEmail || fallbackBusinessName
+      ? {
+          id: response.userId || 0,
+          email: response.userEmail || '',
+          firstName: '',
+          lastName: '',
+          businessName: fallbackBusinessName,
+        }
+      : undefined);
   
-  return {
+  const reservation: Reservation = {
     id: response.id,
     userId: response.userId || 0,
-    user: response.user, // May not be populated
+    user: userInfo, // Provide fallback user info for display
+    businessName: fallbackBusinessName || undefined,
+    userEmail: response.userEmail || response.user?.email,
     reservationDate: createdAtISO, // Use createdAt as reservationDate since backend doesn't have reservationDate
     status: (response.status as any) || 'PENDING',
     qrCodeUrl: response.qrCodeUrl,
@@ -79,6 +96,18 @@ const mapReservationToFrontend = (response: ReservationResponse): Reservation =>
         : (typeof stall.price === 'string' ? parseFloat(stall.price) || 0 : 0),
     })),
   };
+
+  if (reservation.user && response.user) {
+    reservation.user = {
+      id: response.user.id,
+      email: response.user.email || '',
+      firstName: response.user.firstName || '',
+      lastName: response.user.lastName || '',
+      businessName: response.user.businessName || fallbackBusinessName,
+    };
+  }
+
+  return reservation;
 };
 
 const normalizeReservationsResponse = (data: ReservationListResponse): Reservation[] => {
@@ -262,7 +291,7 @@ export const reservationService = {
         currentPage: typeof (data as any).currentPage === 'number' ? (data as any).currentPage + 1 : 1, // Convert 0-based to 1-based
         totalItems: typeof (data as any).totalItems === 'number' ? (data as any).totalItems : (typeof (data as any).totalItems === 'string' ? parseInt((data as any).totalItems, 10) : 0),
         totalPages: typeof (data as any).totalPages === 'number' ? (data as any).totalPages : (typeof (data as any).totalPages === 'string' ? parseInt((data as any).totalPages, 10) : 0),
-        pageSize: typeof (data as any).pageSize === 'number' ? (data as any).pageSize : (typeof (data as any).pageSize === 'string' ? parseInt((data as any).pageSize, 10) : itemsPerPage),
+        pageSize: typeof (data as any).pageSize === 'number' ? (data as any).pageSize : (typeof (data as any).pageSize === 'string' ? parseInt((data as any).pageSize, 10) : (filters?.size || 10)),
       } : undefined;
       
       return {
@@ -284,7 +313,7 @@ export const reservationService = {
       
       if (isNetworkError || isServerError) {
         console.warn('Reservation service unavailable, returning mock reservations list');
-        return getMockReservations();
+        return { reservations: getMockReservations(), pagination: undefined };
       }
       throw error;
     }
@@ -294,7 +323,7 @@ export const reservationService = {
   getReservationById: async (id: number): Promise<Reservation> => {
     try {
       const response = await apiClient.get<ReservationResponse>(`/api/admin/reservations/reservations/${id}`);
-      return response.data;
+      return mapReservationToFrontend(response.data);
     } catch (error: any) {
       if (error.code === 'ERR_NETWORK' || error.message?.includes('Network Error')) {
         throw new Error('Backend service unavailable. Please start the reservation service.');
@@ -307,7 +336,7 @@ export const reservationService = {
   confirmReservation: async (id: number): Promise<Reservation> => {
     try {
       const response = await apiClient.put<ReservationResponse>(`/api/admin/reservations/reservations/${id}/confirm`);
-      return response.data;
+      return mapReservationToFrontend(response.data);
     } catch (error: any) {
       if (error.code === 'ERR_NETWORK' || error.message?.includes('Network Error')) {
         throw new Error('Backend service unavailable. Please start the reservation service.');

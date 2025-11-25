@@ -78,34 +78,20 @@ const ReservationDetailsModal: React.FC<ReservationDetailsModalProps> = ({
               <div>
                 <h3 className="text-lg font-semibold text-white mb-4">User Information</h3>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {(reservation.user?.firstName || reservation.user?.lastName) ? (
-                    <div>
-                      <label className="block text-sm font-medium text-slate-400 mb-1">Name</label>
-                      <p className="text-white">
-                        {reservation.user?.firstName || ''} {reservation.user?.lastName || ''}
-                      </p>
-                    </div>
-                  ) : (reservation.userEmail || reservation.businessName) ? (
-                    <div>
-                      <label className="block text-sm font-medium text-slate-400 mb-1">Business Name</label>
-                      <p className="text-white">{reservation.businessName || 'N/A'}</p>
-                    </div>
-                  ) : (
-                    <div>
-                      <label className="block text-sm font-medium text-slate-400 mb-1">Name</label>
-                      <p className="text-white">N/A</p>
-                    </div>
-                  )}
+                  <div>
+                    <label className="block text-sm font-medium text-slate-400 mb-1">Business Name</label>
+                    <p className="text-white">
+                      {reservation.user?.businessName ||
+                        reservation.businessName ||
+                        reservation.user?.email?.split('@')[0] ||
+                        reservation.userEmail?.split('@')[0] ||
+                        'N/A'}
+                    </p>
+                  </div>
                   <div>
                     <label className="block text-sm font-medium text-slate-400 mb-1">Email</label>
                     <p className="text-white">{reservation.user?.email || reservation.userEmail || 'N/A'}</p>
                   </div>
-                  {(reservation.user?.businessName || reservation.businessName) && (
-                    <div>
-                      <label className="block text-sm font-medium text-slate-400 mb-1">Business Name</label>
-                      <p className="text-white">{reservation.user?.businessName || reservation.businessName}</p>
-                    </div>
-                  )}
                 </div>
               </div>
 
@@ -232,4 +218,3 @@ const ReservationDetailsModal: React.FC<ReservationDetailsModalProps> = ({
 };
 
 export default ReservationDetailsModal;
-
