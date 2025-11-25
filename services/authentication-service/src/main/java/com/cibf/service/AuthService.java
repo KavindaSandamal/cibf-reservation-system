@@ -242,7 +242,7 @@ public class AuthService implements IAuthService {
         User user = new User(
                 registrationRequest.getUsername(),
                 passwordEncoder.encode(registrationRequest.getPassword()),
-                "CIBF Admin",
+                "CIBF Employee",
                 registrationRequest.getEmail(),
                 registrationRequest.getContactNumber(),
                 null,

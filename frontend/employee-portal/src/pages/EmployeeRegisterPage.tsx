@@ -7,6 +7,9 @@ import { toast } from 'react-toastify';
 // Simple email validation
 const isValidEmail = (value: string) => /\S+@\S+\.\S+/.test(value);
 
+// Simple contact number validation (allow optional + and 10-15 digits)
+const isValidContact = (value: string) => /^\+?\d{10,15}$/.test(value);
+
 interface RegisterFormData {
   username: string;
   email: string;
@@ -14,6 +17,8 @@ interface RegisterFormData {
   confirmPassword: string;
   name: string;
   employeeId: string;
+  contactNumber: string;
+  department: string;
 }
 
 const EmployeeRegisterPage: React.FC = () => {
@@ -26,6 +31,8 @@ const EmployeeRegisterPage: React.FC = () => {
     confirmPassword: '',
     name: '',
     employeeId: '',
+    contactNumber: '',
+    department: '',
   });
 
   const [loading, setLoading] = useState(false);
@@ -45,29 +52,16 @@ const EmployeeRegisterPage: React.FC = () => {
   const validateForm = (): boolean => {
     const newErrors: Partial<Record<keyof RegisterFormData, string>> = {};
 
-    if (!formData.username.trim()) {
-      newErrors.username = 'Username is required';
-    }
-
-    if (!isValidEmail(formData.email)) {
-      newErrors.email = 'Enter a valid email address';
-    }
-
-    if (!formData.name.trim()) {
-      newErrors.name = 'Name is required';
-    }
-
-    if (!formData.employeeId.trim()) {
-      newErrors.employeeId = 'Employee ID is required';
-    }
-
-    if (formData.password.length < 6) {
-      newErrors.password = 'Password must be at least 6 characters';
-    }
-
-    if (formData.password !== formData.confirmPassword) {
-      newErrors.confirmPassword = 'Passwords do not match';
-    }
+    if (!formData.username.trim()) newErrors.username = 'Username is required';
+    if (!isValidEmail(formData.email)) newErrors.email = 'Enter a valid email address';
+    if (!formData.name.trim()) newErrors.name = 'Name is required';
+    if (!formData.employeeId.trim()) newErrors.employeeId = 'Employee ID is required';
+    if (!formData.contactNumber.trim()) newErrors.contactNumber = 'Contact number is required';
+    else if (!isValidContact(formData.contactNumber))
+      newErrors.contactNumber = 'Enter a valid contact number';
+    if (!formData.department.trim()) newErrors.department = 'Department is required';
+    if (formData.password.length < 6) newErrors.password = 'Password must be at least 6 characters';
+    if (formData.password !== formData.confirmPassword) newErrors.confirmPassword = 'Passwords do not match';
 
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
@@ -76,9 +70,7 @@ const EmployeeRegisterPage: React.FC = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!validateForm()) {
-      return;
-    }
+    if (!validateForm()) return;
 
     setLoading(true);
     try {
@@ -88,6 +80,8 @@ const EmployeeRegisterPage: React.FC = () => {
         password: formData.password,
         name: formData.name.trim(),
         employeeId: formData.employeeId.trim(),
+        contactNumber: formData.contactNumber.trim(),
+        department: formData.department.trim(),
         role: 'EMPLOYEE',
       });
 
@@ -125,7 +119,12 @@ const EmployeeRegisterPage: React.FC = () => {
               <div className="mb-8 text-center">
                 <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-br from-indigo-600 to-fuchsia-600 shadow-lg">
                   <svg className="h-8 w-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" />
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth="2"
+                      d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z"
+                    />
                   </svg>
                 </div>
                 <h2 className="bg-gradient-to-r from-indigo-300 to-fuchsia-300 bg-clip-text text-3xl font-black tracking-tight text-transparent">
@@ -172,7 +171,7 @@ const EmployeeRegisterPage: React.FC = () => {
                   {errors.email && <p className="mt-1 text-sm text-rose-400">{errors.email}</p>}
                 </div>
 
-                {/* Name */}
+                {/* Full Name */}
                 <div>
                   <label htmlFor="name" className="mb-1 block text-sm font-medium text-slate-200">
                     Full Name
@@ -206,6 +205,42 @@ const EmployeeRegisterPage: React.FC = () => {
                     required
                   />
                   {errors.employeeId && <p className="mt-1 text-sm text-rose-400">{errors.employeeId}</p>}
+                </div>
+
+                {/* Contact Number */}
+                <div>
+                  <label htmlFor="contactNumber" className="mb-1 block text-sm font-medium text-slate-200">
+                    Contact Number
+                  </label>
+                  <input
+                    id="contactNumber"
+                    name="contactNumber"
+                    type="text"
+                    value={formData.contactNumber}
+                    onChange={handleChange}
+                    className="block w-full rounded-xl border border-slate-600 bg-slate-800/60 px-4 py-3 text-white placeholder:text-slate-400 shadow-sm outline-none transition focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/20"
+                    placeholder="+94123456789"
+                    required
+                  />
+                  {errors.contactNumber && <p className="mt-1 text-sm text-rose-400">{errors.contactNumber}</p>}
+                </div>
+
+                {/* Department */}
+                <div>
+                  <label htmlFor="department" className="mb-1 block text-sm font-medium text-slate-200">
+                    Department
+                  </label>
+                  <input
+                    id="department"
+                    name="department"
+                    type="text"
+                    value={formData.department}
+                    onChange={handleChange}
+                    className="block w-full rounded-xl border border-slate-600 bg-slate-800/60 px-4 py-3 text-white placeholder:text-slate-400 shadow-sm outline-none transition focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/20"
+                    placeholder="IT"
+                    required
+                  />
+                  {errors.department && <p className="mt-1 text-sm text-rose-400">{errors.department}</p>}
                 </div>
 
                 {/* Password */}

@@ -5,7 +5,7 @@ import { User } from '../types';
 import { toast } from 'react-toastify';
 import UserDetailModal from '../components/UserDetailModal';
 import CreateUserModal from '../components/CreateUserModal';
-import CreateEmployeeModal from '../components/CreateEmployeeModal';
+import CreateStaffModal from '../components/CreateStaffModal';
 import { useAdmin } from '../hooks/useAdmin';
 
 const UsersManagementPage: React.FC = () => {
@@ -20,6 +20,8 @@ const UsersManagementPage: React.FC = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [isCreateEmployeeModalOpen, setIsCreateEmployeeModalOpen] = useState(false);
+  const [isEmployeeModalOpen, setIsEmployeeModalOpen] = useState(false);
+  const [isAdminModalOpen, setIsAdminModalOpen] = useState(false);
   const [selectedUserIds, setSelectedUserIds] = useState<Set<number>>(new Set());
   const isAdmin = useAdmin();
 
@@ -331,18 +333,29 @@ const UsersManagementPage: React.FC = () => {
                   Add New User
                 </button>
               )}
-              
-              {/* Add Employee button - admin only */}
+
+              {/* CreateStaffModal buttons */}
               {isAdmin && (
-                <button
-                  onClick={() => setIsCreateEmployeeModalOpen(true)}
-                  className="px-4 py-2 bg-fuchsia-600/80 hover:bg-fuchsia-600 text-white font-semibold rounded-lg transition flex items-center gap-2"
-                >
-                  <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <>
+                  <button
+                    onClick={() => setIsEmployeeModalOpen(true)}
+                    className="px-4 py-2 bg-green-600/80 hover:bg-green-600 text-white font-semibold rounded-lg transition flex items-center gap-2"
+                  >
+                    <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v16m8-8H4" />
                   </svg>
-                  Add Employee
-                </button>
+                    Create Employee
+                  </button>
+                  <button
+                    onClick={() => setIsAdminModalOpen(true)}
+                    className="px-4 py-2 bg-blue-600/80 hover:bg-blue-600 text-white font-semibold rounded-lg transition flex items-center gap-2"
+                  >
+                    <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v16m8-8H4" />
+                  </svg>
+                    Create Admin
+                  </button>
+                </>
               )}
               
               {/* Delete Selected button - admin only */}
@@ -551,13 +564,23 @@ const UsersManagementPage: React.FC = () => {
         }}
       />
 
-      {/* Create Employee Modal */}
-      <CreateEmployeeModal
-        isOpen={isCreateEmployeeModalOpen}
-        onClose={() => setIsCreateEmployeeModalOpen(false)}
+      <CreateStaffModal
+        isOpen={isEmployeeModalOpen}
+        onClose={() => setIsEmployeeModalOpen(false)}
         onSuccess={() => {
-          loadUsers(); // Reload users list after successful creation
+          loadUsers();
         }}
+        mode="employee"
+      />
+
+      {/* Admin Modal */}
+      <CreateStaffModal
+        isOpen={isAdminModalOpen}
+        onClose={() => setIsAdminModalOpen(false)}
+        onSuccess={() => {
+          loadUsers();
+        }}
+        mode="admin"
       />
     </div>
   );
