@@ -22,7 +22,7 @@ import java.time.LocalDateTime;
         @UniqueConstraint(columnNames = "email"),
         @UniqueConstraint(columnNames = "employee_id")
 })
-@Data // CRITICAL: Generates getters, setters, toString, equals, hashCode
+@Data
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
@@ -119,8 +119,6 @@ public class Employee {
      */
     @Column(name = "last_login")
     private LocalDateTime lastLogin;
-
-    // Additional helper methods if needed
 
     /**
      * Check if employee has ADMIN role

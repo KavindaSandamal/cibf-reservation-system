@@ -57,15 +57,15 @@ public class SecurityConfig {
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
 
-        // FIXED: Add your production domain and localhost origins
+        // production domain and localhost origins
         configuration.setAllowedOriginPatterns(Arrays.asList(
                 "http://localhost:3000",
                 "http://localhost:5173",
                 "http://localhost:5174",
                 "http://localhost:5175",
                 "http://34.213.51.153",
-                "http://34.213.51.153:*", // Allow any port on production IP
-                "https://34.213.51.153", // In case you add HTTPS later
+                "http://34.213.51.153:*",
+                "https://34.213.51.153",
                 "https://34.213.51.153:*"));
 
         configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"));
@@ -80,7 +80,7 @@ public class SecurityConfig {
     }
 
     @Bean
-    public SecurityFilterChain applicationSecurityFilterChain( // Renamed the bean for clarity
+    public SecurityFilterChain applicationSecurityFilterChain(
             HttpSecurity http,
             JwtAuthenticationFilter authenticationFilter) throws Exception {
 
@@ -88,7 +88,7 @@ public class SecurityConfig {
                 // 1. Apply CORS configuration
                 .cors(cors -> cors.configurationSource(corsConfigurationSource()))
 
-                // 2. CRITICAL: CSRF MUST also be disabled here for consistency
+                // 2. CSRF disabled here for consistency
                 .csrf(AbstractHttpConfigurer::disable)
 
                 // 3. Disable basic auth and form login
@@ -101,15 +101,11 @@ public class SecurityConfig {
                 // 5. Enforce stateless session policy (KEY for JWT)
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
 
-                // 6. CRITICAL: Only apply this security chain to non-public paths
-                // Public paths (/api/auth/**) are handled by PublicSecurityConfig (Order 1)
-                // This ensures this chain doesn't interfere with public endpoints
+                // 6.Only apply this security chain to non-public paths
                 .securityMatcher("/api/**")
                 .authorizeHttpRequests(authorize -> authorize
-                        // Explicitly exclude public paths - these are handled by PublicSecurityConfig
                         .requestMatchers("/api/auth/**", "/api/public/**").permitAll()
                         .requestMatchers("/api/admin/**").hasAnyRole("EMPLOYEE", "ADMIN")
-                        // All other /api/** paths require authentication
                         .anyRequest().authenticated());
 
         // 7. Add JWT filter BEFORE Spring Security's authentication filter

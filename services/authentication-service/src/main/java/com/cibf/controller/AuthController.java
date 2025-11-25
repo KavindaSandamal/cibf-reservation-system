@@ -5,7 +5,7 @@ import com.cibf.dto.AuthResponse;
 import com.cibf.dto.UserRegistrationRequest;
 import com.cibf.dto.EmployeeRegistrationRequest;
 import com.cibf.service.IAuthService;
-import com.cibf.entity.User; // Added for /me endpoint
+import com.cibf.entity.User;
 import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
@@ -17,8 +17,8 @@ import org.springframework.web.bind.annotation.RestController;
 
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.security.core.Authentication; // Added for /me endpoint
-import org.springframework.security.core.context.SecurityContextHolder; // Added for /me endpoint
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 
 /**
  * REST Controller for all Authentication-related operations.
@@ -87,14 +87,8 @@ public class AuthController {
      */
     @GetMapping("/me")
     public ResponseEntity<User> me(Authentication authentication) {
-        // The Authentication object is populated by Spring Security from the JWT token.
         String username = authentication.getName();
-
-        // Use the service method we added to retrieve the full User entity
         User user = authService.getUserByUsername(username);
-
-        // Returns the User entity, which includes the ID needed by the PowerShell
-        // script (Step 2).
         return ResponseEntity.ok(user);
     }
 

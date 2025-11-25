@@ -37,15 +37,16 @@ public enum Role {
 
     /**
      * Convert string to Role enum (case-insensitive)
+     * /
      * 
-     * @param roleName Role name as string
-     * @return Role enum or null if not found
+     * @param roleName
+     * @return
      */
     public static Role fromString(String roleName) {
         if (roleName == null || roleName.isBlank()) {
             return null;
         }
-        
+
         for (Role role : Role.values()) {
             if (role.name.equalsIgnoreCase(roleName.trim())) {
                 return role;
@@ -61,4 +62,3 @@ public enum Role {
         return "ROLE_" + name;
     }
 }
-

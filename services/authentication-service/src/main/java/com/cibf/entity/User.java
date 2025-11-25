@@ -34,37 +34,37 @@ public class User {
     private String businessName;
 
     @Column(name = "email")
-    private String email; 
+    private String email;
 
     @Column(name = "contact_number")
-    private String contactNumber; 
+    private String contactNumber;
 
     @Column(name = "address", columnDefinition = "TEXT")
-    private String address;  
+    private String address;
 
     @Column(nullable = false)
-    private String role;  // Store role as String in DB
+    private String role;
 
     @CreationTimestamp
     @Column(name = "created_at", nullable = false, updatable = false)
-    private LocalDateTime createdAt;  
+    private LocalDateTime createdAt;
 
     @UpdateTimestamp
     @Column(name = "updated_at")
-    private LocalDateTime updatedAt;  
+    private LocalDateTime updatedAt;
 
     // Constructor for basic user creation
     public User(String username, String password, String businessName, Role role) {
         this.username = username;
         this.password = password;
         this.businessName = businessName;
-        this.email = username; 
+        this.email = username;
         this.role = role.getName();
     }
 
     // Full constructor for admin creation with all fields
-    public User(String username, String password, String businessName, String email, 
-                String contactNumber, String address, Role role) {
+    public User(String username, String password, String businessName, String email,
+            String contactNumber, String address, Role role) {
         this.username = username;
         this.password = password;
         this.businessName = businessName;

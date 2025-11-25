@@ -15,25 +15,23 @@ import org.springframework.web.cors.CorsConfigurationSource;
  * /api/auth/**.
  */
 @Configuration
-@Order(1) //Ensures this chain is loaded and executed first
+@Order(1) // Ensures this chain is loaded and executed first
 public class PublicSecurityConfig {
 
-  
-    //Defines a permissive filter chain for public endpoints.
+    // Defines a permissive filter chain for public endpoints.
 
     @Bean
     public SecurityFilterChain publicSecurityFilterChain(
             HttpSecurity http,
             CorsConfigurationSource corsConfigurationSource) throws Exception {
         http
-                // 1. Apply CORS configuration (CRITICAL for public endpoints)
+                // 1. Apply CORS configuration
                 .cors(cors -> cors.configurationSource(corsConfigurationSource))
 
                 // 2. Explicitly disable CSRF using the static method
                 .csrf(AbstractHttpConfigurer::disable)
 
                 // 3. Only match the public paths that need to be excluded from main
-                // security - using securityMatcher for Spring Security 6.x
                 .securityMatcher("/api/auth/**", "/api/public/**", "/swagger-ui/**", "/v3/api-docs/**")
 
                 // 4. Allow all requests matching the securityMatcher

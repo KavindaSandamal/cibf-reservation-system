@@ -247,8 +247,6 @@ public class AdminController {
                 @SuppressWarnings("unchecked")
                 Map<String, Object> body = (Map<String, Object>) authResponse.getBody();
                 if (body != null && !body.containsKey("userId")) {
-                    // If userId is not in the response, we should add it
-                    // This assumes the auth service returns user information
                     log.info("Employee created successfully");
                 }
             } catch (Exception e) {

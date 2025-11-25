@@ -70,9 +70,6 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                     List<SimpleGrantedAuthority> authorities = new ArrayList<>();
 
                     if (StringUtils.hasText(rolesString)) {
-                        // FIXED: Parse roles from token (comma-separated)
-                        // The roles already have ROLE_ prefix from JwtTokenProvider.generateToken()
-                        // So we just use them as-is, no need to add prefix again
                         authorities = Arrays.stream(rolesString.split(","))
                                 .map(String::trim)
                                 .filter(StringUtils::hasText)
@@ -112,7 +109,6 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                         }
 
                         // Create authentication object
-                        // If we have UserDetails, use it as principal; otherwise use username
                         Object principal = userDetails != null ? userDetails : username;
 
                         UsernamePasswordAuthenticationToken authentication = new UsernamePasswordAuthenticationToken(
