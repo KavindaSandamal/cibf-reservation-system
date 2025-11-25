@@ -52,33 +52,43 @@ class ApiClient {
       (error) => {
         const status = error.response?.status;
         const url = error.config?.url || '';
-        
-        // Handle 401 Unauthorized - token expired or invalid
-        if (status === 401) {
-          console.warn('401 Unauthorized - redirecting to login');
+        const isAuthEndpoint = url.includes('/api/auth/');
+
+        const redirectToLogin = () => {
           localStorage.removeItem('employee_token');
           localStorage.removeItem('authToken');
           localStorage.removeItem('token');
           localStorage.removeItem('employee');
           localStorage.removeItem('user');
-          window.location.href = '/login';
+          window.location.href = '/employee/login';
+        };
+        
+        // Handle 401 Unauthorized - token expired or invalid
+        if (status === 401) {
+          // Do not redirect if this was an auth attempt (e.g., invalid login)
+          if (!isAuthEndpoint) {
+            console.warn('401 Unauthorized - redirecting to login');
+            redirectToLogin();
+          }
           return Promise.reject(error);
         }
         
         // Handle 403 Forbidden - insufficient permissions
         if (status === 403) {
           console.error('403 Forbidden - insufficient permissions');
-          const token = 
-            localStorage.getItem('employee_token') || 
-            localStorage.getItem('authToken') || 
-            localStorage.getItem('token');
-          
-          if (!token) {
-            console.warn('No token found - redirecting to login');
-            window.location.href = '/login';
-          } else {
-            console.error('User does not have required role (EMPLOYEE or ADMIN)');
-            console.log('Current token:', token.substring(0, 20) + '...');
+          if (!isAuthEndpoint) {
+            const token = 
+              localStorage.getItem('employee_token') || 
+              localStorage.getItem('authToken') || 
+              localStorage.getItem('token');
+            
+            if (!token) {
+              console.warn('No token found - redirecting to login');
+              redirectToLogin();
+            } else {
+              console.error('User does not have required role (EMPLOYEE or ADMIN)');
+              console.log('Current token:', token.substring(0, 20) + '...');
+            }
           }
         }
         
