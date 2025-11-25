@@ -1,5 +1,6 @@
 package com.cibf.service;
 
+import com.cibf.dto.AdminRegistrationRequest;
 import com.cibf.dto.AuthRequest;
 import com.cibf.dto.AuthResponse;
 import com.cibf.dto.UserRegistrationRequest;
@@ -67,6 +68,8 @@ public interface IAuthService {
      * @return ResponseEntity with created user information
      */
     ResponseEntity<?> createUserByAdmin(UserRegistrationRequest registrationRequest);
+
+    ResponseEntity<?> createAdminByAdmin(AdminRegistrationRequest registrationRequest);
 
     boolean userExists(Long userId);
 

@@ -1,6 +1,7 @@
 package com.cibf.controller;
 
 import com.cibf.dto.EmployeeRegistrationRequest;
+import com.cibf.dto.AdminRegistrationRequest;
 import com.cibf.dto.UserRegistrationRequest;
 import com.cibf.dto.UserResponse;
 import com.cibf.dto.UserDetailResponse;
@@ -248,6 +249,32 @@ public class AdminController {
                 Map<String, Object> body = (Map<String, Object>) authResponse.getBody();
                 if (body != null && !body.containsKey("userId")) {
                     log.info("Employee created successfully");
+                }
+            } catch (Exception e) {
+                log.warn("Could not extract userId from response: {}", e.getMessage());
+            }
+        }
+
+        return authResponse;
+    }
+
+    /**
+     * Create new admin account (Admin only)
+     * POST /api/admin/admins
+     */
+    @PostMapping("/admins")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<?> createAdmin(@Valid @RequestBody AdminRegistrationRequest registrationRequest) {
+        log.info("Admin creating new admin account: {}", registrationRequest.getUsername());
+
+        ResponseEntity<?> authResponse = authService.createAdminByAdmin(registrationRequest);
+
+        if (authResponse.getStatusCode() == HttpStatus.CREATED && authResponse.hasBody()) {
+            try {
+                @SuppressWarnings("unchecked")
+                Map<String, Object> body = (Map<String, Object>) authResponse.getBody();
+                if (body != null && !body.containsKey("userId")) {
+                    log.info("Admin account created successfully");
                 }
             } catch (Exception e) {
                 log.warn("Could not extract userId from response: {}", e.getMessage());

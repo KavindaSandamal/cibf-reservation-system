@@ -3,6 +3,7 @@ package com.cibf.service;
 import com.cibf.dto.AuthRequest;
 import com.cibf.dto.AuthResponse;
 import com.cibf.dto.EmployeeRegistrationRequest;
+import com.cibf.dto.AdminRegistrationRequest;
 import com.cibf.dto.UserRegistrationRequest;
 import com.cibf.entity.User;
 import com.cibf.entity.Employee;
@@ -293,6 +294,50 @@ public class AuthService implements IAuthService {
         response.put("businessName", user.getBusinessName());
         response.put("email", user.getEmail());
         response.put("message", "User created successfully by admin");
+
+        return new ResponseEntity<>(response, HttpStatus.CREATED);
+    }
+
+    @Override
+    public ResponseEntity<?> createAdminByAdmin(AdminRegistrationRequest registrationRequest) {
+        validateUsernameAvailability(registrationRequest.getUsername());
+
+        Role effectiveRole = Role.ADMIN;
+
+        User user = new User(
+                registrationRequest.getUsername(),
+                passwordEncoder.encode(registrationRequest.getPassword()),
+                "CIBF Administrator",
+                registrationRequest.getEmail(),
+                registrationRequest.getContactNumber(),
+                null,
+                effectiveRole);
+
+        userRepository.save(user);
+
+        Employee employee = new Employee();
+        employee.setUser(user);
+        employee.setUsername(user.getUsername());
+        employee.setName(registrationRequest.getName());
+        employee.setEmail(registrationRequest.getEmail());
+        employee.setEmployeeId(registrationRequest.getEmployeeId());
+        employee.setRole(effectiveRole.getName());
+        employee.setContactNumber(registrationRequest.getContactNumber());
+        employee.setDepartment(registrationRequest.getDepartment());
+
+        employeeRepository.save(employee);
+
+        logger.info("Admin created by admin: {} ({})", employee.getName(), employee.getEmployeeId());
+
+        Map<String, Object> response = new HashMap<>();
+        response.put("id", user.getId());
+        response.put("username", user.getUsername());
+        response.put("role", effectiveRole.getName());
+        response.put("employeeId", employee.getEmployeeId());
+        response.put("name", employee.getName());
+        response.put("email", employee.getEmail());
+        response.put("department", employee.getDepartment());
+        response.put("message", "Admin account created successfully");
 
         return new ResponseEntity<>(response, HttpStatus.CREATED);
     }
