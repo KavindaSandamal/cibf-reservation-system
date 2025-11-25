@@ -11,11 +11,8 @@ interface CreateUserModalProps {
 
 interface CreateUserFormData {
   username: string;
-  email: string;
   password: string;
   confirmPassword: string;
-  firstName: string;
-  lastName: string;
   businessName: string;
   contactNumber: string;
   address: string;
@@ -31,11 +28,8 @@ const CreateUserModal: React.FC<CreateUserModalProps> = ({
 }) => {
   const [formData, setFormData] = useState<CreateUserFormData>({
     username: '',
-    email: '',
     password: '',
     confirmPassword: '',
-    firstName: '',
-    lastName: '',
     businessName: '',
     contactNumber: '',
     address: '',
@@ -60,18 +54,8 @@ const CreateUserModal: React.FC<CreateUserModalProps> = ({
 
     if (!formData.username.trim()) {
       newErrors.username = 'Username is required';
-    }
-
-    if (!isValidEmail(formData.email)) {
-      newErrors.email = 'Enter a valid email address';
-    }
-
-    if (!formData.firstName.trim()) {
-      newErrors.firstName = 'First name is required';
-    }
-
-    if (!formData.lastName.trim()) {
-      newErrors.lastName = 'Last name is required';
+    } else if (!isValidEmail(formData.username.trim())) {
+      newErrors.username = 'Username must be a valid email address';
     }
 
     if (formData.password.length < 6) {
@@ -97,10 +81,10 @@ const CreateUserModal: React.FC<CreateUserModalProps> = ({
     try {
       await userService.createUser({
         username: formData.username.trim(),
-        email: formData.email.trim(),
+        email: formData.username.trim(), // Use username as email
         password: formData.password,
-        firstName: formData.firstName.trim(),
-        lastName: formData.lastName.trim(),
+        firstName: '', // Empty string as default
+        lastName: '', // Empty string as default
         businessName: formData.businessName.trim() || undefined,
         contactNumber: formData.contactNumber.trim() || undefined,
         address: formData.address.trim() || undefined,
@@ -110,11 +94,8 @@ const CreateUserModal: React.FC<CreateUserModalProps> = ({
       // Reset form
       setFormData({
         username: '',
-        email: '',
         password: '',
         confirmPassword: '',
-        firstName: '',
-        lastName: '',
         businessName: '',
         contactNumber: '',
         address: '',
@@ -133,11 +114,8 @@ const CreateUserModal: React.FC<CreateUserModalProps> = ({
     if (!loading) {
       setFormData({
         username: '',
-        email: '',
         password: '',
         confirmPassword: '',
-        firstName: '',
-        lastName: '',
         businessName: '',
         contactNumber: '',
         address: '',
@@ -206,60 +184,6 @@ const CreateUserModal: React.FC<CreateUserModalProps> = ({
                     required
                   />
                   {errors.username && <p className="mt-1 text-sm text-rose-400">{errors.username}</p>}
-                </div>
-
-                {/* Email */}
-                <div className="md:col-span-2">
-                  <label htmlFor="email" className="block text-sm font-medium text-slate-200 mb-1">
-                    Email Address *
-                  </label>
-                  <input
-                    id="email"
-                    name="email"
-                    type="email"
-                    value={formData.email}
-                    onChange={handleChange}
-                    className="w-full rounded-xl border border-slate-600 bg-slate-800/60 px-4 py-2.5 text-white placeholder:text-slate-400 shadow-sm outline-none transition focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20"
-                    placeholder="user@example.com"
-                    required
-                  />
-                  {errors.email && <p className="mt-1 text-sm text-rose-400">{errors.email}</p>}
-                </div>
-
-                {/* First Name */}
-                <div>
-                  <label htmlFor="firstName" className="block text-sm font-medium text-slate-200 mb-1">
-                    First Name *
-                  </label>
-                  <input
-                    id="firstName"
-                    name="firstName"
-                    type="text"
-                    value={formData.firstName}
-                    onChange={handleChange}
-                    className="w-full rounded-xl border border-slate-600 bg-slate-800/60 px-4 py-2.5 text-white placeholder:text-slate-400 shadow-sm outline-none transition focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20"
-                    placeholder="John"
-                    required
-                  />
-                  {errors.firstName && <p className="mt-1 text-sm text-rose-400">{errors.firstName}</p>}
-                </div>
-
-                {/* Last Name */}
-                <div>
-                  <label htmlFor="lastName" className="block text-sm font-medium text-slate-200 mb-1">
-                    Last Name *
-                  </label>
-                  <input
-                    id="lastName"
-                    name="lastName"
-                    type="text"
-                    value={formData.lastName}
-                    onChange={handleChange}
-                    className="w-full rounded-xl border border-slate-600 bg-slate-800/60 px-4 py-2.5 text-white placeholder:text-slate-400 shadow-sm outline-none transition focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20"
-                    placeholder="Doe"
-                    required
-                  />
-                  {errors.lastName && <p className="mt-1 text-sm text-rose-400">{errors.lastName}</p>}
                 </div>
 
                 {/* Business Name */}
