@@ -1,9 +1,11 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { userService } from '../services/userService';
 import { User } from '../types';
 import { toast } from 'react-toastify';
 import UserDetailModal from '../components/UserDetailModal';
+import CreateUserModal from '../components/CreateUserModal';
+import CreateEmployeeModal from '../components/CreateEmployeeModal';
 import { useAdmin } from '../hooks/useAdmin';
 
 const UsersManagementPage: React.FC = () => {
@@ -12,24 +14,116 @@ const UsersManagementPage: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage] = useState(10);
+  const [totalItems, setTotalItems] = useState(0);
+  const [totalPages, setTotalPages] = useState(0);
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+  const [isCreateEmployeeModalOpen, setIsCreateEmployeeModalOpen] = useState(false);
   const [selectedUserIds, setSelectedUserIds] = useState<Set<number>>(new Set());
   const isAdmin = useAdmin();
 
-  useEffect(() => {
-    loadUsers();
-  }, []);
+  // Filter function to determine if a user should be visible to the current user
+  const shouldShowUser = (user: User): boolean => {
+    if (isAdmin) return true; // Admins see all users
+    
+    const userRole = user.role?.toUpperCase();
+    
+    // If role is explicitly VENDOR, show it
+    if (userRole === 'VENDOR') return true;
+    
+    // If role is EMPLOYEE or ADMIN, hide it
+    if (userRole === 'EMPLOYEE' || userRole === 'ADMIN') return false;
+    
+    // If role is not set, check businessName pattern (fallback for backward compatibility)
+    if (!userRole && user.businessName) {
+      const businessName = user.businessName.toLowerCase();
+      if (businessName.includes('cibf employee') || businessName.includes('cibf admin')) {
+        return false; // Hide employees/admins
+      }
+    }
+    
+    // Also check email pattern - employees often have @cibf.com emails
+    if (!userRole && user.email) {
+      const email = user.email.toLowerCase();
+      if (email.includes('@cibf.com') || email.includes('emp_')) {
+        return false; // Hide employees/admins
+      }
+    }
+    
+    // If no role and doesn't match employee pattern, assume it's a vendor
+    return true;
+  };
 
-  useEffect(() => {
-    setCurrentPage(1);
-  }, [searchQuery]);
-
+  // Load users with appropriate pagination strategy
   const loadUsers = async () => {
     try {
       setLoading(true);
-      const data = await userService.getAllUsers(searchQuery || undefined);
-      setUsers(data);
+      
+      if (!isAdmin) {
+        // For employees: Fetch all users, filter client-side, then paginate client-side
+        // This ensures accurate counts and pagination
+        const allUsers: User[] = [];
+        let currentBackendPage = 0;
+        let hasMorePages = true;
+        const pageSize = 100; // Fetch in larger batches
+        
+        // Fetch all pages until we have all users
+        while (hasMorePages) {
+          const result = await userService.getAllUsers({
+            search: searchQuery.trim() || undefined,
+            page: currentBackendPage,
+            size: pageSize,
+          });
+          
+          allUsers.push(...result.users);
+          
+          if (result.pagination) {
+            hasMorePages = currentBackendPage + 1 < result.pagination.totalPages;
+            currentBackendPage++;
+          } else {
+            hasMorePages = false;
+          }
+        }
+        
+        // Filter users based on role
+        const filteredUsers = allUsers.filter(shouldShowUser);
+        
+        // Apply client-side pagination
+        const startIndex = (currentPage - 1) * itemsPerPage;
+        const endIndex = startIndex + itemsPerPage;
+        const paginatedUsers = filteredUsers.slice(startIndex, endIndex);
+        
+        setUsers(paginatedUsers);
+        
+        // Set correct pagination info based on filtered results
+        setTotalItems(filteredUsers.length);
+        setTotalPages(Math.max(1, Math.ceil(filteredUsers.length / itemsPerPage)));
+      } else {
+        // For admins: Use server-side pagination (more efficient)
+        const backendPage = currentPage - 1; // Convert to 0-based for backend
+        const result = await userService.getAllUsers({
+          search: searchQuery.trim() || undefined,
+          page: backendPage,
+          size: itemsPerPage,
+        });
+        
+        setUsers(result.users);
+        
+        // Use backend pagination info
+        if (result.pagination) {
+          setTotalItems(result.pagination.totalItems);
+          setTotalPages(result.pagination.totalPages);
+          
+          // Sync current page if backend returned different page (convert back to 1-based)
+          if (result.pagination.currentPage + 1 !== currentPage) {
+            setCurrentPage(result.pagination.currentPage + 1);
+          }
+        } else {
+          setTotalItems(result.users.length);
+          setTotalPages(result.users.length > 0 ? 1 : 0);
+        }
+      }
     } catch (error: any) {
       toast.error('Failed to load users');
       console.error('Error loading users:', error);
@@ -38,13 +132,20 @@ const UsersManagementPage: React.FC = () => {
     }
   };
 
-  // Reload when search query changes (debounced)
+  // Load users when dependencies change
   useEffect(() => {
+    // Debounce search queries
     const timer = setTimeout(() => {
       loadUsers();
-    }, 500);
+    }, searchQuery.trim().length > 0 ? 500 : 0);
+    
     return () => clearTimeout(timer);
     // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentPage, searchQuery, itemsPerPage, isAdmin]);
+
+  // Reset to page 1 when search query changes
+  useEffect(() => {
+    setCurrentPage(1);
   }, [searchQuery]);
 
   const handleViewUser = (user: User) => {
@@ -173,15 +274,14 @@ const UsersManagementPage: React.FC = () => {
     }
   };
 
-  // Use users directly since search is done on the backend
-  // If backend returns filtered results, use them; otherwise, filter client-side
-  const filteredUsers = users;
-  
-  // Pagination
-  const pageCount = Math.max(1, Math.ceil(filteredUsers.length / itemsPerPage));
+  // For employees, users are already paginated client-side
+  // For admins, users come from server-side pagination
+  const paginatedUsers = users;
+  const pageCount = Math.max(1, totalPages);
   const startIndex = (currentPage - 1) * itemsPerPage;
-  const endIndex = startIndex + itemsPerPage;
-  const paginatedUsers = filteredUsers.slice(startIndex, endIndex);
+  const endIndex = isAdmin 
+    ? Math.min(startIndex + paginatedUsers.length, totalItems)
+    : Math.min(startIndex + paginatedUsers.length, totalItems);
 
   if (loading) {
     return (
@@ -218,14 +318,43 @@ const UsersManagementPage: React.FC = () => {
               </h1>
               <p className="text-slate-400">View and manage all registered users</p>
             </div>
-            {isAdmin && selectedUserIds.size > 0 && (
-              <button
-                onClick={handleBulkDelete}
-                className="px-4 py-2 bg-red-600/80 hover:bg-red-600 text-white font-semibold rounded-lg transition"
-              >
-                Delete Selected ({selectedUserIds.size})
-              </button>
-            )}
+            <div className="flex items-center gap-3">
+              {/* Add New User button - admin only */}
+              {isAdmin && (
+                <button
+                  onClick={() => setIsCreateModalOpen(true)}
+                  className="px-4 py-2 bg-indigo-600/80 hover:bg-indigo-600 text-white font-semibold rounded-lg transition flex items-center gap-2"
+                >
+                  <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v16m8-8H4" />
+                  </svg>
+                  Add New User
+                </button>
+              )}
+              
+              {/* Add Employee button - admin only */}
+              {isAdmin && (
+                <button
+                  onClick={() => setIsCreateEmployeeModalOpen(true)}
+                  className="px-4 py-2 bg-fuchsia-600/80 hover:bg-fuchsia-600 text-white font-semibold rounded-lg transition flex items-center gap-2"
+                >
+                  <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v16m8-8H4" />
+                  </svg>
+                  Add Employee
+                </button>
+              )}
+              
+              {/* Delete Selected button - admin only */}
+              {isAdmin && selectedUserIds.size > 0 && (
+                <button
+                  onClick={handleBulkDelete}
+                  className="px-4 py-2 bg-red-600/80 hover:bg-red-600 text-white font-semibold rounded-lg transition"
+                >
+                  Delete Selected ({selectedUserIds.size})
+                </button>
+              )}
+            </div>
           </div>
         </motion.div>
 
@@ -326,7 +455,7 @@ const UsersManagementPage: React.FC = () => {
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         <span className="text-sm text-slate-300">
-                          {new Date(user.createdAt).toLocaleDateString()}
+                          {user.createdAt ? new Date(user.createdAt).toLocaleDateString() : 'N/A'}
                         </span>
                       </td>
                       {isAdmin && (
@@ -361,7 +490,7 @@ const UsersManagementPage: React.FC = () => {
           {pageCount > 1 && (
             <div className="px-6 py-4 border-t border-slate-700 flex items-center justify-between">
               <div className="text-sm text-slate-400">
-                Showing {startIndex + 1} to {Math.min(endIndex, filteredUsers.length)} of {filteredUsers.length} users
+                Showing {totalItems > 0 ? startIndex + 1 : 0} to {endIndex} of {totalItems} users
               </div>
               <div className="flex items-center gap-2">
                 <button
@@ -412,6 +541,24 @@ const UsersManagementPage: React.FC = () => {
           }}
         />
       )}
+
+      {/* Create User Modal */}
+      <CreateUserModal
+        isOpen={isCreateModalOpen}
+        onClose={() => setIsCreateModalOpen(false)}
+        onSuccess={() => {
+          loadUsers(); // Reload users list after successful creation
+        }}
+      />
+
+      {/* Create Employee Modal */}
+      <CreateEmployeeModal
+        isOpen={isCreateEmployeeModalOpen}
+        onClose={() => setIsCreateEmployeeModalOpen(false)}
+        onSuccess={() => {
+          loadUsers(); // Reload users list after successful creation
+        }}
+      />
     </div>
   );
 };
