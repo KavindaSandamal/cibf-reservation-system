@@ -44,10 +44,10 @@ public class StallHold {
     private BigDecimal totalAmount;
 
     @Column(nullable = false)
-    @Builder.Default // ✅ Fixed: Added @Builder.Default
+    @Builder.Default 
     private boolean used = false;
 
-    @CreationTimestamp // ✅ Fixed: Use Hibernate annotation instead of manual initialization
+    @CreationTimestamp 
     @Column(nullable = false, updatable = false)
     private LocalDateTime createdAt;
 }

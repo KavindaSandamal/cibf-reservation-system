@@ -24,7 +24,6 @@ import java.util.stream.Collectors;
 
 /**
  * Consolidated Admin Controller for Reservation Management
- * Employee Portal Endpoints - All admin/employee operations in one place
  */
 @RestController
 @RequestMapping("/api/admin/reservations")
@@ -34,16 +33,7 @@ public class ReservationAdminController {
 
     private final ReservationService reservationService;
     private final ReservationAdminService reservationAdminService;
-
-    // ========================================================================
-    // DEBUG & AUTH ENDPOINTS
-    // ========================================================================
-
-    /**
-     * Debug endpoint to check authentication status
-     * Remove this in production
-     * GET /api/admin/debug/auth
-     */
+  
     @GetMapping("/debug/auth")
     public ResponseEntity<Map<String, Object>> debugAuth(Authentication authentication) {
         Map<String, Object> debugInfo = new HashMap<>();
@@ -60,10 +50,6 @@ public class ReservationAdminController {
         }
         return ResponseEntity.ok(debugInfo);
     }
-
-    // ========================================================================
-    // STATISTICS ENDPOINTS
-    // ========================================================================
 
     /**
      * Get dashboard statistics summary
@@ -124,19 +110,8 @@ public class ReservationAdminController {
         return ResponseEntity.ok(trends);
     }
 
-    // ========================================================================
-    // RESERVATION MANAGEMENT ENDPOINTS
-    // ========================================================================
-
     /**
      * Get all reservations with pagination and filters
-     * Employee Portal Usage: Reservations Management page
-     * Supports both query parameter styles for backward compatibility
-     * 
-     * GET
-     * /api/admin/reservations?page=0&size=20&status=CONFIRMED&search=ABC&startDate=...&endDate=...
-     * GET
-     * /api/admin/reservations?status=ALL&search=&startDate=&endDate=&page=1&size=10
      */
     @GetMapping("/reservations")
     @PreAuthorize("hasAnyRole('EMPLOYEE', 'ADMIN')")
@@ -266,10 +241,6 @@ public class ReservationAdminController {
                 "message", "Confirmation email sent successfully",
                 "reservationId", id.toString()));
     }
-
-    // ========================================================================
-    // EXPORT ENDPOINTS
-    // ========================================================================
 
     /**
      * Export reservations to CSV

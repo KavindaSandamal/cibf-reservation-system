@@ -10,8 +10,6 @@ import java.util.List;
 
 /**
  * Feign Client for communication with the Stall Service.
- * This client relies on FeignClientConfig.java for propagating the JWT token.
- * Explicitly setting the port 8082 to ensure Docker network connectivity.
  */
 @FeignClient(name = "stall-service", url = "http://stall-service:8082", configuration = FeignClientConfig.class // ← ADD
                                                                                                                 // THIS
@@ -23,7 +21,6 @@ public interface StallServiceClient {
     ResponseEntity<List<StallResponse>> holdStalls(@RequestBody HoldStallRequest request);
 
     // 2. Get Stalls by IDs (Used for fetching initial stall data)
-    // Example: /api/stalls/by-ids?ids=1,2,3
     @GetMapping("/api/stalls/by-ids")
     ResponseEntity<List<StallResponse>> getStallsByIds(@RequestParam("ids") String commaSeparatedIds);
 
@@ -32,7 +29,6 @@ public interface StallServiceClient {
     ResponseEntity<Void> confirmStallsByReservationId(@PathVariable Long reservationId);
 
     // 4. Update Stall Status (Used for cancellation/cleanup)
-    // Example: /api/stalls/1/status?status=RESERVED
     @PostMapping("/api/stalls/{stallId}/status")
     ResponseEntity<Void> updateStallStatus(
             @PathVariable Long stallId,

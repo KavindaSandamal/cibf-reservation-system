@@ -149,7 +149,7 @@ public class ReservationService {
             reservation.setConfirmedAt(confirmedAt);
             reservation.setTotalAmount(totalAmount);
 
-            // **UPDATE STALL STATUS TO RESERVED**
+            // UPDATE STALL STATUS TO RESERVED
             try {
                 stallServiceClient.updateStallStatus(reservation.getStallId(), "RESERVED");
             } catch (Exception e) {
@@ -157,15 +157,12 @@ public class ReservationService {
             }
         });
 
-        // Save all reservations at once and FLUSH to database immediately
         reservationRepository.saveAll(reservations);
-        reservationRepository.flush(); // 🔥 CRITICAL: Force write to database NOW
+        reservationRepository.flush(); 
         log.info("✅ All reservations saved with CONFIRMED status and flushed to DB");
 
-        // Get the main reservation ID for event publishing
         Long mainReservationId = reservations.get(0).getId();
 
-        // 🎯 PUBLISH EVENT TO RABBITMQ (instead of direct processing)
         try {
             log.info("📤 Publishing reservation confirmed event to RabbitMQ");
 
@@ -180,11 +177,9 @@ public class ReservationService {
         } catch (Exception e) {
             log.error("⚠️ Failed to publish event to RabbitMQ, falling back to direct processing", e);
 
-            // FALLBACK: Direct processing if RabbitMQ fails
             processReservationDirectly(reservations.get(0), request, stallInfos, totalAmount);
         }
 
-        // Use the already-updated reservation from memory (no need to reload)
         Reservation mainReservation = reservations.get(0);
 
         // Build and return response
@@ -199,7 +194,7 @@ public class ReservationService {
                         .build())
                 .collect(Collectors.toList()));
         response.setTotalAmount(totalAmount);
-        response.setQrCodeUrl("Processing..."); // Will be updated async
+        response.setQrCodeUrl("Processing...");
 
         log.info("✅ Reservation confirmed successfully: ID={}, Status={}",
                 mainReservation.getId(), mainReservation.getStatus());
@@ -395,12 +390,10 @@ public class ReservationService {
 
     private List<ReservationConfirmationDto.StallInfo> getStallsInfoByIds(List<Long> stallIds) {
         try {
-            // Convert List<Long> to comma-separated String for Feign client
-            String commaSeparatedIds = stallIds.stream()
+             String commaSeparatedIds = stallIds.stream()
                     .map(Object::toString)
                     .collect(Collectors.joining(","));
 
-            // Handle ResponseEntity return type properly
             ResponseEntity<List<StallResponse>> stallResponseEntity = stallServiceClient
                     .getStallsByIds(commaSeparatedIds);
 

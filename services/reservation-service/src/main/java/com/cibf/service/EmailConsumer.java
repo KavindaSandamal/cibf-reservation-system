@@ -49,7 +49,6 @@ public class EmailConsumer {
 
     /**
      * Send HTML email using JavaMailSender
-     * CRITICAL: Sets isHtml = true to send formatted HTML emails
      */
     private void sendHtmlEmail(String to, String subject, String htmlContent) throws MessagingException {
         try {

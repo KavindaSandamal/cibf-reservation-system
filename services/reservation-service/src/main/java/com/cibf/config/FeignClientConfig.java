@@ -16,7 +16,6 @@ public class FeignClientConfig {
 
     /**
      * Creates a RequestInterceptor to propagate the current user's JWT
-     * to downstream microservices (like the stall-service).
      */
     @Bean
     public RequestInterceptor jwtRequestInterceptor() {
@@ -38,7 +37,6 @@ public class FeignClientConfig {
                     // 2. Fallback: If the principal isn't a Jwt, check credentials for the raw
                     // String token
                     if (authentication.getCredentials() != null) {
-                        // This path assumes the raw token string is stored in the credentials field.
                         token = authentication.getCredentials().toString();
                         log.debug("Extracted token from credentials fallback.");
                     } else {
@@ -47,7 +45,6 @@ public class FeignClientConfig {
                 }
 
                 if (token != null) {
-                    // Add the Authorization header for the downstream call
                     requestTemplate.header("Authorization", "Bearer " + token);
                     log.debug("Successfully propagated JWT token in Authorization header for Feign call.");
                 }

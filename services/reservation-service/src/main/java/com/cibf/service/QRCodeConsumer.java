@@ -28,8 +28,6 @@ public class QRCodeConsumer {
             log.info("📱 Received QR generation event from RabbitMQ: {}", event);
 
             String eventType = (String) event.get("eventType");
-
-            // Safe conversion - handles both Integer and Long from JSON
             Long reservationId = ((Number) event.get("reservationId")).longValue();
             String businessName = (String) event.get("businessName");
             String userEmail = (String) event.get("userEmail");
@@ -44,7 +42,7 @@ public class QRCodeConsumer {
 
         } catch (Exception e) {
             log.error("❌ Failed to process QR generation event", e);
-            throw e; // Re-throw to send to DLQ
+            throw e;
         }
     }
 }

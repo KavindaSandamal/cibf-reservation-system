@@ -174,17 +174,17 @@ public class EmailTemplateService {
                         </body>
                         </html>
                         """,
-                businessName, // Greeting
-                reservation.getId(), // Reservation ID
-                businessName, // Business Name in table
-                stallIdsStr, // Stall IDs
-                reservation.getTotalAmount(), // Total Amount
-                qrCodeUrl, // QR code image src
-                qrCodeUrl, // Download link in button
-                reservation.getId(), // Filename suffix
-                qrCodeUrl, // View QR Code button
-                qrCodeUrl, // Save QR Code button
-                reservation.getId() // Filename suffix
+                businessName, 
+                reservation.getId(),
+                businessName,
+                stallIdsStr, 
+                reservation.getTotalAmount(), 
+                qrCodeUrl, 
+                qrCodeUrl, 
+                reservation.getId(), 
+                qrCodeUrl, 
+                qrCodeUrl, 
+                reservation.getId() 
         );
     }
 

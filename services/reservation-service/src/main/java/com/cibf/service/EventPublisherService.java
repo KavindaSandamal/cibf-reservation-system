@@ -44,7 +44,7 @@ public class EventPublisherService {
 
         } catch (Exception e) {
             log.error("❌ Failed to publish ReservationConfirmed event to RabbitMQ", e);
-            throw e; // Re-throw so caller can handle fallback
+            throw e; 
         }
     }
 
@@ -73,7 +73,6 @@ public class EventPublisherService {
 
         } catch (Exception e) {
             log.error("⚠️ Failed to publish ReservationHeld event", e);
-            // Don't throw - holding should succeed even if event fails
         }
     }
 

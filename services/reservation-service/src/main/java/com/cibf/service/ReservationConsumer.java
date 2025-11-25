@@ -43,7 +43,7 @@ public class ReservationConsumer {
 
         } catch (Exception e) {
             log.error("❌ Failed to process reservation event", e);
-            throw e; // Re-throw to send to DLQ
+            throw e; 
         }
     }
 

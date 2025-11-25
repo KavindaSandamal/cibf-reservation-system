@@ -75,8 +75,7 @@ public class EmailService {
             helper.setFrom(fromEmail);
             helper.setTo(to);
             helper.setSubject(subject);
-            helper.setText(content, false); // false = plain text
-
+            helper.setText(content, false); 
             mailSender.send(message);
 
             log.info("✅ Simple email sent successfully to: {}", to);

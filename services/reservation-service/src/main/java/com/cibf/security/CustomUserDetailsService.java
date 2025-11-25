@@ -9,9 +9,6 @@ import org.springframework.stereotype.Service;
 
 import java.util.List;
 
-/**
- * Replace with a real lookup if the stall-service shares the user database.
- */
 @Service
 public class CustomUserDetailsService implements UserDetailsService {
 

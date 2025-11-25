@@ -128,8 +128,7 @@ public class QRCodeService {
                 .bucket(bucketName)
                 .key(key)
                 .contentType("image/png")
-                // .acl(ObjectCannedACL.PUBLIC_READ)
-                .cacheControl("max-age=31536000") // Cache for 1 year
+                .cacheControl("max-age=31536000") 
                 .build();
 
         s3Client.putObject(putRequest, RequestBody.fromBytes(imageBytes));
