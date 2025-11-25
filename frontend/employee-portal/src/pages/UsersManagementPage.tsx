@@ -7,6 +7,7 @@ import UserDetailModal from '../components/UserDetailModal';
 import CreateUserModal from '../components/CreateUserModal';
 import CreateStaffModal from '../components/CreateStaffModal';
 import { useAdmin } from '../hooks/useAdmin';
+import { reservationService } from '../services/reservationService';
 
 const UsersManagementPage: React.FC = () => {
   const [users, setUsers] = useState<User[]>([]);
@@ -23,7 +24,39 @@ const UsersManagementPage: React.FC = () => {
   const [isEmployeeModalOpen, setIsEmployeeModalOpen] = useState(false);
   const [isAdminModalOpen, setIsAdminModalOpen] = useState(false);
   const [selectedUserIds, setSelectedUserIds] = useState<Set<number>>(new Set());
+  const [reservationCounts, setReservationCounts] = useState<Record<number, number>>({});
   const isAdmin = useAdmin();
+
+  const updateReservationCounts = async (usersList: User[]) => {
+    const missingIds = usersList
+      .map((user) => user.id)
+      .filter((id) => reservationCounts[id] === undefined);
+
+    if (missingIds.length === 0) {
+      return;
+    }
+
+    try {
+      const results = await Promise.allSettled(
+        missingIds.map(async (userId) => {
+          const reservations = await reservationService.getReservationsByUserId(userId);
+          return { userId, count: reservations.length };
+        })
+      );
+
+      setReservationCounts((prev) => {
+        const next = { ...prev };
+        results.forEach((result) => {
+          if (result.status === 'fulfilled') {
+            next[result.value.userId] = result.value.count;
+          }
+        });
+        return next;
+      });
+    } catch (error) {
+      console.error('Error fetching reservation counts:', error);
+    }
+  };
 
   // Filter function to determine if a user should be visible to the current user
   const shouldShowUser = (user: User): boolean => {
@@ -97,6 +130,7 @@ const UsersManagementPage: React.FC = () => {
         const paginatedUsers = filteredUsers.slice(startIndex, endIndex);
         
         setUsers(paginatedUsers);
+        updateReservationCounts(paginatedUsers);
         
         // Set correct pagination info based on filtered results
         setTotalItems(filteredUsers.length);
@@ -111,6 +145,7 @@ const UsersManagementPage: React.FC = () => {
         });
         
         setUsers(result.users);
+        updateReservationCounts(result.users);
         
         // Use backend pagination info
         if (result.pagination) {
@@ -278,6 +313,23 @@ const UsersManagementPage: React.FC = () => {
 
   // For employees, users are already paginated client-side
   // For admins, users come from server-side pagination
+  const getDisplayName = (user: User): string => {
+    const name = [user.firstName, user.lastName].filter(Boolean).join(' ').trim();
+    if (name.length > 0) {
+      return name;
+    }
+    if (user.businessName && user.businessName.trim().length > 0) {
+      return user.businessName.trim();
+    }
+    if (user.email) {
+      const emailPrefix = user.email.split('@')[0];
+      if (emailPrefix.length > 0) {
+        return emailPrefix;
+      }
+    }
+    return `User #${user.id}`;
+  };
+
   const paginatedUsers = users;
   const pageCount = Math.max(1, totalPages);
   const startIndex = (currentPage - 1) * itemsPerPage;
@@ -450,7 +502,7 @@ const UsersManagementPage: React.FC = () => {
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         <div className="font-medium text-white">
-                          {user.firstName} {user.lastName}
+                          {getDisplayName(user)}
                         </div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
@@ -463,7 +515,7 @@ const UsersManagementPage: React.FC = () => {
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         <span className="px-3 py-1 bg-indigo-500/20 text-indigo-300 rounded-full text-xs font-semibold">
-                          {user.reservationCount || 0}
+                          {reservationCounts[user.id] ?? user.reservationCount ?? '…'}
                         </span>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
