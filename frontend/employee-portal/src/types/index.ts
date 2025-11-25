@@ -30,6 +30,8 @@ export interface Reservation {
   id: number;
   userId: number;
   user?: User;
+  businessName?: string;
+  userEmail?: string;
   reservationDate: string;
   status: ReservationStatus;
   qrCodeUrl?: string;
