@@ -27,23 +27,30 @@ type PaginatedResponse<T> = {
 type StallListResponse = StallResponse[] | PaginatedResponse<StallResponse>;
 
 const normalizeStallsResponse = (data: StallListResponse): Stall[] => {
-  // Direct array response
+  let stalls: StallResponse[] = [];
+  
+  // Extract stalls array from different response formats
   if (Array.isArray(data)) {
-    return data as Stall[];
+    stalls = data as StallResponse[];
+  } else if (Array.isArray((data as PaginatedResponse<StallResponse>).content)) {
+    stalls = (data as PaginatedResponse<StallResponse>).content!;
+  } else if (Array.isArray((data as PaginatedResponse<StallResponse>).stalls)) {
+    stalls = (data as PaginatedResponse<StallResponse>).stalls!;
+  } else {
+    console.warn('Unexpected stalls response format:', data);
+    return [];
   }
 
-  // Spring's default Page format (content property)
-  if (Array.isArray(data.content)) {
-    return data.content as Stall[];
-  }
-
-  // Custom format (stalls property)
-  if (Array.isArray(data.stalls)) {
-    return data.stalls as Stall[];
-  }
-
-  console.warn('Unexpected stalls response format:', data);
-  return [];
+  // Transform StallResponse to Stall by mapping status to isAvailable
+  return stalls.map((stall: any) => ({
+    ...stall,
+    // Map status enum to isAvailable boolean
+    // Backend returns status: 'AVAILABLE' | 'RESERVED' | 'UNAVAILABLE'
+    // Frontend expects isAvailable: boolean
+    isAvailable: stall.status === 'AVAILABLE' || (stall.isAvailable !== undefined ? stall.isAvailable : stall.status === 'AVAILABLE'),
+    // Ensure stallNumber is set (backend might use stallName)
+    stallNumber: stall.stallNumber || stall.stallName || 'N/A',
+  }));
 };
 
 export const stallService = {
