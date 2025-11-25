@@ -42,15 +42,38 @@ const normalizeStallsResponse = (data: StallListResponse): Stall[] => {
   }
 
   // Transform StallResponse to Stall by mapping status to isAvailable
-  return stalls.map((stall: any) => ({
-    ...stall,
-    // Map status enum to isAvailable boolean
-    // Backend returns status: 'AVAILABLE' | 'RESERVED' | 'UNAVAILABLE'
-    // Frontend expects isAvailable: boolean
-    isAvailable: stall.status === 'AVAILABLE' || (stall.isAvailable !== undefined ? stall.isAvailable : stall.status === 'AVAILABLE'),
-    // Ensure stallNumber is set (backend might use stallName)
-    stallNumber: stall.stallNumber || stall.stallName || 'N/A',
-  }));
+  return stalls.map((stall: any) => {
+    const stallNumber =
+      stall.stallNumber ||
+      stall.stallName ||
+      (typeof stall.id === 'number' ? `Stall ${stall.id}` : 'N/A');
+    const stallName = stall.stallName || stallNumber;
+
+    let locationLabel: string | null = stall.location || null;
+    if (!locationLabel && typeof stall.stallName === 'string') {
+      const match = stall.stallName.trim().match(/^([A-Za-z]+)(\d+)$/);
+      if (match) {
+        locationLabel = `Row ${match[1].toUpperCase()} • Booth ${match[2]}`;
+      }
+    }
+    if (!locationLabel && stall.dimension) {
+      locationLabel = stall.dimension;
+    }
+    if (!locationLabel && stall.locationX != null && stall.locationY != null) {
+      locationLabel = `X:${Math.round(stall.locationX)}, Y:${Math.round(stall.locationY)}`;
+    }
+
+    return {
+      ...stall,
+      stallNumber,
+      stallName,
+      location: locationLabel || 'N/A',
+      // Map status enum to isAvailable boolean
+      isAvailable:
+        stall.status === 'AVAILABLE' ||
+        (stall.isAvailable !== undefined ? stall.isAvailable : stall.status === 'AVAILABLE'),
+    };
+  });
 };
 
 export const stallService = {

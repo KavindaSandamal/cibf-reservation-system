@@ -228,8 +228,14 @@ const StallsOverviewPage: React.FC = () => {
               >
                 <div className="flex items-center justify-between mb-4">
                   <div>
-                    <h3 className="text-xl font-bold text-white">{stall.stallNumber || 'N/A'}</h3>
-                    <p className="text-sm text-slate-400">{stall.stallName || 'Unnamed'}</p>
+                    <h3 className="text-xl font-bold text-white">
+                      {stall.stallName || stall.stallNumber || 'N/A'}
+                    </h3>
+                    <p className="text-sm text-slate-400">
+                      {stall.stallName && stall.stallNumber && stall.stallName !== stall.stallNumber
+                        ? `#${stall.stallNumber}`
+                        : stall.description || ' '}
+                    </p>
                   </div>
                   <span
                     className={`px-3 py-1 rounded-full text-xs font-semibold border ${
