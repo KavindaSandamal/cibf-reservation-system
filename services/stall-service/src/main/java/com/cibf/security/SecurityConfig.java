@@ -36,7 +36,6 @@ public class SecurityConfig {
                 .csrf(AbstractHttpConfigurer::disable)
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
-                        // Allow OPTIONS requests (for CORS preflight)
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
 
                         // Public endpoints
@@ -46,16 +45,11 @@ public class SecurityConfig {
                                 "/actuator/**",
                                 "/error")
                         .permitAll()
-
-                        // ⭐ Allow GET requests to stall endpoints (for service-to-service and public
-                        // access)
                         .requestMatchers(HttpMethod.GET,
                                 "/api/stalls", // Get all stalls
                                 "/api/stalls/**") // Get stall by ID, by-ids, available, etc.
                         .permitAll()
 
-                        // ⭐ Allow POST for status updates (service-to-service from
-                        // reservation-service)
                         .requestMatchers(HttpMethod.POST,
                                 "/api/stalls/*/status", // Pattern with wildcard
                                 "/api/stalls/{id}/status") // Pattern with path variable

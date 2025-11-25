@@ -29,7 +29,7 @@ public class StallController {
     private final StallService stallService;
 
     /**
-     * Get all stalls (accessible by all authenticated users)
+     * Get all stalls
      */
     @GetMapping
     public ResponseEntity<List<StallResponseDTO>> getAllStalls() {
@@ -39,8 +39,6 @@ public class StallController {
     }
 
     /**
-     * ⭐ Get stalls by multiple IDs - MUST BE BEFORE /{id} to avoid routing
-     * conflicts
      * This endpoint is used by reservation-service (service-to-service call)
      */
     @GetMapping("/by-ids")

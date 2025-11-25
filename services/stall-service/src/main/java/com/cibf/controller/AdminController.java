@@ -16,16 +16,15 @@ import java.util.Map;
 @RequestMapping("/api/admin")
 @RequiredArgsConstructor
 @Slf4j
-@CrossOrigin(origins = "*") // Configure properly in production
+@CrossOrigin(origins = "*")
 public class AdminController {
 
     private final StallService stallService;
 
     /**
      * Get stall statistics for dashboard
-     * Employee Portal Usage: Dashboard statistics
      * 
-     * @return Stall statistics including total, available, reserved, and occupancy rate
+     * @return
      */
     @GetMapping("/statistics/stalls")
     @PreAuthorize("hasAnyRole('EMPLOYEE', 'ADMIN')")
@@ -35,5 +34,3 @@ public class AdminController {
         return ResponseEntity.ok(statistics);
     }
 }
-
-
