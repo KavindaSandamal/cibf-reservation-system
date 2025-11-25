@@ -3,13 +3,14 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { employeeService } from '../services/employeeService';
 import { toast } from 'react-toastify';
 
-interface CreateEmployeeModalProps {
+interface CreateStaffModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onSuccess: () => void;
+  onSuccess: (staff?: any) => void; // optional: return created staff
+  mode: 'employee' | 'admin';
 }
 
-interface CreateEmployeeFormData {
+interface CreateStaffFormData {
   username: string;
   email: string;
   password: string;
@@ -20,15 +21,11 @@ interface CreateEmployeeFormData {
   department: string;
 }
 
-// Simple email validation
 const isValidEmail = (value: string) => /\S+@\S+\.\S+/.test(value);
+const isStrongPassword = (pwd: string) => /^(?=.*[A-Z])(?=.*\d).{8,}$/.test(pwd);
 
-const CreateEmployeeModal: React.FC<CreateEmployeeModalProps> = ({
-  isOpen,
-  onClose,
-  onSuccess,
-}) => {
-  const [formData, setFormData] = useState<CreateEmployeeFormData>({
+const CreateStaffModal: React.FC<CreateStaffModalProps> = ({ isOpen, onClose, onSuccess, mode }) => {
+  const [formData, setFormData] = useState<CreateStaffFormData>({
     username: '',
     email: '',
     password: '',
@@ -42,42 +39,41 @@ const CreateEmployeeModal: React.FC<CreateEmployeeModalProps> = ({
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
-  const [errors, setErrors] = useState<Partial<Record<keyof CreateEmployeeFormData, string>>>({});
+  const [errors, setErrors] = useState<Partial<Record<keyof CreateStaffFormData, string>>>({});
+
+  const modalTitle = mode === 'admin' ? 'Create New Admin' : 'Create New Employee';
+  const modalSubtitle = mode === 'admin' ? 'Add a new administrator account' : 'Add a new employee account';
+  const submitButtonText = mode === 'admin' ? 'Create Admin' : 'Create Employee';
+  const successMessage = mode === 'admin' ? 'Admin created successfully!' : 'Employee created successfully!';
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
-    setFormData((prev) => ({ ...prev, [name]: value }));
-    // Clear error when user starts typing
-    if (errors[name as keyof CreateEmployeeFormData]) {
-      setErrors((prev) => ({ ...prev, [name]: undefined }));
+    setFormData(prev => ({ ...prev, [name]: value }));
+    if (errors[name as keyof CreateStaffFormData]) {
+      setErrors(prev => ({ ...prev, [name]: undefined }));
     }
   };
 
-  const validateForm = (): boolean => {
-    const newErrors: Partial<Record<keyof CreateEmployeeFormData, string>> = {};
+  const validateForm = async (): Promise<boolean> => {
+    const newErrors: Partial<Record<keyof CreateStaffFormData, string>> = {};
 
-    if (!formData.username.trim()) {
-      newErrors.username = 'Username is required';
-    }
+    if (!formData.username.trim()) newErrors.username = 'Username is required';
+    if (!isValidEmail(formData.email)) newErrors.email = 'Enter a valid email address';
+    if (!formData.name.trim()) newErrors.name = 'Name is required';
+    if (!formData.employeeId.trim()) newErrors.employeeId = mode === 'admin' ? 'Admin ID is required' : 'Employee ID is required';
 
-    if (!isValidEmail(formData.email)) {
-      newErrors.email = 'Enter a valid email address';
-    }
+    if (formData.password.length < 6) newErrors.password = 'Password must be at least 6 characters';
+    if (mode === 'admin' && !isStrongPassword(formData.password)) newErrors.password = 'Admin password must have 8+ chars, 1 uppercase, 1 number';
+    if (formData.password !== formData.confirmPassword) newErrors.confirmPassword = 'Passwords do not match';
 
-    if (!formData.name.trim()) {
-      newErrors.name = 'Name is required';
-    }
-
-    if (!formData.employeeId.trim()) {
-      newErrors.employeeId = 'Employee ID is required';
-    }
-
-    if (formData.password.length < 6) {
-      newErrors.password = 'Password must be at least 6 characters';
-    }
-
-    if (formData.password !== formData.confirmPassword) {
-      newErrors.confirmPassword = 'Passwords do not match';
+    try {
+      if (!newErrors.email || !newErrors.employeeId) {
+        const duplicateCheck = await employeeService.checkExists(formData.email.trim(), formData.employeeId.trim());
+        if (duplicateCheck.email) newErrors.email = 'Email already exists';
+        if (duplicateCheck.employeeId) newErrors.employeeId = `${mode === 'admin' ? 'Admin' : 'Employee'} ID already exists`;
+      }
+    } catch (err) {
+      console.warn('Duplicate check failed', err);
     }
 
     setErrors(newErrors);
@@ -86,58 +82,58 @@ const CreateEmployeeModal: React.FC<CreateEmployeeModalProps> = ({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (loading) return;
+    setLoading(true);
 
-    if (!validateForm()) {
+    if (!(await validateForm())) {
+      setLoading(false);
       return;
     }
 
-    setLoading(true);
-    try {
-      await employeeService.createEmployee({
-        username: formData.username.trim(),
-        email: formData.email.trim(),
-        password: formData.password,
-        name: formData.name.trim(),
-        employeeId: formData.employeeId.trim(),
-        contactNumber: formData.contactNumber.trim() || undefined,
-        department: formData.department.trim() || undefined,
-      });
+    const payload = {
+      username: formData.username.trim(),
+      email: formData.email.trim(),
+      password: formData.password,
+      name: formData.name.trim(),
+      employeeId: formData.employeeId.trim(),
+      contactNumber: formData.contactNumber.trim() || undefined,
+      department: formData.department.trim() || undefined,
+    };
 
-      toast.success('Employee created successfully!');
-      // Reset form
-      setFormData({
-        username: '',
-        email: '',
-        password: '',
-        confirmPassword: '',
-        name: '',
-        employeeId: '',
-        contactNumber: '',
-        department: '',
-      });
-      setErrors({});
-      onSuccess();
+    try {
+      const result = await employeeService.createStaff(payload, mode.toUpperCase() as 'ADMIN' | 'EMPLOYEE');
+      toast.success(successMessage);
+      resetForm();
+      onSuccess(result);
       onClose();
     } catch (error: any) {
-      toast.error(error.message || 'Failed to create employee. Please try again.');
+      if (error.response?.data?.errors) {
+        setErrors(error.response.data.errors);
+      } else {
+        toast.error(error.message || `Failed to create ${mode}. Please try again.`);
+      }
     } finally {
       setLoading(false);
     }
   };
 
+  const resetForm = () => {
+    setFormData({
+      username: '',
+      email: '',
+      password: '',
+      confirmPassword: '',
+      name: '',
+      employeeId: '',
+      contactNumber: '',
+      department: '',
+    });
+    setErrors({});
+  };
+
   const handleClose = () => {
     if (!loading) {
-      setFormData({
-        username: '',
-        email: '',
-        password: '',
-        confirmPassword: '',
-        name: '',
-        employeeId: '',
-        contactNumber: '',
-        department: '',
-      });
-      setErrors({});
+      resetForm();
       onClose();
     }
   };
@@ -168,8 +164,8 @@ const CreateEmployeeModal: React.FC<CreateEmployeeModalProps> = ({
             {/* Header */}
             <div className="sticky top-0 z-10 flex items-center justify-between border-b border-slate-700 bg-slate-900/95 px-6 py-4 backdrop-blur-sm">
               <div>
-                <h2 className="text-2xl font-bold text-white">Create New Employee</h2>
-                <p className="text-sm text-slate-400">Add a new employee account</p>
+                <h2 className="text-2xl font-bold text-white">{modalTitle}</h2>
+                <p className="text-sm text-slate-400">{modalSubtitle}</p>
               </div>
               <button
                 onClick={handleClose}
@@ -187,118 +183,106 @@ const CreateEmployeeModal: React.FC<CreateEmployeeModalProps> = ({
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {/* Username */}
                 <div className="md:col-span-2">
-                  <label htmlFor="username" className="block text-sm font-medium text-slate-200 mb-1">
-                    Username (Email) *
-                  </label>
+                  <label htmlFor="username" className="block text-sm font-medium text-slate-200 mb-1">Username</label>
                   <input
                     id="username"
                     name="username"
-                    type="email"
                     value={formData.username}
                     onChange={handleChange}
-                    className="w-full rounded-xl border border-slate-600 bg-slate-800/60 px-4 py-2.5 text-white placeholder:text-slate-400 shadow-sm outline-none transition focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20"
+                    type="email"
                     placeholder="employee@cibf.com"
-                    required
+                    className="w-full rounded-xl border border-slate-600 bg-slate-800/60 px-4 py-2.5 text-white placeholder:text-slate-400 shadow-sm outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20"
+                    disabled={loading}
                   />
                   {errors.username && <p className="mt-1 text-sm text-rose-400">{errors.username}</p>}
                 </div>
 
                 {/* Email */}
                 <div className="md:col-span-2">
-                  <label htmlFor="email" className="block text-sm font-medium text-slate-200 mb-1">
-                    Email Address *
-                  </label>
+                  <label htmlFor="email" className="block text-sm font-medium text-slate-200 mb-1">Email Address</label>
                   <input
                     id="email"
                     name="email"
-                    type="email"
                     value={formData.email}
                     onChange={handleChange}
-                    className="w-full rounded-xl border border-slate-600 bg-slate-800/60 px-4 py-2.5 text-white placeholder:text-slate-400 shadow-sm outline-none transition focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20"
+                    type="email"
                     placeholder="employee@cibf.com"
-                    required
+                    className="w-full rounded-xl border border-slate-600 bg-slate-800/60 px-4 py-2.5 text-white placeholder:text-slate-400 shadow-sm outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20"
+                    disabled={loading}
                   />
                   {errors.email && <p className="mt-1 text-sm text-rose-400">{errors.email}</p>}
                 </div>
 
                 {/* Name */}
                 <div>
-                  <label htmlFor="name" className="block text-sm font-medium text-slate-200 mb-1">
-                    Full Name *
-                  </label>
+                  <label htmlFor="name" className="block text-sm font-medium text-slate-200 mb-1">Full Name</label>
                   <input
                     id="name"
                     name="name"
-                    type="text"
                     value={formData.name}
                     onChange={handleChange}
-                    className="w-full rounded-xl border border-slate-600 bg-slate-800/60 px-4 py-2.5 text-white placeholder:text-slate-400 shadow-sm outline-none transition focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20"
+                    type="text"
                     placeholder="John Doe"
-                    required
+                    className="w-full rounded-xl border border-slate-600 bg-slate-800/60 px-4 py-2.5 text-white placeholder:text-slate-400 shadow-sm outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20"
+                    disabled={loading}
                   />
                   {errors.name && <p className="mt-1 text-sm text-rose-400">{errors.name}</p>}
                 </div>
 
-                {/* Employee ID */}
+                {/* Employee/Admin ID */}
                 <div>
-                  <label htmlFor="employeeId" className="block text-sm font-medium text-slate-200 mb-1">
-                    Employee ID *
-                  </label>
+                  <label htmlFor="employeeId" className="block text-sm font-medium text-slate-200 mb-1">{mode === 'admin' ? 'Admin ID' : 'Employee ID'}</label>
                   <input
                     id="employeeId"
                     name="employeeId"
-                    type="text"
                     value={formData.employeeId}
                     onChange={handleChange}
-                    className="w-full rounded-xl border border-slate-600 bg-slate-800/60 px-4 py-2.5 text-white placeholder:text-slate-400 shadow-sm outline-none transition focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20"
-                    placeholder="EMP-001"
-                    required
+                    type="text"
+                    placeholder={mode === 'admin' ? 'ADM-001' : 'EMP-001'}
+                    className="w-full rounded-xl border border-slate-600 bg-slate-800/60 px-4 py-2.5 text-white placeholder:text-slate-400 shadow-sm outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20"
+                    disabled={loading}
                   />
                   {errors.employeeId && <p className="mt-1 text-sm text-rose-400">{errors.employeeId}</p>}
                 </div>
 
                 {/* Contact Number */}
                 <div>
-                  <label htmlFor="contactNumber" className="block text-sm font-medium text-slate-200 mb-1">
-                    Contact Number
-                  </label>
+                  <label htmlFor="contactNumber" className="block text-sm font-medium text-slate-200 mb-1">Contact Number</label>
                   <input
                     id="contactNumber"
                     name="contactNumber"
-                    type="tel"
                     value={formData.contactNumber}
                     onChange={handleChange}
-                    className="w-full rounded-xl border border-slate-600 bg-slate-800/60 px-4 py-2.5 text-white placeholder:text-slate-400 shadow-sm outline-none transition focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20"
+                    type="tel"
                     placeholder="+1234567890"
+                    className="w-full rounded-xl border border-slate-600 bg-slate-800/60 px-4 py-2.5 text-white placeholder:text-slate-400 shadow-sm outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20"
+                    disabled={loading}
                   />
                 </div>
 
                 {/* Department */}
                 <div>
-                  <label htmlFor="department" className="block text-sm font-medium text-slate-200 mb-1">
-                    Department
-                  </label>
+                  <label htmlFor="department" className="block text-sm font-medium text-slate-200 mb-1">Department</label>
                   <input
                     id="department"
                     name="department"
-                    type="text"
                     value={formData.department}
                     onChange={handleChange}
-                    className="w-full rounded-xl border border-slate-600 bg-slate-800/60 px-4 py-2.5 text-white placeholder:text-slate-400 shadow-sm outline-none transition focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20"
-                    placeholder="IT, HR, Operations, etc."
+                    type="text"
+                    placeholder="IT, HR, Operations"
+                    className="w-full rounded-xl border border-slate-600 bg-slate-800/60 px-4 py-2.5 text-white placeholder:text-slate-400 shadow-sm outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20"
+                    disabled={loading}
                   />
                 </div>
 
                 {/* Password */}
                 <div>
                   <div className="mb-1 flex items-center justify-between">
-                    <label htmlFor="password" className="block text-sm font-medium text-slate-200">
-                      Password *
-                    </label>
+                    <label htmlFor="password" className="block text-sm font-medium text-slate-200">Password</label>
                     <button
                       type="button"
-                      onClick={() => setShowPassword((s) => !s)}
                       className="text-xs font-medium text-indigo-300 hover:underline"
+                      onClick={() => setShowPassword(s => !s)}
                     >
                       {showPassword ? 'Hide' : 'Show'}
                     </button>
@@ -306,12 +290,12 @@ const CreateEmployeeModal: React.FC<CreateEmployeeModalProps> = ({
                   <input
                     id="password"
                     name="password"
-                    type={showPassword ? 'text' : 'password'}
                     value={formData.password}
                     onChange={handleChange}
-                    className="w-full rounded-xl border border-slate-600 bg-slate-800/60 px-4 py-2.5 text-white placeholder:text-slate-400 shadow-sm outline-none transition focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20"
+                    type={showPassword ? 'text' : 'password'}
                     placeholder="••••••••"
-                    required
+                    className="w-full rounded-xl border border-slate-600 bg-slate-800/60 px-4 py-2.5 text-white placeholder:text-slate-400 shadow-sm outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20"
+                    disabled={loading}
                   />
                   {errors.password && <p className="mt-1 text-sm text-rose-400">{errors.password}</p>}
                 </div>
@@ -319,13 +303,11 @@ const CreateEmployeeModal: React.FC<CreateEmployeeModalProps> = ({
                 {/* Confirm Password */}
                 <div>
                   <div className="mb-1 flex items-center justify-between">
-                    <label htmlFor="confirmPassword" className="block text-sm font-medium text-slate-200">
-                      Confirm Password *
-                    </label>
+                    <label htmlFor="confirmPassword" className="block text-sm font-medium text-slate-200">Confirm Password</label>
                     <button
                       type="button"
-                      onClick={() => setShowConfirmPassword((s) => !s)}
                       className="text-xs font-medium text-indigo-300 hover:underline"
+                      onClick={() => setShowConfirmPassword(s => !s)}
                     >
                       {showConfirmPassword ? 'Hide' : 'Show'}
                     </button>
@@ -333,12 +315,12 @@ const CreateEmployeeModal: React.FC<CreateEmployeeModalProps> = ({
                   <input
                     id="confirmPassword"
                     name="confirmPassword"
-                    type={showConfirmPassword ? 'text' : 'password'}
                     value={formData.confirmPassword}
                     onChange={handleChange}
-                    className="w-full rounded-xl border border-slate-600 bg-slate-800/60 px-4 py-2.5 text-white placeholder:text-slate-400 shadow-sm outline-none transition focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20"
+                    type={showConfirmPassword ? 'text' : 'password'}
                     placeholder="••••••••"
-                    required
+                    className="w-full rounded-xl border border-slate-600 bg-slate-800/60 px-4 py-2.5 text-white placeholder:text-slate-400 shadow-sm outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20"
+                    disabled={loading}
                   />
                   {errors.confirmPassword && <p className="mt-1 text-sm text-rose-400">{errors.confirmPassword}</p>}
                 </div>
@@ -363,15 +345,13 @@ const CreateEmployeeModal: React.FC<CreateEmployeeModalProps> = ({
                 >
                   {loading ? (
                     <span className="flex items-center gap-2">
-                      <svg className="h-5 w-5 animate-spin" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                      <svg className="h-5 w-5 animate-spin" viewBox="0 0 24 24" fill="none">
                         <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
                         <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
                       </svg>
                       Creating...
                     </span>
-                  ) : (
-                    'Create Employee'
-                  )}
+                  ) : submitButtonText}
                 </motion.button>
               </div>
             </form>
@@ -382,4 +362,4 @@ const CreateEmployeeModal: React.FC<CreateEmployeeModalProps> = ({
   );
 };
 
-export default CreateEmployeeModal;
+export default CreateStaffModal;

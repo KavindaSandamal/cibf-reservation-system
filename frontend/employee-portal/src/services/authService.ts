@@ -19,6 +19,8 @@ export interface RegisterData {
   password: string;
   name: string;
   employeeId: string;
+  contactNumber: string;
+  department: string;
   role?: string;
 }
 
@@ -159,6 +161,10 @@ export const authService = {
   logout: (): void => {
     localStorage.removeItem('employee_token');
     localStorage.removeItem('employee');
+  },
+
+  getToken: (): string | null => {
+    return localStorage.getItem('employee_token'); 
   },
 };
 

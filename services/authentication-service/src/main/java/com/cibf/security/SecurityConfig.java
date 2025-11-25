@@ -105,9 +105,6 @@ public class SecurityConfig {
                 .authorizeHttpRequests(authorize -> authorize
                         // Public endpoints - no authentication required
                         .requestMatchers("/api/auth/**", "/api/public/**").permitAll()
-
-                        // Admin endpoints - let @PreAuthorize handle fine-grained control
-                        // Just require authentication here
                         .requestMatchers("/api/admin/**").authenticated()
 
                         // Any other request must be authenticated
