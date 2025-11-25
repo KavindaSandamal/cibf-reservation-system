@@ -22,9 +22,6 @@ const StallsOverviewPage: React.FC = () => {
     try {
       setLoading(true);
       const filters: any = {};
-      if (availabilityFilter !== 'ALL') {
-        filters.status = availabilityFilter === 'AVAILABLE' ? 'AVAILABLE' : 'RESERVED';
-      }
       if (sizeFilter !== 'ALL') {
         filters.size = sizeFilter;
       }
@@ -46,32 +43,42 @@ const StallsOverviewPage: React.FC = () => {
     }
   };
 
-  // Reload when filters change
+  // Reload stalls when size filter changes (availability handled client-side)
   useEffect(() => {
     loadStalls();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [availabilityFilter, sizeFilter]);
+  }, [sizeFilter]);
 
   const handleViewStall = (stall: Stall) => {
     setSelectedStall(stall);
     setIsModalOpen(true);
   };
 
-  // Filter stalls by search query (client-side for now, since backend filtering is by status/size)
+  // Filter stalls by search query and availability (client-side filtering as fallback)
   const filteredStalls = useMemo(() => {
     if (!Array.isArray(stalls)) {
       return [];
     }
     
     return stalls.filter((stall) => {
+      // Search filter
       const matchesSearch =
         searchQuery === '' ||
         (stall.stallNumber?.toLowerCase().includes(searchQuery.toLowerCase()) ?? false) ||
         (stall.stallName?.toLowerCase().includes(searchQuery.toLowerCase()) ?? false) ||
         (stall.location?.toLowerCase().includes(searchQuery.toLowerCase()) ?? false);
-      return matchesSearch;
+      
+      // Availability filter (client-side fallback in case backend filtering doesn't work)
+      let matchesAvailability = true;
+      if (availabilityFilter === 'AVAILABLE') {
+        matchesAvailability = stall.isAvailable === true;
+      } else if (availabilityFilter === 'UNAVAILABLE') {
+        matchesAvailability = stall.isAvailable === false;
+      }
+      
+      return matchesSearch && matchesAvailability;
     });
-  }, [stalls, searchQuery]);
+  }, [stalls, searchQuery, availabilityFilter]);
 
   const sizeColors = {
     [StallSize.SMALL]: 'bg-blue-500/20 text-blue-300 border-blue-500/30',
