@@ -13,15 +13,33 @@ const getMockUsers = (): User[] => {
 };
 
 export const userService = {
-  // Get all users with search
-  getAllUsers: async (search?: string): Promise<User[]> => {
+  // Get all users with search and pagination
+  getAllUsers: async (options?: {
+    search?: string;
+    page?: number;
+    size?: number;
+    sortBy?: string;
+    sortDir?: 'ASC' | 'DESC';
+  }): Promise<{
+    users: User[];
+    pagination?: {
+      currentPage: number;
+      totalItems: number;
+      totalPages: number;
+      pageSize: number;
+    };
+  }> => {
     try {
       const params: any = {};
-      if (search) params.search = search;
+      if (options?.search) params.search = options.search;
+      if (options?.page !== undefined) params.page = options.page;
+      if (options?.size !== undefined) params.size = options.size;
+      if (options?.sortBy) params.sortBy = options.sortBy;
+      if (options?.sortDir) params.sortDir = options.sortDir;
       
       const response = await apiClient.get<any>('/api/admin/users', { params });
       
-      // Backend returns paginated response: {users: [], currentPage: 0, totalItems: 0, totalPages: 0}
+      // Backend returns paginated response: {users: [], currentPage: 0, totalItems: 0, totalPages: 0, pageSize: 10}
       // Backend UserResponse DTO has: id, email, businessName, contactNumber, address, role, createdAt
       // Frontend User interface expects: id, email, firstName, lastName, businessName, createdAt
       // Map backend response to frontend format
@@ -38,18 +56,29 @@ export const userService = {
                 : new Date(userResponse.createdAt).toISOString())
             : undefined,
           reservationCount: undefined, // Not provided by backend
+          role: userResponse.role, // Include role for filtering
         };
       };
 
-      // Extract the users array from the response
+      // Extract the users array and pagination info from the response
       if (response.data && Array.isArray(response.data.users)) {
-        return response.data.users.map(mapUserResponse);
+        return {
+          users: response.data.users.map(mapUserResponse),
+          pagination: response.data.totalItems !== undefined ? {
+            currentPage: response.data.currentPage ?? 0,
+            totalItems: response.data.totalItems ?? 0,
+            totalPages: response.data.totalPages ?? 0,
+            pageSize: response.data.pageSize ?? 10,
+          } : undefined,
+        };
       }
       // Fallback: if response is already an array (legacy format)
       if (Array.isArray(response.data)) {
-        return response.data.map(mapUserResponse);
+        return {
+          users: response.data.map(mapUserResponse),
+        };
       }
-      return [];
+      return { users: [] };
     } catch (error: any) {
       // Log detailed error for debugging
       console.error('Error loading users:', {
@@ -61,7 +90,16 @@ export const userService = {
       
       if (error.code === 'ERR_NETWORK' || error.message?.includes('Network Error') || error.message?.includes('ERR_CONNECTION_REFUSED')) {
         console.warn('Backend unavailable, returning mock users list');
-        return getMockUsers();
+        const mockUsers = getMockUsers();
+        return {
+          users: mockUsers,
+          pagination: {
+            currentPage: 0,
+            totalItems: mockUsers.length,
+            totalPages: 1,
+            pageSize: mockUsers.length,
+          },
+        };
       }
       
       // For 500 errors, provide more context
@@ -266,4 +304,3 @@ export const userService = {
     }
   },
 };
-

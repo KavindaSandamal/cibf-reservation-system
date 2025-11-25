@@ -14,7 +14,6 @@ interface RegisterFormData {
   confirmPassword: string;
   name: string;
   employeeId: string;
-  role: string;
 }
 
 const EmployeeRegisterPage: React.FC = () => {
@@ -27,7 +26,6 @@ const EmployeeRegisterPage: React.FC = () => {
     confirmPassword: '',
     name: '',
     employeeId: '',
-    role: 'EMPLOYEE',
   });
 
   const [loading, setLoading] = useState(false);
@@ -90,7 +88,7 @@ const EmployeeRegisterPage: React.FC = () => {
         password: formData.password,
         name: formData.name.trim(),
         employeeId: formData.employeeId.trim(),
-        role: formData.role,
+        role: 'EMPLOYEE',
       });
 
       toast.success('Registration successful! Please login.');
@@ -210,23 +208,6 @@ const EmployeeRegisterPage: React.FC = () => {
                   {errors.employeeId && <p className="mt-1 text-sm text-rose-400">{errors.employeeId}</p>}
                 </div>
 
-                {/* Role */}
-                <div>
-                  <label htmlFor="role" className="mb-1 block text-sm font-medium text-slate-200">
-                    Role
-                  </label>
-                  <select
-                    id="role"
-                    name="role"
-                    value={formData.role}
-                    onChange={handleChange}
-                    className="block w-full rounded-xl border border-slate-600 bg-slate-800/60 px-4 py-3 text-white shadow-sm outline-none transition focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/20"
-                  >
-                    <option value="EMPLOYEE">Employee</option>
-                    <option value="ADMIN">Admin</option>
-                  </select>
-                </div>
-
                 {/* Password */}
                 <div>
                   <div className="mb-1 flex items-center justify-between">
@@ -343,4 +324,3 @@ const EmployeeRegisterPage: React.FC = () => {
 };
 
 export default EmployeeRegisterPage;
-
